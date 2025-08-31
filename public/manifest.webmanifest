@@ -1,9 +1,1 @@
-{
-  "name": "Bambi’s ADHD Quest (demo)",
-  "short_name": "ADHD Quest",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#F8F5EC",
-  "theme_color": "#14532D",
-  "icons": []
-}
+{"name":"Sprout","short_name":"Sprout","start_url":"/","display":"standalone","background_color":"#0f1016","theme_color":"#22C1C3","icons":[]}
