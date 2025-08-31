@@ -1,30 +1,36 @@
-
+// src/navigation/index.js — NO NavigationContainer here
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+// update paths if your files live elsewhere
 import Splash from '../screens/Splash';
-import CharacterSelect from '../screens/CharacterSelect';
-import CompanionSelect from '../screens/CompanionSelect';
-import StartDay from '../screens/StartDay';
+import Character from '../screens/CharacterSelect';
+import Companion from '../screens/CompanionSelect';
+import Start from '../screens/StartDay';
 import Activities from '../screens/Activities';
-import EndDay from '../screens/EndDay';
+import End from '../screens/EndDay';
 import Trends from '../screens/Trends';
 
 const Stack = createNativeStackNavigator();
 
-export default function RootNav(){
+export default function RootNav({ appFontFamily }) {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Splash" component={Splash} />
-        <Stack.Screen name="Character" component={CharacterSelect} />
-        <Stack.Screen name="Companion" component={CompanionSelect} />
-        <Stack.Screen name="StartDay" component={StartDay} />
-        <Stack.Screen name="Activities" component={Activities} />
-        <Stack.Screen name="EndDay" component={EndDay} />
-        <Stack.Screen name="Trends" component={Trends} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <Stack.Navigator
+      initialRouteName="Splash"
+      screenOptions={{
+        headerStyle: { backgroundColor: '#0d0a17' },
+        headerTintColor: '#fff',
+        headerTitleStyle: appFontFamily ? { fontFamily: appFontFamily } : undefined,
+        contentStyle: { backgroundColor: '#0d0a17' },
+      }}
+    >
+      <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
+      <Stack.Screen name="Character" component={Character} />
+      <Stack.Screen name="Companion" component={Companion} />
+      <Stack.Screen name="Start" component={Start} />
+      <Stack.Screen name="Activities" component={Activities} />
+      <Stack.Screen name="End" component={End} />
+      <Stack.Screen name="Trends" component={Trends} />
+    </Stack.Navigator>
   );
 }
