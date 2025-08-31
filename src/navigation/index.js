@@ -1,4 +1,3 @@
-// src/navigation/index.js — NO NavigationContainer here
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -6,9 +5,8 @@ import Splash from '../screens/Splash';
 import Character from '../screens/CharacterSelect';
 import Companion from '../screens/CompanionSelect';
 import Start from '../screens/StartDay';
-import Activities from '../screens/Activities';
-import End from '../screens/EndDay';
-import Trends from '../screens/Trends';
+import Home from '../screens/Home';            // ← make sure this file exists
+import QuestBoard from '../screens/QuestBoard';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,13 +21,12 @@ export default function RootNav({ appFontFamily }) {
         contentStyle: { backgroundColor: '#0d0a17' },
       }}
     >
-      <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
+      <Stack.Screen name="Splash" component={Splash} options={{ headerShown:false }} />
       <Stack.Screen name="Character" component={Character} />
       <Stack.Screen name="Companion" component={Companion} />
       <Stack.Screen name="Start" component={Start} />
-      <Stack.Screen name="Activities" component={Activities} />
-      <Stack.Screen name="End" component={End} />
-      <Stack.Screen name="Trends" component={Trends} />
+      <Stack.Screen name="Home" component={Home} options={{ title: 'Dashboard' }} />
+      <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title:'Daily Quests' }} />
     </Stack.Navigator>
   );
 }

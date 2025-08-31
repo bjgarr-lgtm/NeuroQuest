@@ -1,16 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useGame } from '../game/store';
 
 export default function StartDay({ navigation, route }) {
   const { actions } = useGame();
-  const heroKey = route?.params?.heroKey ?? '—';
-  const companionKey = route?.params?.companionKey ?? '—';
+  const heroKey = route?.params?.heroKey || 'bambi';
+  const companionKey = route?.params?.companionKey || 'molly';
 
   const begin = () => {
-    actions.setParty(heroKey, companionKey);
-    actions.startDay(); // rolls daily quests + resets meters
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    try {
+      actions.setParty(heroKey, companionKey);
+      actions.startDay();            // rolls quests, resets meters
+      navigation.navigate('Home');   // simple, reliable
+    } catch (e) {
+      Alert.alert('Start failed', String(e));
+    }
   };
 
   return (
@@ -19,9 +23,9 @@ export default function StartDay({ navigation, route }) {
       <Text style={styles.sub}>Hero: {heroKey} • Companion: {companionKey}</Text>
 
       <View style={styles.panel}>
-        <Text style={styles.section}>Today&apos;s Plan</Text>
-        <Text style={styles.item}>• We’ll roll quests and set your XP goal.</Text>
-        <Text style={styles.item}>• Your companion reacts to completions.</Text>
+        <Text style={styles.section}>Today’s Plan</Text>
+        <Text style={styles.item}>• Roll daily quests</Text>
+        <Text style={styles.item}>• Earn XP/coins; pet reacts to wins</Text>
       </View>
 
       <View style={styles.row}>
