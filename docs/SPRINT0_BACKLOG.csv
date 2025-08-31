@@ -1,0 +1,9 @@
+ID,Title,Type,Acceptance,Estimate,Priority
+G-001,Core store (startDay/completeQuest/addFocus/setParty/petInteract),dev,State persists; XP/coins/affection update; one NavigationContainer,3,P0
+G-002,Daily Quest roll + completion juice,dev,Sparkles + sfx + state change on complete,3,P0
+G-003,Focus Timer (5/10/20) + claim/early stop,dev,Adds focus minutes; rewards; half on early stop,3,P0
+G-004,Pet Room interactions,dev,Feed/Cuddle/Play → affection/mood; cooldown,2,P1
+G-005,End Day summary + streak,dev,"Shows tasks done, focus minutes, streak delta; New Day",2,P0
+UX-001,Neon storybook theme tokens,design,"Dark panels, glowing borders, accent palette",2,P0
+ART-001,Canon hero/pet sprites intake,art,"4 heroes, 4 pets PNGs; slice & export",2,P0
+QA-001,Definition of Done,qa,All acceptance green on iOS/Android/Web,1,P0

@@ -1,0 +1,36 @@
+# .github/workflows/import-backlog.yml
+name: Import Sprint-0 Backlog
+on: workflow_dispatch
+permissions:
+  issues: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'docs/SPRINT0_BACKLOG.csv';
+            const rows = fs.readFileSync(path,'utf8').trim().split('\n');
+            rows.shift(); // header
+            for (const line of rows) {
+              const [id,title,type,acceptance,estimate,priority] = line.split(',').map(s=>s.trim());
+              const body = `**ID:** ${id}
+**Type:** ${type}
+**Acceptance:** ${acceptance}
+**Estimate:** ${estimate}
+**Priority:** ${priority}
+
+Spec: docs/GAME_SPEC.md  
+Data: docs/data_model.json  
+Balance: docs/balance.yaml`;
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `${id} — ${title}`,
+                body,
+                labels: [type, priority]
+              });
+            }

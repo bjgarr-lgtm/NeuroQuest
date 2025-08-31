@@ -1,0 +1,39 @@
+{
+  "Player": {
+    "id": "local",
+    "xp": 0,
+    "level": 1,
+    "coins": 0,
+    "hearts": 3,
+    "energy": 10,
+    "mood": 50
+  },
+  "Pet": {
+    "key": "fox",
+    "affection": 0,
+    "mood": 50,
+    "level": 1,
+    "skin": "default"
+  },
+  "Day": {
+    "date": "YYYY-MM-DD",
+    "streak": 0,
+    "quests": [],
+    "completed": {},
+    "focusMinutes": 0
+  },
+  "Quest": {
+    "id": "string",
+    "title": "string",
+    "cat": "main|side|bonus|small",
+    "reward": {
+      "xp": 0,
+      "coins": 0,
+      "mood": 0
+    }
+  },
+  "Inventory": {
+    "stickers": [],
+    "cosmetics": []
+  }
+}

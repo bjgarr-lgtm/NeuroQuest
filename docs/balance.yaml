@@ -1,0 +1,30 @@
+xp_per_level: 200
+focus_timer:
+  '5':
+    xp_per_min: 5
+    coins_per_min: 1
+  '10':
+    xp_per_min: 6
+    coins_per_min: 1
+  '20':
+    xp_per_min: 7
+    coins_per_min: 2
+quest_rewards:
+  main:
+    xp: 50
+    coins: 10
+    mood: 2
+  side:
+    xp: 25
+    coins: 5
+    mood: 1
+  bonus:
+    xp: 20
+    coins: 4
+  small:
+    xp: 10
+    coins: 2
+pet:
+  affection_per_quest: 1
+  affection_per_timer: 2
+  mood_decay_per_hour: 1
