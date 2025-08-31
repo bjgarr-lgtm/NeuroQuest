@@ -1,43 +1,58 @@
+// src/screens/CompanionSelect.js — guaranteed "Start Day" navigation
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { Btn } from '../components/UI';
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { colors, neon } from '../theme';
-import Button from '../components/Button';
-import { loadState, getState, setState } from '../state/store';
+const P = 'https://dummyimage.com/300x200/1b1731/ffd166.png&text='; // placeholder art
 
-const OPTIONS = [
-  {key:'Bird', src: require('../../assets/comp-bird.png')},
-  {key:'Star', src: require('../../assets/comp-star.png')},
-  {key:'Fox', src: require('../../assets/comp-fox.png')},
+const COMPANIONS = [
+  { key: 'bird', label: 'Bird', uri: P + 'Bird' },
+  { key: 'star', label: 'Star', uri: P + 'Star' },
+  { key: 'fox', label: 'Fox', uri: P + 'Fox' },
 ];
 
-export default function CompanionSelect({ navigation }){
-  const [sel, setSel] = useState(null);
-  useEffect(()=>{ loadState().then(()=>setSel(getState().companion)); },[]);
+export default function CompanionSelect({ navigation }) {
+  const [selected, setSelected] = useState(null);
+
   return (
-    <ScrollView style={{flex:1, backgroundColor:colors.bg}} contentContainerStyle={{padding:16}}>
-      <View style={neon.panel}>
-        <Text style={{color:colors.ink, fontSize:18, marginBottom:12}}>Choose a companion</Text>
-        <View style={styles.grid}>
-          {OPTIONS.map(o=>(
-            <TouchableOpacity key={o.key} style={[styles.card, sel===o.key && styles.selected]}
-              onPress={()=>{ setSel(o.key); setState({companion:o.key}); }}>
-              <Image source={o.src} style={{width:'100%', height:160, resizeMode:'contain'}} />
-              <Text style={styles.name}>{o.key}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={{flexDirection:'row', gap:10, marginTop:12}}>
-          <Button title="← Back" onPress={()=>navigation.goBack()} />
-          <Button title="Start Day →" variant="primary" onPress={()=>navigation.navigate('StartDay')} />
-        </View>
+    <View style={styles.wrap}>
+      <Text style={styles.h2}>Companion</Text>
+      <View style={styles.grid}>
+        {COMPANIONS.map(c => (
+          <TouchableOpacity
+            key={c.key}
+            onPress={() => setSelected(c.key)}
+            style={[styles.card, selected === c.key && styles.sel]}
+          >
+            <Image source={{ uri: c.uri }} style={styles.img} />
+            <Text style={styles.label}>{c.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-    </ScrollView>
+      <View style={styles.row}>
+        <Btn onPress={() => navigation.goBack()}>← Back</Btn>
+        <Btn onPress={() => navigation.navigate('Start')}>Start Day →</Btn>
+      </View>
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
-  grid:{ flexDirection:'row', flexWrap:'wrap', gap:12 },
-  card:{ width:'48%', borderWidth:2, borderColor:'#2d2450', borderRadius:10, padding:10, backgroundColor:colors.card },
-  selected:{ borderColor: colors.teal },
-  name:{ color:colors.ink, textAlign:'center', marginTop:6 }
+  wrap: { flex: 1, padding: 16, backgroundColor: '#0d0a17' },
+  h2: { color: '#fff', fontSize: 18, marginBottom: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  card: {
+    flexGrow: 1,
+    minWidth: 220,
+    backgroundColor: '#1b1731',
+    borderWidth: 2,
+    borderColor: '#2d2450',
+    borderRadius: 12,
+    padding: 8,
+    alignItems: 'center',
+  },
+  sel: { borderColor: '#B887FF' },
+  img: { width: 180, height: 140, borderRadius: 10, borderWidth: 2, borderColor: '#2d2450' },
+  label: { color: '#fff', marginTop: 6 },
+  row: { flexDirection: 'row', gap: 10, marginTop: 12 },
 });
