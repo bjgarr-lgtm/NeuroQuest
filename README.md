@@ -3,6 +3,11 @@
 **Flow**: Splash → Character Select → Companion Select → Start Day → Activities (timer) → End Day → Trends & Tips.  
 **Style**: Neon / pixel-inspired panels & chips. All colors/tokens in `src/theme/`.
 
+## Game Plan
+- [GAME_SPEC.md](docs/GAME_SPEC.md)
+- [Wireflow](docs/WIREFLOW.md)
+- [Balance](docs/balance.yaml)
+
 ## Quick start
 ```bash
 npm i -g expo-cli   # if needed
