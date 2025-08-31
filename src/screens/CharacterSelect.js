@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Pressable, A
 
 const P = 'https://dummyimage.com/600x420/1b1731/ffffff.png&text=';
 
-export const CHARACTERS = [
+// Heroes you can play as:
+export const HEROES = [
   { key:'bambi', label:'Bambi', uri: P + 'Bambi' },
   { key:'ash',   label:'Ash',   uri: P + 'Ash' },
   { key:'odin',  label:'Odin',  uri: P + 'Odin' },
@@ -12,7 +13,6 @@ export const CHARACTERS = [
 
 export default function CharacterSelect({ navigation }) {
   const [selected, setSelected] = useState(null);
-
   const next = () => {
     if (!selected) return Alert.alert('Pick a character first');
     navigation.navigate('Companion', { heroKey: selected });
@@ -20,9 +20,9 @@ export default function CharacterSelect({ navigation }) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.h2}>Character</Text>
+      <Text style={styles.h2}>Choose your character</Text>
       <FlatList
-        data={CHARACTERS}
+        data={HEROES}
         numColumns={2}
         columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={{ gap: 12 }}
@@ -35,12 +35,8 @@ export default function CharacterSelect({ navigation }) {
         )}
       />
       <View style={styles.row}>
-        <Pressable style={styles.btnGhost} onPress={() => navigation.goBack()}>
-          <Text style={styles.ghostText}>← Back</Text>
-        </Pressable>
-        <Pressable style={[styles.btn, !selected && styles.btnDisabled]} onPress={next} disabled={!selected}>
-          <Text style={styles.btnText}>Next →</Text>
-        </Pressable>
+        <Pressable style={styles.btnGhost} onPress={() => navigation.goBack()}><Text style={styles.ghostText}>← Back</Text></Pressable>
+        <Pressable style={[styles.btn, !selected && {opacity:0.5}]} disabled={!selected} onPress={next}><Text style={styles.btnText}>Next →</Text></Pressable>
       </View>
     </View>
   );
@@ -56,7 +52,6 @@ const styles = StyleSheet.create({
   row:{ flexDirection:'row', gap:10, marginTop:12 },
   btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
   btnText:{ color:'#0d0a17', fontWeight:'700' },
-  btnDisabled:{ opacity:0.5 },
   btnGhost:{ paddingVertical:12, paddingHorizontal:16, borderRadius:12, borderWidth:2, borderColor:'#2d2450' },
   ghostText:{ color:'#c9cbe0' },
 });
