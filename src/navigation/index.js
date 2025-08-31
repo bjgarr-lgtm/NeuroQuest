@@ -2,7 +2,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// update paths if your files live elsewhere
 import Splash from '../screens/Splash';
 import Character from '../screens/CharacterSelect';
 import Companion from '../screens/CompanionSelect';
