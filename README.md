@@ -1,34 +1,30 @@
-# NeuroQuest — Mockup Skin (Playable Web Demo)
+# NeuroQuest — Expo React Native Starter (Neon Storybook)
 
-**Look & feel:** neon‑pixel UI to match your mockups.  
-**Flow:** Character → Companion → Start Day → Activities (timer) → End Day → Trends & Tips.  
-**Deploy:** Cloudflare Pages (no build step). Output directory: `public`.
+**Flow**: Splash → Character Select → Companion Select → Start Day → Activities (timer) → End Day → Trends & Tips.  
+**Style**: Neon / pixel-inspired panels & chips. All colors/tokens in `src/theme/`.
 
-## Files
-- `public/index.html` — SPA with the full flow.
-- `public/themes/neuroquest.css` — neon pixel style (colors match mockups).
-- `public/app.js` — state, quests, budget, timer, end‑day summary, 14/30‑day trends.
-- `public/assets/img/*` — characters/companions (replace with canon art using same filenames).
-- `public/sw.js`, `public/manifest.webmanifest` — offline support.
-- `functions/health.js` — Pages Function for `/health`.
-
-## Data model (localStorage key `neuroquest_v2`)
-```ts
-{
-  date: "YYYY-MM-DD",
-  xp: number, coins: number, level: number,
-  character: string|null, companion: string|null,
-  quests: { main: Task[], side: Task[], bonus: Task[] },
-  cleaning: { small: string[], weekly: string[], monthly: string[] },
-  coop: string[],
-  budget: { pouch: number, tx: { name: string, amt: number, time: epoch }[] },
-  logs: { [date: string]: { done: {txt:string, where:string, t:number}[], minutes:number, stuck:number, tx:any[] } },
-  trends: { streak:number, last:string|null }
-}
+## Quick start
+```bash
+npm i -g expo-cli   # if needed
+npm install
+npx expo start
 ```
+- Open in iOS Simulator, Android Emulator, or Expo Go on device.
+- Art slots in `assets/` (e.g., `hero-bambi.png`, `comp-bird.png`). Replace with canon images (same filenames).
 
-## Extend
-- Replace fonts with your own pixel face or embed locally.
-- Hook up real analytics export (CSV/JSON) — all logs live in localStorage.
-- Add collectibles and achievements with thresholds (e.g., “Kept Child Alive”).
+## Structure
+- `App.js` — loads pixel font + mounts navigation.
+- `src/navigation/` — Stack navigator (no headers).
+- `src/screens/` — 6 screens matching your flow.
+- `src/components/` — NeonCard, Button, Chip, ProgressBar, TaskRow.
+- `src/state/` — tiny store with AsyncStorage; Habitica-like quests & XP, LAMP-like logs/trends.
+- `src/theme/` — color tokens & basic styles.
 
+## Next
+- Achievements & collectibles
+- Companion animations (Lottie) + sound SFX
+- CSV export of logs
+- Auth + remote sync (Supabase or similar)
+- Push notifications for streaks
+
+© 2025 NeuroQuest — MIT License
