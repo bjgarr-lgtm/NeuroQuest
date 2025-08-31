@@ -1,44 +1,62 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Pressable, Alert } from 'react-native';
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { colors, neon } from '../theme';
-import Button from '../components/Button';
-import { loadState, getState, setState } from '../state/store';
+const P = 'https://dummyimage.com/600x420/1b1731/ffffff.png&text=';
 
-const OPTIONS = [
-  {key:'Bambi', src: require('../../assets/hero-bambi.png')},
-  {key:'Ash', src: require('../../assets/hero-ash.png')},
-  {key:'Odin', src: require('../../assets/hero-odin.png')},
-  {key:'Fox', src: require('../../assets/hero-fox.png')},
+export const CHARACTERS = [
+  { key:'bambi', label:'Bambi', uri: P + 'Bambi' },
+  { key:'ash',   label:'Ash',   uri: P + 'Ash' },
+  { key:'odin',  label:'Odin',  uri: P + 'Odin' },
+  { key:'fox',   label:'Fox',   uri: P + 'Fox' },
 ];
 
-export default function CharacterSelect({ navigation }){
-  const [sel, setSel] = useState(null);
-  useEffect(()=>{ loadState().then(()=>setSel(getState().character)); },[]);
+export default function CharacterSelect({ navigation }) {
+  const [selected, setSelected] = useState(null);
+
+  const next = () => {
+    if (!selected) return Alert.alert('Pick a character first');
+    navigation.navigate('Companion', { heroKey: selected });
+  };
+
   return (
-    <ScrollView style={{flex:1, backgroundColor:colors.bg}} contentContainerStyle={{padding:16}}>
-      <View style={neon.panel}>
-        <Text style={{color:colors.ink, fontSize:18, marginBottom:12}}>Choose your character</Text>
-        <View style={styles.grid}>
-          {OPTIONS.map(o=>(
-            <TouchableOpacity key={o.key} style={[styles.card, sel===o.key && styles.selected]}
-              onPress={()=>{ setSel(o.key); setState({character:o.key}); }}>
-              <Image source={o.src} style={{width:'100%', height:160, resizeMode:'contain'}} />
-              <Text style={styles.name}>{o.key}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={{flexDirection:'row', gap:10, marginTop:12}}>
-          <Button title="← Back" onPress={()=>navigation.goBack()} />
-          <Button title="Next →" variant="primary" onPress={()=>navigation.navigate('Companion')} />
-        </View>
+    <View style={styles.wrap}>
+      <Text style={styles.h2}>Character</Text>
+      <FlatList
+        data={CHARACTERS}
+        numColumns={2}
+        columnWrapperStyle={{ gap: 12 }}
+        contentContainerStyle={{ gap: 12 }}
+        keyExtractor={(it) => it.key}
+        renderItem={({ item }) => (
+          <TouchableOpacity onPress={() => setSelected(item.key)} style={[styles.card, selected === item.key && styles.sel]}>
+            <Image source={{ uri: item.uri }} style={styles.img} />
+            <Text style={styles.label}>{item.label}</Text>
+          </TouchableOpacity>
+        )}
+      />
+      <View style={styles.row}>
+        <Pressable style={styles.btnGhost} onPress={() => navigation.goBack()}>
+          <Text style={styles.ghostText}>← Back</Text>
+        </Pressable>
+        <Pressable style={[styles.btn, !selected && styles.btnDisabled]} onPress={next} disabled={!selected}>
+          <Text style={styles.btnText}>Next →</Text>
+        </Pressable>
       </View>
-    </ScrollView>
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
-  grid:{ flexDirection:'row', flexWrap:'wrap', gap:12 },
-  card:{ width:'48%', borderWidth:2, borderColor:'#2d2450', borderRadius:10, padding:10, backgroundColor:colors.card },
-  selected:{ borderColor: colors.vio },
-  name:{ color:colors.ink, textAlign:'center', marginTop:6 }
+  wrap:{ flex:1, backgroundColor:'#0d0a17', padding:16 },
+  h2:{ color:'#fff', fontSize:18, marginBottom:10 },
+  card:{ flex:1, backgroundColor:'#1b1731', borderWidth:2, borderColor:'#2d2450', borderRadius:12, padding:8, alignItems:'center' },
+  sel:{ borderColor:'#B887FF' },
+  img:{ width:'100%', aspectRatio:4/3, borderRadius:10, borderWidth:2, borderColor:'#2d2450' },
+  label:{ color:'#fff', marginTop:6 },
+  row:{ flexDirection:'row', gap:10, marginTop:12 },
+  btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
+  btnText:{ color:'#0d0a17', fontWeight:'700' },
+  btnDisabled:{ opacity:0.5 },
+  btnGhost:{ paddingVertical:12, paddingHorizontal:16, borderRadius:12, borderWidth:2, borderColor:'#2d2450' },
+  ghostText:{ color:'#c9cbe0' },
 });

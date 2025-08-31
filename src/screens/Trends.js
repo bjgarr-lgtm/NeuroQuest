@@ -1,31 +1,23 @@
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
-import { colors, neon } from '../theme';
-import Button from '../components/Button';
-import { computeTrends } from '../state/store';
-
-export default function Trends({ navigation }){
-  const [t, setT] = useState(null);
-  useEffect(()=>{ setT(computeTrends(30)); },[]);
-
-  if (!t) return null;
+export default function Trends({ navigation }) {
   return (
-    <View style={{flex:1, backgroundColor:colors.bg, padding:16}}>
-      <View style={neon.panel}>
-        <Text style={{color:colors.ink, fontSize:18, marginBottom:8}}>Trends & Tips (30d)</Text>
-        <View style={{gap:6}}>
-          <Text style={{color:colors.ink}}>Tasks: {t.done}</Text>
-          <Text style={{color:colors.ink}}>Focus minutes: {t.minutes}</Text>
-          <Text style={{color:colors.ink}}>Stuck events: {t.stuck}</Text>
-          <Text style={{color:colors.ink}}>Best time: {t.timeName}</Text>
-          <Text style={{color:colors.ink}}>Top category: {t.topCat}</Text>
-          <Text style={{color:colors.ink}}>Daily completion: {t.rate}%</Text>
-        </View>
-        <View style={{marginTop:12}}>
-          <Button title="Close" onPress={()=>navigation.goBack()} />
-        </View>
-      </View>
+    <View style={styles.wrap}>
+      <Text style={styles.h1}>Trends (14–30d)</Text>
+      <Text style={styles.item}>Tasks: — • Focus minutes: — • Stuck events: —</Text>
+      <Text style={styles.item}>Best time: afternoon • Top category: main • Daily completion: 60%</Text>
+      <Pressable style={styles.btn} onPress={()=>navigation.goBack()}>
+        <Text style={styles.btnText}>Back</Text>
+      </Pressable>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap:{ flex:1, padding:16, backgroundColor:'#0d0a17' },
+  h1:{ color:'#fff', fontSize:20, marginBottom:12 },
+  item:{ color:'#c9cbe0', marginBottom:6 },
+  btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12, marginTop:8, alignSelf:'flex-start' },
+  btnText:{ color:'#0d0a17', fontWeight:'700' },
+});
