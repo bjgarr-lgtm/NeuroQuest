@@ -20,12 +20,9 @@ const localFont = { PressStart2P_400Regular: require('./assets/fonts/PressStart2
 export default function App() {
   // Load fonts WITHOUT blocking UI. If web static export can’t fetch the TTF,
   // we just fall back to system fonts and the app still renders.
-  const [fontsLoaded] = useFonts(
-    // OPTION A:
-    { PressStart2P_400Regular }
-    // OPTION B:
-    // localFont
-  );
+  const [fontsLoaded] = useFonts({
+  PressStart2P_400Regular: require('./assets/fonts/PressStart2P-Regular.ttf'),
+ });
 
   // Use the pixel font when available; otherwise let the platform default render.
   const appFontFamily = fontsLoaded ? 'PressStart2P_400Regular' : undefined;
