@@ -1,21 +1,34 @@
-# Bambi’s ADHD Quest — Vertical Slice (Web Demo)
+# NeuroQuest — Mockup Skin (Playable Web Demo)
 
-Cozy, storybook prototype of the daily loop:
-Title → Companion → Quest Board → Timer → Loot
+**Look & feel:** neon‑pixel UI to match your mockups.  
+**Flow:** Character → Companion → Start Day → Activities (timer) → End Day → Trends & Tips.  
+**Deploy:** Cloudflare Pages (no build step). Output directory: `public`.
 
-## Live on Cloudflare Pages
-- Build command: none
-- Output dir: `public`
-- Optional endpoint: `/health` (Pages Function)
+## Files
+- `public/index.html` — SPA with the full flow.
+- `public/themes/neuroquest.css` — neon pixel style (colors match mockups).
+- `public/app.js` — state, quests, budget, timer, end‑day summary, 14/30‑day trends.
+- `public/assets/img/*` — characters/companions (replace with canon art using same filenames).
+- `public/sw.js`, `public/manifest.webmanifest` — offline support.
+- `functions/health.js` — Pages Function for `/health`.
 
-## Local dev
-```bash
-# from repo root
-python3 -m http.server -d public 5173
-# open http://localhost:5173
+## Data model (localStorage key `neuroquest_v2`)
+```ts
+{
+  date: "YYYY-MM-DD",
+  xp: number, coins: number, level: number,
+  character: string|null, companion: string|null,
+  quests: { main: Task[], side: Task[], bonus: Task[] },
+  cleaning: { small: string[], weekly: string[], monthly: string[] },
+  coop: string[],
+  budget: { pouch: number, tx: { name: string, amt: number, time: epoch }[] },
+  logs: { [date: string]: { done: {txt:string, where:string, t:number}[], minutes:number, stuck:number, tx:any[] } },
+  trends: { streak:number, last:string|null }
+}
 ```
 
-## Notes
-- Saves to localStorage (`adhdQuestV2`).
-- Works offline via a tiny service worker.
-- Art is placeholder-friendly: drop canon art into `public/assets/img/` keeping filenames to re-skin instantly.
+## Extend
+- Replace fonts with your own pixel face or embed locally.
+- Hook up real analytics export (CSV/JSON) — all logs live in localStorage.
+- Add collectibles and achievements with thresholds (e.g., “Kept Child Alive”).
+

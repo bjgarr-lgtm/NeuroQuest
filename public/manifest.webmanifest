@@ -1,1 +1,9 @@
-{"name":"Sprout","short_name":"Sprout","start_url":"/","display":"standalone","background_color":"#0f1016","theme_color":"#22C1C3","icons":[]}
+{
+  "name": "NeuroQuest",
+  "short_name": "NeuroQuest",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0a17",
+  "theme_color": "#0d0a17",
+  "icons": []
+}

@@ -1,1 +1,187 @@
-<!doctype html><html lang='en'><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width, initial-scale=1'/><title>Sprout</title><link rel='manifest' href='/manifest.webmanifest'/><link rel='stylesheet' href='/styles.css'/></head><body><header class='site-header'><div class='brand'><img src='/assets/img/logo.svg' class='logo'/><div class='titles'><h1>Sprout</h1><p class='subtitle'>cozy goals with a buddy</p></div></div><nav class='top-nav'><button class='icon-btn' id='btnMute'>🔈</button></nav></header><main id='app'><section class='screen' id='screen-onboard'><div class='card hero'><h2>hi — i’m your buddy</h2><div id='buddyChoices'></div><div class='row'><button class='btn primary' id='startDay'>start my day</button></div></div></section><section class='screen hidden' id='screen-home'><div class='grid'><div class='card pet'><div class='pet-wrap'><img id='petImg' src='/assets/img/bird-teal-1.svg'/><div class='level'><span id='levelText'>Lv 1</span></div></div><div class='row center compact'><div class='chip'>⭐ <span id='xpText'>0</span></div><div class='chip'>🪙 <span id='coinText'>0</span></div><div class='chip'>🔥 <span id='streakText'>0</span> streak</div></div><div class='row center'><button class='btn' id='toCheckIn'>mood check-in</button><button class='btn' id='toBreath'>breathing</button></div></div><div class='card'><h3>today’s tiny goals</h3><div id='taskList' class='task-list'></div><div class='row'><button class='btn' id='addTask'>+ add goal</button><button class='btn primary' id='quickStart'>start 10-min timer</button></div></div><div class='card shop'><h3>shop</h3><div id='shopList' class='shop-list'></div></div></div></section><section class='screen hidden' id='screen-checkin'><div class='card'><h3>how are you feeling?</h3><div class='moods'><button class='mood' data-v='energized'>⚡ energized</button><button class='mood' data-v='calm'>🌿 calm</button><button class='mood' data-v='meh'>😐 meh</button><button class='mood' data-v='anxious'>🌀 anxious</button></div><textarea id='journal' class='input' placeholder='optional note…'></textarea><div class='row'><button class='btn' id='saveCheckin'>save</button><button class='btn' id='backHome1'>back</button></div></div></section><section class='screen hidden' id='screen-breath'><div class='card center'><h3>box breathing</h3><canvas id='breathCanvas' width='320' height='320'></canvas><div class='row center'><button class='btn' id='breathStart'>start</button><button class='btn' id='breathStop'>stop</button><button class='btn' id='backHome2'>back</button></div></div></section><div id='toast' class='toast hidden'>+5 XP</div></main><footer class='site-footer'><p>© 2025 Sprout</p></footer><script src='/app.js'></script><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroQuest — daily quests for real life</title>
+  <meta name="theme-color" content="#0d0a17" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <!-- Pixel-ish font (online); falls back to system if blocked -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/themes/neuroquest.css" />
+</head>
+<body>
+  <header class="hud">
+    <div class="hud-left">
+      <div class="chip">SOLO WEEK</div>
+      <div class="chip ghost" id="modeChip">XP</div>
+    </div>
+    <div class="hud-mid">
+      <div class="hp">
+        <span class="heart full"></span>
+        <span class="heart full"></span>
+        <span class="heart mid"></span>
+      </div>
+      <div class="xpbar"><div id="xpFill"></div></div>
+    </div>
+    <div class="hud-right">
+      <div class="chip ghost">🪙 <span id="coinHUD">0</span></div>
+      <button class="icon ghost" id="openTrends" title="Trends & Tips">📈</button>
+      <button class="icon" id="openSettings" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <main id="app">
+
+    <!-- Screen: Splash -->
+    <section class="screen" id="screen-splash">
+      <div class="panel center tall">
+        <div class="title">
+          <h1 class="logo">NEUROQUEST</h1>
+          <p class="tag">Questing for focus, powered by snacks & spite.</p>
+        </div>
+        <img class="splash" src="/assets/img/splash-cover.png" onerror="this.style.display='none'"/>
+        <button class="btn primary xl" id="goCharacter">Start</button>
+      </div>
+    </section>
+
+    <!-- Screen: Character Select -->
+    <section class="screen hidden" id="screen-character">
+      <div class="panel">
+        <h2>Choose your character</h2>
+        <div class="gallery" id="charGallery"></div>
+        <div class="row">
+          <button class="btn" id="backSplash">← Back</button>
+          <button class="btn primary" id="toCompanion">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen: Companion Select -->
+    <section class="screen hidden" id="screen-companion">
+      <div class="panel">
+        <h2>Choose a companion</h2>
+        <div class="gallery" id="compGallery"></div>
+        <div class="row">
+          <button class="btn" id="backCharacter">← Back</button>
+          <button class="btn primary" id="toStartDay">Start Day →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen: Start Day -->
+    <section class="screen hidden" id="screen-start">
+      <div class="panel grid2">
+        <div class="card">
+          <h3>Daily Quests</h3>
+          <div class="section">
+            <div class="subhead"><span class="dot red"></span> Main Quest</div>
+            <div id="mainList" class="tasklist"></div>
+            <button class="btn sm ghost" data-add="main">+ add main</button>
+          </div>
+          <div class="section">
+            <div class="subhead"><span class="dot yellow"></span> Side Quests</div>
+            <div id="sideList" class="tasklist"></div>
+            <button class="btn sm ghost" data-add="side">+ add side</button>
+          </div>
+          <div class="section">
+            <div class="subhead"><span class="dot green"></span> Bonus Loot</div>
+            <div id="bonusList" class="tasklist"></div>
+            <button class="btn sm ghost" data-add="bonus">+ add bonus</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Cleaning Dungeon</h3>
+          <div id="cleaningSmall" class="tasklist"></div>
+          <div class="divider"></div>
+          <div class="subhead">Weekly Boss</div>
+          <div id="weeklyBoss" class="tasklist"></div>
+          <div class="divider"></div>
+          <div class="subhead">Monthly Raid</div>
+          <div id="monthlyRaid" class="tasklist"></div>
+        </div>
+        <div class="card">
+          <h3>Budget Tracker</h3>
+          <div class="stats row wrap">
+            <div class="stat"><div class="label">Gold Pouch</div><div class="val" id="goldPouch">$0</div></div>
+            <div class="stat"><div class="label">This Week</div><div class="val" id="thisWeek">$0</div></div>
+          </div>
+          <div class="row">
+            <button class="btn sm" id="addIncome">+ income</button>
+            <button class="btn sm" id="addExpense">+ expense</button>
+          </div>
+          <div id="txList" class="tx"></div>
+        </div>
+        <div class="card">
+          <h3>Co‑op Mode</h3>
+          <div class="subhead">Sidekick Quests</div>
+          <div id="coopList" class="tasklist"></div>
+        </div>
+        <div class="card center">
+          <button class="btn xl primary" id="beginActivities">Begin Activities</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen: Activities (timer) -->
+    <section class="screen hidden" id="screen-activities">
+      <div class="panel grid2">
+        <div class="card">
+          <h3>Focus Timer</h3>
+          <div class="timer" id="timer">10:00</div>
+          <div class="row">
+            <button class="btn" data-timer="300">5m</button>
+            <button class="btn" data-timer="600">10m</button>
+            <button class="btn" data-timer="1200">20m</button>
+            <button class="btn ghost" id="timerStart">Start</button>
+            <button class="btn ghost" id="timerStop">Stop</button>
+          </div>
+          <p class="hint">Complete a task while the timer runs for bonus XP.</p>
+        </div>
+        <div class="card">
+          <h3>Active Tasks</h3>
+          <div id="activeTasks" class="tasklist"></div>
+          <div class="row">
+            <button class="btn" id="finishSelected">Finish Selected</button>
+            <button class="btn ghost" id="markStuck">I'm stuck</button>
+          </div>
+        </div>
+        <div class="card center">
+          <button class="btn xl primary" id="endDay">End Day</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen: End Day -->
+    <section class="screen hidden" id="screen-end">
+      <div class="panel grid2">
+        <div class="card">
+          <h3>Daily Summary</h3>
+          <div id="summary"></div>
+        </div>
+        <div class="card">
+          <h3>Trends & Tips</h3>
+          <div id="tips"></div>
+          <button class="btn" id="toNewDay">New Day →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen: Trends (standalone) -->
+    <section class="screen hidden" id="screen-trends">
+      <div class="panel">
+        <h2>Trends & Tips</h2>
+        <div id="trendsDetail"></div>
+        <div class="row">
+          <button class="btn" id="closeTrends">Close</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast hidden">+10 XP</div>
+  <script src="/app.js"></script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
+</body>
+</html>
