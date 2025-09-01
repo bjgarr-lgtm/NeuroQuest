@@ -102,7 +102,9 @@ function startBreathing(circleEl, phaseEl, onFinish){
 function animateCircle(el, phase){ if(phase==="Inhale"){ el.style.transform="scale(1.2)"; el.style.borderColor="var(--accent)"; } else if(phase==="Exhale"){ el.style.transform="scale(0.85)"; el.style.borderColor="var(--accent-2)"; } else { el.style.transform="scale(1)"; el.style.borderColor="var(--muted)"; } }
 
 // ===== app
-let state = loadState();
+let state; try{ // bootstrap guard
+  state = loadState();
+}catch(e){ console.error('init error', e); state = defaultState(); }
 // patch tasks without tier (older saves)
 if(state.log.tasks){ state.log.tasks.forEach(t=>{ if(!('tier' in t)) t.tier='side'; }); }
 

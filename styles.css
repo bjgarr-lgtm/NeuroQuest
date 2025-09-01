@@ -1,5 +1,6 @@
 /* Neon Pixel global */
 @font-face{ font-family:'ArcadePixel'; src:url('assets/pixel.woff2') format('woff2'); font-display:swap; }
+:root{ --bg:#000; --surface:#0b0b0b; --muted:#151515; --text:#e6faff; --accent:#00eaff; --accent-2:#ff3ea5; --danger:#ff3860; }
 :root.theme-retro { --bg:#000; --surface:#0b0b0b; --muted:#151515; --text:#e6faff; --accent:#00eaff; --accent-2:#ff3ea5; --danger:#ff3860; }
 :root.theme-forest { --bg:#0f1412; --surface:#141a18; --muted:#30433b; --text:#e7f2ee; --accent:#7ee787; --accent-2:#8ae3ff; --danger:#ff7b7b; }
 :root.theme-dusk   { --bg:#131018; --surface:#1a1422; --muted:#3b2c4a; --text:#f6edff; --accent:#c792ea; --accent-2:#82aaff; }
