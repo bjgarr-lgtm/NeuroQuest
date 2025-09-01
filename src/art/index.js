@@ -3,7 +3,6 @@ export const heroArt = {
   fox:   require('../../assets/hero-fox.png'),
   ash:   require('../../assets/hero-ash.png'),
   odin:  require('../../assets/hero-odin.png'),   // make sure this file exists
-  heroodin: require('../../assets/hero-odin.png'), // alias if your key is "heroodin"
 };
 
 export const companionArt = {
