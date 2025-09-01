@@ -1,24 +1,24 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const TABS = [
   { key: 'Dashboard', label: 'Home' },
-  { key: 'QuestBoard', label: 'Quests' },
-  { key: 'PetRoom', label: 'Pet' },
-  { key: 'Shop', label: 'Shop' },
-  { key: 'Trends', label: 'Trends' },
+  { key: 'Quests',    label: 'Quests' },
+  { key: 'PetRoom',   label: 'Pet' },
+  { key: 'Shop',      label: 'Shop' },
+  { key: 'Trends',    label: 'Trends' },
 ];
 
-export default function TopNav({ navigation, active }) {
-  // `navigation` is optional; we fallback to nav from context if not passed
-  const nav = navigation;
+export default function TopNav() {
+  const navigation = useNavigation();
+  const route = useRoute();
   return (
     <View style={s.bar}>
       {TABS.map(t => {
-        const isActive = active === t.key || active === t.label;
-        const onPress = () => nav?.navigate?.(t.key) ?? nav?.navigate?.(t.label);
+        const isActive = route?.name === t.key;
         return (
-          <Pressable key={t.key} onPress={onPress} style={[s.tab, isActive && s.active]}>
+          <Pressable key={t.key} onPress={() => navigation.navigate(t.key)} style={[s.tab, isActive && s.active]}>
             <Text style={[s.tabTxt, isActive && s.activeTxt]}>{t.label}</Text>
           </Pressable>
         );
@@ -34,3 +34,4 @@ const s = StyleSheet.create({
   active:{ backgroundColor:'#1a1530' },
   activeTxt:{ color:'#fff' },
 });
+

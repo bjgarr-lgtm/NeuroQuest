@@ -1,40 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Image, StyleSheet, Animated, Pressable, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Image, StyleSheet, Animated } from 'react-native';
 import { colors } from '../ui/Skin';
 
 export default function Splash({ navigation }) {
   const fade = useRef(new Animated.Value(0)).current;
-  const [canContinue, setCanContinue] = useState(false);
 
   useEffect(() => {
-    // useNativeDriver:false on web avoids the warning
-    Animated.timing(fade, { toValue: 1, duration: 1800, useNativeDriver: false }).start();
-    const t1 = setTimeout(() => setCanContinue(true), 2200);
-    const t2 = setTimeout(() => navigation.replace('Welcome'), 6000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    Animated.sequence([
+      Animated.timing(fade, { toValue: 1, duration: 900, useNativeDriver: false }),
+      Animated.delay(1600),
+      Animated.timing(fade, { toValue: 0, duration: 500, useNativeDriver: false }),
+    ]).start(() => navigation.replace('Welcome'));
   }, [fade, navigation]);
-
-  const go = () => navigation.replace('Welcome');
 
   return (
     <View style={s.wrap}>
-      <Animated.View style={{ opacity: fade }}>
-        <Image
-          source={require('../../assets/splash.png')}
-          style={s.img}
-          resizeMode="contain"
-        />
-      </Animated.View>
-      {canContinue && (
-        <Pressable onPress={go} style={s.cta}><Text style={s.ctaTxt}>Tap to continue</Text></Pressable>
-      )}
+      <Animated.Image
+        source={require('../../assets/splash.png')} // ensure this file exists
+        style={[s.img, { opacity: fade }]}
+        resizeMode="contain"
+        onError={() => navigation.replace('Welcome')}
+      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 16 },
-  img: { width: '100%', maxWidth: 960, height: 360, backgroundColor:'transparent' }, // explicit transparent
-  cta: { marginTop: 24, backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 12 },
-  ctaTxt: { color: '#0d0a17', fontWeight: '800' },
+  wrap: { flex:1, backgroundColor: colors.bg, alignItems:'center', justifyContent:'center', padding:16 },
+  img:  { width:'100%', maxWidth: 980, height: 360, backgroundColor:'transparent' },
 });
