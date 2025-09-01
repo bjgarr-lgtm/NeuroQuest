@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Pressable, Alert } from 'react-native';
+import { heroArt } from '../art';
 
-const P = 'https://dummyimage.com/600x420/1b1731/ffffff.png&text=';
-
-// Heroes you can play as:
 export const HEROES = [
-  { key:'bambi', label:'Bambi', uri: P + 'Bambi' },
-  { key:'ash',   label:'Ash',   uri: P + 'Ash' },
-  { key:'odin',  label:'Odin',  uri: P + 'Odin' },
-  { key:'fox',   label:'Fox',   uri: P + 'Fox' },
+  { key:'bambi', label:'Bambi', img: heroArt.bambi },
+  { key:'ash',   label:'Ash',   img: heroArt.ash },
+  { key:'odin',  label:'Odin',  img: heroArt.odin },
+  { key:'fox',   label:'Fox',   img: heroArt.fox },
 ];
 
 export default function CharacterSelect({ navigation }) {
@@ -29,7 +27,7 @@ export default function CharacterSelect({ navigation }) {
         keyExtractor={(it) => it.key}
         renderItem={({ item }) => (
           <TouchableOpacity onPress={() => setSelected(item.key)} style={[styles.card, selected === item.key && styles.sel]}>
-            <Image source={{ uri: item.uri }} style={styles.img} />
+            <Image source={item.img} style={styles.img} />
             <Text style={styles.label}>{item.label}</Text>
           </TouchableOpacity>
         )}

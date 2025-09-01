@@ -1,19 +1,28 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Pressable, Alert } from 'react-native';
 import { HEROES } from './CharacterSelect';
-
-const P = 'https://dummyimage.com/600x420/1b1731/ffffff.png&text=';
-
-// Molly is always available as a companion:
-const EXTRA_COMPANIONS = [{ key:'molly', label:'Molly 🐶', uri: P + 'Molly' }];
+import { heroArt, companionArt } from '../art';
 
 export default function CompanionSelect({ navigation, route }) {
   const heroKey = route?.params?.heroKey ?? null;
 
-  // companions = all heroes except the chosen one, plus Molly
-  const options = useMemo(() => {
-    const base = HEROES.filter(c => c.key !== heroKey);
-    return [...base, ...EXTRA_COMPANIONS];
+  // base: other heroes; if we have a companion sprite use it, else hero sprite
+  const base = HEROES
+    .filter(h => h.key !== heroKey)
+    .map(h => ({ key:h.key, label:h.label, img: companionArt[h.key] || heroArt[h.key] }));
+
+  // extras always available
+  const extras = [
+    { key:'molly', label:'Molly 🐶', img: companionArt.molly },
+    { key:'bird',  label:'Bird',     img: companionArt.bird },
+    { key:'star',  label:'Star',     img: companionArt.star },
+  ];
+
+  // merge + dedupe by key
+  const options = useMemo(()=>{
+    const seen = new Set(); const out = [];
+    [...base, ...extras].forEach(x => { if (!seen.has(x.key)) { seen.add(x.key); out.push(x); }});
+    return out;
   }, [heroKey]);
 
   const [selected, setSelected] = useState(null);
@@ -29,7 +38,7 @@ export default function CompanionSelect({ navigation, route }) {
       <View style={styles.grid}>
         {options.map(c => (
           <TouchableOpacity key={c.key} onPress={() => setSelected(c.key)} style={[styles.card, selected === c.key && styles.sel]}>
-            <Image source={{ uri: c.uri }} style={styles.img} />
+            <Image source={c.img} style={styles.img} />
             <Text style={styles.label}>{c.label}</Text>
           </TouchableOpacity>
         ))}
