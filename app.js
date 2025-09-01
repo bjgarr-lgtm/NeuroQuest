@@ -36,7 +36,7 @@ function touchStreak(state){
     state.streak.lastCheck = today;
   }
 }
-function addXP(state, amount){ state.pet.xp += amount; while(state.pet.xp >= xpForLevel(state.pet.level+1)){ state.pet.level += 1; } }
+function addXP(state, amount){ state.pet.xp += amount; while(state.pet.xp >= xpForLevel(state.pet.level+1)){ state.pet.level += 1; fxToast('Level Up!'); fxConfetti(window.innerWidth/2, window.innerHeight*0.2, 36); fxBeep(1320, 0.06);} fxReward('+'+amount+' XP'); }
 function xpForLevel(level){ return level*level*10; }
 
 // ===== ui helpers
@@ -46,6 +46,31 @@ function routeTo(name){ window.location.hash = name; }
 function setActiveNav(name){ $$(".nav-btn").forEach(b=> b.classList.toggle("active", b.dataset.route===name)); }
 function el(tag, opts={}, children=[]){ const e=document.createElement(tag); Object.assign(e, opts); if(opts.attrs){ for(const [k,v] of Object.entries(opts.attrs)) e.setAttribute(k,v); } if(typeof children==="string"){ e.innerHTML=children; } else children.forEach(c=> e.appendChild(c)); return e; }
 function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(undefined, {month:"short", day:"numeric"}); }
+
+// --- dopamine FX ---
+function fxToast(text){ const t=document.createElement('div'); t.className='toast'; t.textContent=text; document.body.appendChild(t); setTimeout(()=>t.remove(), 1400); }
+function fxConfetti(x=window.innerWidth/2, y=window.innerHeight*0.18, n=20){
+  const layer = document.getElementById('fxLayer'); if(!layer) return;
+  for(let i=0;i<n;i++){
+    const s=document.createElement('span'); s.className='confetti'+(i%2?' alt':''); s.style.left=x+'px'; s.style.top=y+'px';
+    const dx=(Math.random()*2-1)*140, dy=(Math.random()*-1)*180-40, rot=(Math.random()*360);
+    s.animate([ { transform:`translate(-50%,-50%)`, opacity:1 }, { transform:`translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity:0 } ], { duration: 900+Math.random()*500, easing:'cubic-bezier(.2,.9,.2,1)' });
+    layer.appendChild(s); setTimeout(()=>s.remove(), 1500);
+  }
+}
+function fxReward(label='+XP'){ fxToast(label); fxConfetti(); try{ navigator.vibrate && navigator.vibrate(10);}catch(e){}; fxBeep(880, 0.04); }
+let _audioCtx; function fxBeep(freq=880, dur=0.05){ try{ _audioCtx = _audioCtx || new (window.AudioContext||window.webkitAudioContext)(); const o=_audioCtx.createOscillator(), g=_audioCtx.createGain(); o.frequency.value=freq; o.type='square'; o.connect(g); g.connect(_audioCtx.destination); g.gain.setValueAtTime(0.02, _audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, _audioCtx.currentTime + dur); o.start(); o.stop(_audioCtx.currentTime + dur);}catch(e){} }
+function moveNavHi(){
+  const active = document.querySelector('.top-nav .nav-btn.active');
+  const hi = document.getElementById('navHighlighter'); if(!active||!hi) return;
+  const r = active.getBoundingClientRect(); const pr = active.parentElement.getBoundingClientRect();
+  const w = Math.max(40, r.width*0.7);
+  const x = (r.left - pr.left) + (r.width - w)/2;
+  hi.style.width = w+'px';
+  hi.style.transform = `translateX(${x}px)`;
+}
+window.addEventListener('resize', ()=> setTimeout(moveNavHi, 50));
+
 
 // ===== pet art
 function accessories(list){ const set=new Set(list); let s=""; if(set.has("cap")) s+=`<path d="M42 40 q18 -16 36 0 v8 h-36z" fill="#1f2937"/>`; if(set.has("bow")) s+=`<path d="M52 78 q-12 -4 0 -8 q12 4 0 8z" fill="#e11d48"/><path d="M68 78 q12 -4 0 -8 q-12 4 0 8z" fill="#e11d48"/><circle cx="60" cy="76" r="6" fill="#be123c"/>`; if(set.has("glasses")) s+=`<circle cx="50" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><circle cx="70" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><line x1="57" y1="48" x2="63" y2="48" stroke="#111" stroke-width="2"/>`; return s; }
@@ -113,6 +138,7 @@ renderRoute();
 function renderRoute(){
   const name=(location.hash||"#home").replace("#","");
   setActiveNav(name);
+  moveNavHi();
   const view=$("#view"); view.innerHTML="";
   const tpl=$("#tpl-"+name); if(!tpl){ view.textContent="Not found"; return; }
   view.appendChild(tpl.content.cloneNode(true));

@@ -117,3 +117,53 @@ body.crt::before{ content:""; pointer-events:none; position:fixed; inset:0;
   background: repeating-linear-gradient( to bottom, rgba(255,255,255,.04), rgba(255,255,255,.04) 1px, transparent 1px, transparent 3px);
   mix-blend-mode: overlay; opacity:.25 }
 body.crt::after{ content:""; pointer-events:none; position:fixed; inset:0; background: radial-gradient(ellipse at center, rgba(255,255,255,.06), transparent 60%); opacity:.15 }
+
+/* --- dopamine polish --- */
+/* Background subtle grid glow */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none;
+  background:
+    radial-gradient(800px 300px at 50% -200px, rgba(255,255,255,.06), transparent),
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,.02) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+  mix-blend-mode: overlay; opacity:.18;
+}
+
+/* Top nav chips – slimmer with animated underline */
+.top-nav{ position:relative; gap:.25rem }
+.nav-btn{ position:relative; padding:.45rem .65rem; border-radius:999px; border:1px solid rgba(255,255,255,.12);
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.02)); transition:transform .12s ease, filter .2s ease }
+.nav-btn:hover{ transform:translateY(-1px) scale(1.03) }
+.nav-btn:active{ transform:translateY(0) scale(.97) }
+.nav-hi{ position:absolute; height:3px; bottom:-2px; left:0; width:56px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius:999px;
+  box-shadow:0 0 14px color-mix(in oklab, var(--accent) 60%, transparent); transition: transform .25s cubic-bezier(.2,.9,.2,1), width .25s ease }
+.nav-btn.active{ filter: drop-shadow(0 0 8px color-mix(in oklab, var(--accent) 40%, transparent)); }
+
+/* Hover wiggle and bobble */
+@keyframes wiggle {0%,100%{ transform:rotate(0deg) } 25%{ transform:rotate(1.2deg) } 75%{ transform:rotate(-1.2deg) }}
+.wiggle:hover{ animation: wiggle .25s ease-in-out }
+@keyframes bob { 0%,100%{ transform: translateY(0)} 50%{ transform: translateY(-6px) } }
+
+/* Toasts */
+.toast{ position:fixed; top:14%; left:50%; transform:translateX(-50%); padding:.5rem .8rem; border-radius:10px;
+  background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.12); z-index:50; pointer-events:none;
+  font-weight:900; text-shadow:0 0 10px color-mix(in oklab, var(--accent) 50%, transparent); opacity:0; animation: toastPop 1.4s forwards }
+@keyframes toastPop{ 0%{ transform:translate(-50%,-6px) scale(.96); opacity:0 } 12%{ opacity:1 } 70%{ opacity:1 } 100%{ opacity:0; transform:translate(-50%,-14px) scale(1.05) } }
+
+/* Confetti (simple spans) */
+.fx-layer{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:40 }
+.confetti{ position:absolute; width:8px; height:8px; background:var(--accent); transform:translate(-50%, -50%); will-change: transform, opacity; border-radius:2px; }
+.confetti.alt{ background:var(--accent-2) }
+
+/* Buttons – juicier press */
+button, .cta{ transition: transform .08s ease, box-shadow .2s ease }
+button:hover{ transform: translateY(-1px) }
+button:active{ transform: translateY(1px) }
+
+/* Panels – animated border glow */
+.panel{ transition: box-shadow .3s ease, border-color .3s ease }
+.panel:hover{ box-shadow:0 0 0 2px rgba(0,0,0,.7) inset, 0 0 32px color-mix(in oklab, var(--accent-2) 35%, transparent) }
+
+/* XP bar smooth fill */
+.xp-bar>div{ transition: width .35s cubic-bezier(.2,.9,.2,1) }

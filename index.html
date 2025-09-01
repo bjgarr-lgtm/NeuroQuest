@@ -13,7 +13,7 @@
       <img src="assets/icon.svg" alt="" class="logo"/>
       <h1>SootheBirb</h1>
     </div>
-    <nav class="top-nav" aria-label="Primary">
+    <nav class="top-nav" aria-label="Primary"><div id="navHighlighter" class="nav-hi"></div>
       <button data-route="home" class="nav-btn">Dashboard</button>
       <button data-route="tasks" class="nav-btn">Quests</button>
       <button data-route="clean" class="nav-btn">Cleaning</button>
@@ -39,6 +39,7 @@
   </header>
 
   <main id="view" class="view"></main>
+  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
   <footer class="app-footer">
     <span id="streakLabel">Streak: 0 🔥 | Best: 0</span>
