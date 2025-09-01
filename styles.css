@@ -176,3 +176,48 @@ button:active{ transform: translateY(1px) }
 @keyframes bloomFade{ from{ opacity:.8 } to{ opacity:0 } }
 .shock{ position:fixed; left:50%; top:40%; width:20px; height:20px; border-radius:50%; border:3px solid color-mix(in oklab, var(--accent) 60%, transparent); transform:translate(-50%,-50%) scale(.5); z-index:46; animation:shockExpand 800ms cubic-bezier(.2,.9,.2,1) forwards }
 @keyframes shockExpand{ to{ transform:translate(-50%,-50%) scale(40); opacity:0 } }
+
+/* animated neon borders on panels/cards */
+@keyframes neonBorder {
+  0% { border-color: #8a5cff }
+  25% { border-color: #00eaff }
+  50% { border-color: #00ffa7 }
+  75% { border-color: #ffa047 }
+  100% { border-color: #8a5cff }
+}
+.panel, .tile { animation: neonBorder 9s linear infinite; }
+.tile-ico-img{ width:28px; height:28px; image-rendering: pixelated }
+.tile{ cursor:pointer; overflow:hidden; position:relative }
+.tile:hover{ transform: translateY(-2px) scale(1.02) }
+
+/* cursor/touch particle trail */
+.fx-layer{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:40 }
+.trail{ position:absolute; width:6px; height:6px; border-radius:2px; background:var(--accent);
+  filter: drop-shadow(0 0 8px color-mix(in oklab, var(--accent) 70%, transparent));
+  animation: trailFade .35s ease-out forwards }
+.trail.alt{ background:var(--accent-2) }
+@keyframes trailFade{ from{ transform:scale(1); opacity:1 } to{ transform:scale(.2) translateY(6px); opacity:0 } }
+
+/* coins */
+.coin{ position:fixed; width:24px; height:24px; background:
+  radial-gradient(circle at 35% 35%, #fff6 0, #fff0 35%),
+  radial-gradient(circle at 65% 70%, #0004 0, #0000 60%),
+  radial-gradient(circle at center, #ffd86b, #eaa326);
+  border-radius:50%; border:2px solid #9c6a00; z-index:48; cursor:pointer;
+  animation: coinDrop 1s cubic-bezier(.2,.9,.2,1) forwards }
+@keyframes coinDrop{ 0%{ transform: translate(-50%,-140px) scale(0.6); opacity:0 } 30%{ opacity:1 } 70%{ transform: translate(-50%,0) scale(1.05) } 100%{ transform: translate(-50%,6px) scale(1) } }
+
+/* shake */
+@keyframes shake {
+  0%,100%{ transform: translate(0,0) }
+  20%{ transform: translate(-3px, 2px) }
+  40%{ transform: translate(3px, -2px) }
+  60%{ transform: translate(-2px, 1px) }
+  80%{ transform: translate(2px, -1px) }
+}
+.shake{ animation: shake 400ms ease-in-out }
+
+/* jackpot banner */
+.jackpot{ position:fixed; top:30%; left:50%; transform:translateX(-50%); z-index:60; padding:.6rem 1rem; font-weight:900;
+  background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#0d0d0d; border-radius:12px; box-shadow:0 14px 40px rgba(0,0,0,.45); opacity:0; animation:jackPop 1200ms forwards }
+@keyframes jackPop{ 0%{ transform:translate(-50%,-8px) scale(.96); opacity:0 } 20%{ opacity:1 } 80%{ opacity:1 } 100%{ transform:translate(-50%, -18px) scale(1.06); opacity:0 } }

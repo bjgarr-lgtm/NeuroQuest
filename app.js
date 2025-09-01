@@ -424,3 +424,40 @@ function fxBlast(){
 // Combo detection (3+ XP events in 15s)
 const _xpTimes=[];
 function registerXPEvent(){ const now=Date.now(); _xpTimes.push(now); while(_xpTimes.length && now-_xpTimes[0]>15000) _xpTimes.shift(); if(_xpTimes.length>=3){ fxToast('COMBO!'); fxBlast(); } }
+
+
+// ===== Particle trail (throttled) =====
+let _trailLast = 0;
+function trailAt(x,y){
+  const now=performance.now(); if(now-_trailLast<18) return; _trailLast=now;
+  const fx = document.getElementById('fxLayer'); if(!fx) return;
+  const s = document.createElement('span'); s.className='trail'+(Math.random()<.5?' alt':''); s.style.left=x+'px'; s.style.top=y+'px';
+  fx.appendChild(s); setTimeout(()=>s.remove(), 400);
+}
+window.addEventListener('mousemove', e=> trailAt(e.clientX, e.clientY), {passive:true});
+window.addEventListener('touchmove', e=>{ const t=e.touches[0]; if(t) trailAt(t.clientX, t.clientY); }, {passive:true});
+
+// ===== Coin drops =====
+let COIN_MODE=false;
+function spawnCoin(x=window.innerWidth/2, y=window.innerHeight*.35){
+  const c=document.createElement('div'); c.className='coin'; c.style.left=x+'px'; c.style.top=y+'px';
+  c.addEventListener('click', ()=>{ COIN_MODE=true; addXP(state,1); COIN_MODE=false; fxToast('Bonus +1 XP'); c.remove(); });
+  document.body.appendChild(c); setTimeout(()=> c.remove(), 1800);
+}
+
+// ===== Jackpot =====
+function fxJackpot(){
+  document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 420);
+  fxBlast();
+  const j=document.createElement('div'); j.className='jackpot'; j.textContent='JACKPOT!'; document.body.appendChild(j); setTimeout(()=>j.remove(), 1200);
+  // rain extra coins
+  for(let i=0;i<8;i++){ setTimeout(()=> spawnCoin(window.innerWidth*(.15+.7*Math.random()), window.innerHeight*.3), i*60); }
+  fxBeep(1660, .08); setTimeout(()=>fxBeep(1320,.08),80); setTimeout(()=>fxBeep(990,.08),160);
+}
+
+// Hook into XP rewards without breaking flow
+const _oldAddXP = addXP;
+addXP = function(state, amount){
+  _oldAddXP(state, amount);
+  if(!COIN_MODE){ if(Math.random()<0.6) spawnCoin(); if(Math.random()<0.02) fxJackpot(); }
+};
