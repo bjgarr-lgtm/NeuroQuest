@@ -147,8 +147,7 @@ function renderHUD(){
 renderHUD();
 
 // routing
-$$(".top-nav .nav-btn").forEach(btn=> btn.addEventListener("click", ()=>{ routeTo(btn.dataset.route); renderRoute();
-const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); } }));
+$$(".top-nav .nav-btn").forEach(btn=> btn.addEventListener("click", ()=>{ routeTo(btn.dataset.route); renderRoute(); }));
 window.addEventListener("hashchange", renderRoute);
 renderRoute();
 const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); }
