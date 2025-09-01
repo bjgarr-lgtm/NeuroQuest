@@ -44,6 +44,19 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 function routeTo(name){ window.location.hash = name; }
 function setActiveNav(name){ $$(".nav-btn").forEach(b=> b.classList.toggle("active", b.dataset.route===name)); }
+
+// ---- robust router & delegation
+function safeRouteName(hash){
+  const name=(hash||'#home').replace('#','');
+  const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','pet','settings'];
+  return ok.includes(name)? name : 'home';
+}
+document.querySelector('.top-nav')?.addEventListener('click', (e)=>{
+  const b = e.target.closest('.nav-btn'); if(!b) return;
+  e.preventDefault(); routeTo(b.dataset.route); renderRoute();
+});
+function clearFx(){ document.querySelectorAll('.bloom,.shock,.toast,.coin,.jackpot').forEach(n=>n.remove()); }
+
 function el(tag, opts={}, children=[]){ const e=document.createElement(tag); Object.assign(e, opts); if(opts.attrs){ for(const [k,v] of Object.entries(opts.attrs)) e.setAttribute(k,v); } if(typeof children==="string"){ e.innerHTML=children; } else children.forEach(c=> e.appendChild(c)); return e; }
 function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(undefined, {month:"short", day:"numeric"}); }
 
@@ -141,11 +154,33 @@ renderRoute();
 const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); }
 
 function renderRoute(){
-  const name=(location.hash||"#home").replace("#","");
-  setActiveNav(name);
-  moveNavHi();
-  const view=$("#view"); view.innerHTML="";
-  const tpl=$("#tpl-"+name); if(!tpl){ view.textContent="Not found"; return; }
+  try{
+    clearFx && clearFx();
+    const name = safeRouteName(location.hash || '#home');
+    setActiveNav(name);
+    moveNavHi && moveNavHi();
+    const view = document.querySelector('#view'); view.innerHTML='';
+    const tpl = document.querySelector('#tpl-'+name);
+    if(!tpl){ view.textContent='Not found'; return; }
+    view.appendChild(tpl.content.cloneNode(true));
+    wireTiles && wireTiles();
+    if(name==='home') initDashboard();
+    if(name==='tasks') initTasks();
+    if(name==='clean') initCleaning();
+    if(name==='coop') initCoop();
+    if(name==='budget') initBudget();
+    if(name==='meals') initMeals();
+    if(name==='calendar') initCalendar();
+    if(name==='shop') initShop();
+    if(name==='rewards') initRewards();
+    if(name==='checkin') initCheckin();
+    if(name==='journal') initJournal();
+    if(name==='breathe') initBreathe();
+    if(name==='pet') initPet();
+    if(name==='settings') initSettings();
+    updateFooter();
+  }catch(err){ console.error('renderRoute error', err); const v=document.querySelector('#view'); v.innerHTML='<div class="cardish">Render error — reloading…</div>'; setTimeout(()=>location.reload(), 50); }
+}
   view.appendChild(tpl.content.cloneNode(true));
   wireTiles();
   if(name==="home") initDashboard();
