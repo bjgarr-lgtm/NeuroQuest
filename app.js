@@ -36,7 +36,7 @@ function touchStreak(state){
     state.streak.lastCheck = today;
   }
 }
-function addXP(state, amount){ state.pet.xp += amount; while(state.pet.xp >= xpForLevel(state.pet.level+1)){ state.pet.level += 1; fxToast('Level Up!'); fxBlast(); fxBeep(1320, 0.08);} fxReward('+'+amount+' XP'); }
+function addXP(state, amount){ state.pet.xp += amount; while(state.pet.xp >= xpForLevel(state.pet.level+1)){ state.pet.level += 1; fxToast('Level Up!'); fxBlast(); fxBeep(1320, 0.08);} fxReward('+'+amount+' XP'); registerXPEvent(); }
 function xpForLevel(level){ return level*level*10; }
 
 // ===== ui helpers
@@ -58,51 +58,8 @@ function fxConfetti(x=window.innerWidth/2, y=window.innerHeight*0.18, n=20){
     layer.appendChild(s); setTimeout(()=>s.remove(), 1500);
   }
 }
-
+function fxReward(label='+XP'){ fxToast(label); fxConfetti(); try{ navigator.vibrate && navigator.vibrate(10);}catch(e){}; fxBeep(880, 0.04); }
 let _audioCtx; function fxBeep(freq=880, dur=0.05){ try{ _audioCtx = _audioCtx || new (window.AudioContext||window.webkitAudioContext)(); const o=_audioCtx.createOscillator(), g=_audioCtx.createGain(); o.frequency.value=freq; o.type='square'; o.connect(g); g.connect(_audioCtx.destination); g.gain.setValueAtTime(0.02, _audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, _audioCtx.currentTime + dur); o.start(); o.stop(_audioCtx.currentTime + dur);}catch(e){} }
-
-// ===== Retro music (WebAudio, no assets) =====
-let MUSIC_ON = false;
-let _ctx, _seqTimer;
-function ensureAudio(){ if(!_ctx){ try{ _ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return _ctx; }
-function note(f=440, dur=0.25, t='square', vol=0.02, dt=0){
-  const ctx = ensureAudio(); if(!ctx) return;
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type=t; o.frequency.value=f; o.connect(g); g.connect(ctx.destination);
-  const start = ctx.currentTime + dt;
-  g.gain.setValueAtTime(0.0001, start);
-  g.gain.linearRampToValueAtTime(vol, start+0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, start+dur);
-  o.start(start); o.stop(start+dur+0.02);
-}
-function freq(n){ return 440 * Math.pow(2, (n-69)/12); } // midi->Hz
-
-const THEME = {
-  bpm: 108,
-  // simple 16-step loop: lead + bass (numbers are MIDI notes)
-  lead: [74,74,77,74,79,79,77,74, 74,74,77,74,81,81,79,77],
-  bass: [50,50,55,55, 48,48,43,43, 50,50,55,55, 48,48,43,43]
-};
-function startMusic(){
-  const ctx = ensureAudio(); if(!ctx) return;
-  if(_seqTimer) return;
-  MUSIC_ON = true; document.getElementById('musicBtn')?.classList.add('on');
-  const secPerBeat = 60/THEME.bpm, stepDur = secPerBeat/2; // 8th notes
-  let step = 0;
-  _seqTimer = setInterval(()=>{
-    // schedule next step slightly ahead
-    const t = ctx.currentTime + 0.05;
-    const l = THEME.lead[step % THEME.lead.length], b = THEME.bass[step % THEME.bass.length];
-    note(freq(l), stepDur*0.9, 'square', 0.02, 0);
-    note(freq(b), stepDur*0.9, 'sawtooth', 0.01, 0);
-    step++;
-  }, stepDur*1000);
-}
-function stopMusic(){ MUSIC_ON=false; document.getElementById('musicBtn')?.classList.remove('on'); if(_seqTimer){ clearInterval(_seqTimer); _seqTimer=null; } }
-function toggleMusic(){ if(MUSIC_ON) stopMusic(); else startMusic(); }
-document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
-
-
 function moveNavHi(){
   const active = document.querySelector('.top-nav .nav-btn.active');
   const hi = document.getElementById('navHighlighter'); if(!active||!hi) return;
@@ -153,7 +110,7 @@ if(state.log.tasks){ state.log.tasks.forEach(t=>{ if(!('tier' in t)) t.tier='sid
 $("#exportBtn").addEventListener("click", ()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="soothebirb-data.json"; a.click(); URL.revokeObjectURL(url); });
 $("#importBtn").addEventListener("click", ()=> $("#importFile").click());
 $("#importFile").addEventListener("change", ev=>{ const file=ev.target.files[0]; if(!file) return; const rdr=new FileReader(); rdr.onload=()=>{ try{ state=JSON.parse(rdr.result); saveState(state); renderRoute();
-const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=>{ toggleMusic(); }); } alert("Imported!"); }catch(e){ alert("Invalid file."); } }; rdr.readAsText(file); });
+const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); } alert("Imported!"); }catch(e){ alert("Invalid file."); } }; rdr.readAsText(file); });
 
 // theme
 function applyTheme(){
@@ -176,10 +133,10 @@ renderHUD();
 
 // routing
 $$(".top-nav .nav-btn").forEach(btn=> btn.addEventListener("click", ()=>{ routeTo(btn.dataset.route); renderRoute();
-const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=>{ toggleMusic(); }); } }));
+const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); } }));
 window.addEventListener("hashchange", renderRoute);
 renderRoute();
-const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=>{ toggleMusic(); }); }
+const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); }
 
 function renderRoute(){
   const name=(location.hash||"#home").replace("#","");
@@ -427,8 +384,43 @@ function initSettings(){
     applyTheme(); saveState(state); alert("Saved!");
   });
   $("#resetApp").addEventListener("click",()=>{ if(confirm("Reset all data?")){ resetState(); state=loadState(); applyTheme(); renderRoute();
-const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=>{ toggleMusic(); }); } } });
+const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); } } });
 }
 
 // boot streak at load
 touchStreak(state); saveState(state);
+
+// Safe: wire dashboard tiles to routes
+function wireTiles(){
+  document.querySelectorAll('.tile[data-route]').forEach(t => {
+    t.addEventListener('click', ()=>{ routeTo(t.dataset.route); renderRoute();
+const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); } });
+  });
+}
+
+// Retro chiptune (no external assets)
+let MUSIC_ON=false, _audioCtx=null, _seqTimer=null;
+function ensureAudio(){ if(!_audioCtx){ try{ _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return _audioCtx; }
+function tone(freq=440, dur=0.25, type='square', vol=0.02){
+  const ctx = ensureAudio(); if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type; o.frequency.value=freq; o.connect(g); g.connect(ctx.destination);
+  const t=ctx.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.start(t); o.stop(t+dur+0.02);
+}
+function midi(n){ return 440 * Math.pow(2, (n-69)/12); }
+const SONG={ bpm:112, lead:[74,74,77,74,79,79,77,74, 74,74,77,74,81,81,79,77], bass:[50,50,55,55,48,48,43,43,50,50,55,55,48,48,43,43] };
+function startMusic(){ const ctx=ensureAudio(); if(!ctx || _seqTimer) return; MUSIC_ON=true; document.getElementById('musicBtn')?.classList.add('on'); const spb=60/SONG.bpm, step=spb/2; let i=0; _seqTimer=setInterval(()=>{ tone(midi(SONG.lead[i%SONG.lead.length]), step*.9, 'square', .02); tone(midi(SONG.bass[i%SONG.bass.length]), step*.9, 'sawtooth', .01); i++; }, step*1000); }
+function stopMusic(){ MUSIC_ON=false; document.getElementById('musicBtn')?.classList.remove('on'); if(_seqTimer){ clearInterval(_seqTimer); _seqTimer=null; } }
+function toggleMusic(){ if(MUSIC_ON) stopMusic(); else startMusic(); }
+document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
+
+// Big-screen celebration
+function fxBlast(){
+  fxConfetti(window.innerWidth/2, window.innerHeight*0.4, 320);
+  const bloom=document.createElement('div'); bloom.className='bloom'; document.body.appendChild(bloom); setTimeout(()=>bloom.remove(), 700);
+  const shock=document.createElement('div'); shock.className='shock'; document.body.appendChild(shock); setTimeout(()=>shock.remove(), 800);
+}
+// Combo detection (3+ XP events in 15s)
+const _xpTimes=[];
+function registerXPEvent(){ const now=Date.now(); _xpTimes.push(now); while(_xpTimes.length && now-_xpTimes[0]>15000) _xpTimes.shift(); if(_xpTimes.length>=3){ fxToast('COMBO!'); fxBlast(); } }
