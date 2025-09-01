@@ -1,78 +1,66 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, Alert } from 'react-native';
-import Sprite from '../ui/Sprite';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { heroArt } from '../art';
+import { Panel, ShinyButton, colors } from '../ui/Skin';
+import { useGame } from '../game/store';
 
-export const HEROES = [
-  { key:'bambi', label:'Bambi', img: heroArt.bambi },
-  { key:'ash',   label:'Ash',   img: heroArt.ash },
-  { key:'odin',  label:'Odin',  img: heroArt.odin },
-  { key:'fox',   label:'Fox',   img: heroArt.fox },
-];
+function HeroCard({ id, label, src, selected, onPress }) {
+  const scale = new Animated.Value(selected ? 1.02 : 1);
+  if (selected) Animated.spring(scale, { toValue:1.04, useNativeDriver:false }).start();
 
-const CARD_W = 240;
-const IMG_H  = 300;
+  return (
+    <Pressable onPress={onPress} style={[styles.card, selected && styles.cardOn]}>
+      <Animated.Image source={src} resizeMode="contain" style={[styles.img, { transform:[{ scale }] }]} />
+      <Text style={styles.name}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function CharacterSelect({ navigation }) {
-  const [selected, setSelected] = useState(null);
-  const next = () => {
-    if (!selected) return Alert.alert('Pick a character first');
-    navigation.navigate('Companion', { heroKey: selected });
+  const { state, actions } = useGame();
+  const [pick, setPick] = useState(state.hero || 'bambi');
+
+  const go = () => {
+    actions.setHero(pick);
+    navigation.navigate('Companion');
   };
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.h2}>Choose your character</Text>
-
-      <ScrollView>
+      <Panel title="Choose your character" style={{ margin:16 }}>
         <View style={styles.grid}>
-          {HEROES.map(item => (
-            <TouchableOpacity
-              key={item.key}
-              onPress={() => setSelected(item.key)}
-              style={[styles.card, selected === item.key && styles.sel]}>
-              <Sprite source={item.img} label={item.label} style={{ width:'100%', height:IMG_H, borderRadius:10, borderWidth:2, borderColor:'#2d2450' }} />
-              <Text style={styles.label}>{item.label}</Text>
-            </TouchableOpacity>
+          {[
+            { id:'bambi', label:'Bambi' },
+            { id:'ash',   label:'Ash'   },
+            { id:'odin',  label:'Odin'  },
+            { id:'fox',   label:'Fox'   },
+          ].map(h => (
+            <HeroCard
+              key={h.id}
+              id={h.id}
+              label={h.label}
+              src={heroArt[h.id]}
+              selected={pick === h.id}
+              onPress={() => { setPick(h.id); setTimeout(go, 140); }} // auto-advance on click
+            />
           ))}
         </View>
-      </ScrollView>
-
-      <View style={styles.row}>
-        <Pressable style={styles.ghost} onPress={() => navigation.goBack()}><Text style={styles.ghostText}>← Back</Text></Pressable>
-        <Pressable style={[styles.btn, !selected && {opacity:0.5}]} disabled={!selected} onPress={next}>
-          <Text style={styles.btnText}>Next →</Text>
-        </Pressable>
-      </View>
+        <ShinyButton onPress={go} style={{ marginTop: 8 }}>Next →</ShinyButton>
+      </Panel>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen:{ flex:1, backgroundColor:'#0d0a17', padding:16 },
-  h2:{ color:'#fff', fontSize:18, marginBottom:10 },
-
-  grid:{
-    flexDirection:'row',
-    flexWrap:'wrap',
-    justifyContent:'center',
-    alignItems:'flex-start',
-    alignContent:'flex-start',
-    marginHorizontal:-8,
-    paddingBottom:24,
-  },
+  screen:{ flex:1, backgroundColor: colors.bg },
+  grid:{ flexDirection:'row', flexWrap:'wrap', gap:12 },
   card:{
-    width:CARD_W,
-    margin:8,
-    backgroundColor:'#1b1731',
-    borderWidth:2, borderColor:'#2d2450',
-    borderRadius:12, padding:10, alignItems:'center'
+    flexBasis:'48%',
+    backgroundColor: colors.panel,
+    borderWidth:2, borderColor: colors.border, borderRadius:16,
+    padding:10, alignItems:'center',
   },
-  sel:{ borderColor:'#B887FF', shadowColor:'#B887FF', shadowOpacity:0.25, shadowRadius:10, shadowOffset:{width:0,height:2} },
-  label:{ color:'#fff', marginTop:6 },
-  row:{ flexDirection:'row', gap:10, marginTop:12, justifyContent:'space-between' },
-  btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
-  btnText:{ color:'#0d0a17', fontWeight:'700' },
-  ghost:{ paddingVertical:12, paddingHorizontal:16, borderRadius:12, borderWidth:2, borderColor:'#2d2450' },
-  ghostText:{ color:'#c9cbe0' },
+  cardOn:{ borderColor: colors.neon, shadowColor: colors.neon, shadowOpacity:0.5, shadowRadius:12 },
+  img:{ width:'100%', height:180, borderRadius:12, backgroundColor: colors.ink, borderWidth:2, borderColor: colors.border },
+  name:{ color:'#c9cbe0', marginTop:6 },
 });
