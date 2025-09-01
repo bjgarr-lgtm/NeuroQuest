@@ -1,3 +1,4 @@
+// src/art/index.js
 export const heroArt = {
   bambi: require('../../assets/hero-bambi.png'),
   ash:   require('../../assets/hero-ash.png'),
@@ -6,8 +7,8 @@ export const heroArt = {
 };
 
 export const companionArt = {
-  fox:   require('../../assets/comp-fox.png'),
+  molly: require('../../assets/comp-molly.png'),
   bird:  require('../../assets/comp-bird.png'),
   star:  require('../../assets/comp-star.png'),
-  molly: require('../../assets/comp-molly.png'),
+  fox:   require('../../assets/comp-fox.png'),
 };
