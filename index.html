@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>SootheBirb — Finch Mode</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
-  <!-- Pixel font from Google Fonts (no local WOFF2 needed) -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
 </head>
@@ -32,8 +31,10 @@
       <button data-route="settings" class="nav-btn">Settings</button>
     </nav>
     <button id="musicBtn" class="music-toggle" title="Music">♪</button>
-    <div id="hudStrip" class="hud">
+    <div id="hudStrip" class="hud small">
+      <div class="avatars" id="hudAvatars"></div>
       <div class="hearts" id="hudHearts"></div>
+      <div class="gold" id="hudGold">🪙 0</div>
       <div class="xp-wrap">
         <div class="xp-label"><span id="hudLevel">Lv 1</span><span class="flame">🔥</span></div>
         <div class="xp-bar"><div id="hudXp"></div></div>
@@ -52,6 +53,24 @@
     <button id="importBtn" class="secondary">Import</button>
   </footer>
 
+  <!-- Character Select -->
+  <template id="tpl-characters">
+    <section class="cardish">
+      <h2 class="dash">Choose Your Character</h2>
+      <p class="sub">Upload art later; for now pick a style.</p>
+      <div class="char-grid" id="charGrid"></div>
+      <div class="row"><button id="uploadChar" class="secondary">Upload custom art</button><input id="charFile" type="file" accept="image/*" style="display:none"/></div>
+    </section>
+  </template>
+
+  <!-- Companion Mode -->
+  <template id="tpl-companion">
+    <section class="cardish">
+      <h2 class="dash">Choose Companion Mode</h2>
+      <div class="comp-grid" id="compGrid"></div>
+    </section>
+  </template>
+
   <!-- Home -->
   <template id="tpl-home">
     <section class="dash-board">
@@ -69,6 +88,8 @@
         <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
         <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
         <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
+        <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Character</div></a>
+        <a class="tile" data-route="companion"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Companion</div></a>
       </div>
     </section>
   </template>

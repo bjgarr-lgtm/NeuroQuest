@@ -1,9 +1,10 @@
-// ====== SootheBirb v2.4.0 — Clean Finch Mode ======
+// ====== SootheBirb v2.5.0 — Characters + Economy ======
 
 // ------ store (localStorage)
-const KEY = "soothebirb.v24";
+const KEY = "soothebirb.v25";
 const defaultState = () => ({
-  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true },
+  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null } },
+  economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
   streak: { current: 0, best: 0, lastCheck: "" },
   log: {
@@ -50,6 +51,7 @@ function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(undefine
 
 // --- FX core
 function fxToast(text){ const t=document.createElement('div'); t.className='toast'; t.textContent=text; document.body.appendChild(t); setTimeout(()=>t.remove(), 1400); }
+function fxReward(text){ fxToast(text); }
 function fxConfetti(x=window.innerWidth/2, y=window.innerHeight*0.18, n=20){
   const layer = document.getElementById('fxLayer'); if(!layer) return;
   for(let i=0;i<n;i++){
@@ -70,6 +72,10 @@ let COIN_MODE=false; function spawnCoin(x=window.innerWidth/2, y=window.innerHei
 function fxJackpot(){ document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 420); fxBlast(); const j=document.createElement('div'); j.className='jackpot'; j.textContent='JACKPOT!'; document.body.appendChild(j); setTimeout(()=>j.remove(), 1200); for(let i=0;i<8;i++){ setTimeout(()=> spawnCoin(window.innerWidth*(.15+.7*Math.random()), window.innerHeight*.3), i*60); } fxBeep(1660, .08); setTimeout(()=>fxBeep(1320,.08),80); setTimeout(()=>fxBeep(990,.08),160); }
 function addXP(state, amt){ addXP_base(state, amt); if(!COIN_MODE){ if(Math.random()<0.6) spawnCoin(); if(Math.random()<0.02) fxJackpot(); } }
 
+// ---- SFX helpers
+const SFX={ click:()=>fxBeep(660,.03), check:()=>fxBeep(990,.04), gold:()=>fxBeep(770,.06) };
+document.addEventListener('click',e=>{ if(e.target.closest('button')) SFX.click(); }, {passive:true});
+
 // --- Music (asset-free)
 let MUSIC_ON=false, _seqTimer=null;
 function ensureAudio(){ try{ window._ac = window._ac || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return window._ac; }
@@ -87,6 +93,10 @@ function stopMusic(){ MUSIC_ON=false; $('#musicBtn')?.classList.remove('on'); if
 function toggleMusic(){ if(MUSIC_ON) stopMusic(); else startMusic(); }
 document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
 
+// economy
+const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5};
+function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); SFX.gold(); saveState(state); renderHUD(); }
+
 // --- Theme + HUD
 let state; try{ state = loadState(); }catch(e){ console.error('init', e); state=defaultState(); }
 function applyTheme(){
@@ -98,16 +108,17 @@ function applyTheme(){
 }
 applyTheme();
 function renderHUD(){
-  const hp=3, cur=Math.min(3, 1 + (state.streak.current>0?1:0) + (state.pet.level>3?1:0));
-  $("#hudHearts").innerHTML = Array.from({length:3},(_,i)=>`<span class="heart ${i<cur?'':'off'}"></span>`).join("");
+  const cur=2; $("#hudHearts").innerHTML = Array.from({length:3},(_,i)=>`<span class="heart ${i<cur?'':'off'}"></span>`).join("");
   const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
+  $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
+  const av=$('#hudAvatars'); if(av){ av.innerHTML=''; const c=state.user.character; const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG('sprout',1)}</div>`; const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc); av.innerHTML = `<div class='avatar'>${img}</div><div class='avatar'>${p}</div>`; }
 }
 renderHUD();
 
 // --- Routing (robust)
-function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','pet','settings']; return ok.includes(name)? name : 'home'; }
+function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','pet','settings','characters','companion']; return ok.includes(name)? name : 'home'; }
 document.querySelector('.top-nav')?.addEventListener('click', (e)=>{ const b = e.target.closest('.nav-btn'); if(!b) return; e.preventDefault(); routeTo(b.dataset.route); renderRoute(); });
 function clearFx(){ document.querySelectorAll('.bloom,.shock,.toast,.coin,.jackpot').forEach(n=>n.remove()); }
 window.addEventListener('hashchange', renderRoute);
@@ -149,6 +160,8 @@ function renderRoute(){
     if(name==='breathe') initBreathe();
     if(name==='pet') initPet();
     if(name==='settings') initSettings();
+    if(name==='characters') initCharacters();
+    if(name==='companion') initCompanion();
     updateFooter();
   }catch(err){ console.error('renderRoute', err); const v=document.querySelector('#view'); v.innerHTML='<div class="cardish">Render error — reloading…</div>'; setTimeout(()=>location.reload(), 50); }
 }
@@ -160,8 +173,7 @@ function updateFooter(){ $("#streakLabel").textContent = `Streak: ${state.streak
 function initDashboard(){
   const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
   const pct=Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
-  $("#xpBig").style.width=pct+"%";
-  $("#xpBigLabel").textContent = `Lv ${lvl}`;
+  $("#xpBig").style.width=pct+"%"; $("#xpBigLabel").textContent = `Lv ${lvl}`;
 }
 
 // ---- quests
@@ -175,7 +187,7 @@ function initTasks(){
     state.log.tasks.forEach(task=>{
       const row=el("div",{className:"quest-row"+(task.done?" done":"")});
       const box=el("div",{className:"checkbox"+(task.done?" checked":"")}); box.innerHTML=task.done?"✓":"";
-      box.addEventListener("click", ()=>{ task.done=!task.done; task.ts=task.done?Date.now():0; if(task.done){ touchStreak(state); addXP(state,3);} saveState(state); render(); updateFooter(); renderHUD(); });
+      box.addEventListener("click", ()=>{ task.done=!task.done; task.ts=task.done?Date.now():0; box.classList.toggle('checked', task.done); row.classList.toggle('done', task.done); SFX.check(); if(task.done){ touchStreak(state); addXP(state,3); addGold(GOLD_REWARD[task.tier]||3); maybeUnlockAccessory(); } saveState(state); updateFooter(); renderHUD(); });
       const title=el("span",{textContent:task.title});
       const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click", ()=>{ state.log.tasks=state.log.tasks.filter(x=>x.id!==task.id); saveState(state); render(); });
       row.append(box,title,del); (tiers[task.tier||"side"]||panelSide).appendChild(row);
@@ -193,7 +205,7 @@ function initCleaning(){
     state.log.clean.small.forEach((q,i)=>{
       const row=el("div",{className:"quest-row"+(q.done?" done":"")});
       const box=el("div",{className:"checkbox"+(q.done?" checked":"")}); box.innerHTML=q.done?"✓":"";
-      box.addEventListener("click",()=>{ q.done=!q.done; if(q.done) addXP(state,2); saveState(state); draw(); renderHUD(); });
+      box.addEventListener("click",()=>{ q.done=!q.done; box.classList.toggle('checked', q.done); row.classList.toggle('done', q.done); if(q.done){ addXP(state,2); addGold(GOLD_REWARD.clean); maybeUnlockAccessory(); } saveState(state); renderHUD(); });
       const t=el("span",{textContent:q.title});
       const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click",()=>{ state.log.clean.small.splice(i,1); saveState(state); draw(); });
       row.append(box,t,del); small.appendChild(row);
@@ -217,12 +229,12 @@ function initCoop(){
     state.log.coop.quests.forEach((q,i)=>{
       const row=el("div",{className:"quest-row"+(q.done?" done":"")});
       const box=el("div",{className:"checkbox"+(q.done?" checked":"")}); box.innerHTML=q.done?"✓":"";
-      box.addEventListener("click",()=>{ q.done=!q.done; if(q.done) addXP(state,2); saveState(state); draw(); renderHUD(); });
+      box.addEventListener("click",()=>{ q.done=!q.done; box.classList.toggle('checked', q.done); row.classList.toggle('done', q.done); if(q.done) { addXP(state,2); addGold(GOLD_REWARD.coop); maybeUnlockAccessory(); } saveState(state); renderHUD(); });
       const t=el("span",{textContent:q.title});
       const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click",()=>{ state.log.coop.quests.splice(i,1); saveState(state); draw(); });
       row.append(box,t,del); list.appendChild(row);
     });
-    (state.log.rewards.badges||[]).forEach(b=> coll.appendChild(el("div",{className:"quest-row"},[el("span",{textContent:b.name+" ⭐"})])));
+    (state.log.rewards.badges||[]).forEach(b=> coll.appendChild(el("div",{className:"quest-row"},[el("span",{textContent:b.name+' ⭐'})])));
   }
   draw();
   $("#addSidekick").addEventListener("click",()=>{ const t=$("#newSidekick").value.trim(); if(!t) return; state.log.coop.quests.push({title:t,done:false}); $("#newSidekick").value=""; saveState(state); draw(); });
@@ -245,8 +257,8 @@ function initBudget(){
     tx.forEach(t=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:(t.amount>=0?"+ ":"- ")+money(Math.abs(t.amount)) }), el("span",{textContent:" — "+t.label}) ])));
   }
   draw();
-  $("#addIncome").addEventListener("click",()=>{ const label=$("#incLabel").value.trim(); const amt=parseFloat($("#incAmt").value||"0"); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:Math.abs(amt)}); $("#incLabel").value=""; $("#incAmt").value=""; addXP(state,4); saveState(state); draw(); renderHUD(); });
-  $("#addExpense").addEventListener("click",()=>{ const label=$("#expLabel").value.trim(); const amt=parseFloat($("#expAmt").value||"0"); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:-Math.abs(amt)}); $("#expLabel").value=""; $("#expAmt").value=""; addXP(state,2); saveState(state); draw(); renderHUD(); });
+  $("#addIncome").addEventListener("click",()=>{ const label=$("#incLabel").value.trim(); const amt=parseFloat($("#incAmt").value||"0"); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:Math.abs(amt)}); addGold(GOLD_REWARD.budget_inc); $("#incLabel").value=""; $("#incAmt").value=""; addXP(state,4); saveState(state); draw(); renderHUD(); });
+  $("#addExpense").addEventListener("click",()=>{ const label=$("#expLabel").value.trim(); const amt=parseFloat($("#expAmt").value||"0"); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:-Math.abs(amt)}); addGold(GOLD_REWARD.budget_exp); $("#expLabel").value=""; $("#expAmt").value=""; addXP(state,2); saveState(state); draw(); renderHUD(); });
 }
 
 // ---- meals
@@ -277,7 +289,7 @@ function initCalendar(){
   $("#addCal").addEventListener("click",()=>{ const text=$("#calText").value.trim(); const day=Math.max(0, Math.min(6, parseInt($("#calDay").value||"0"))); if(!text) return; state.log.calendar.events[day].push(text); $("#calText").value=""; saveState(state); initCalendar(); });
 }
 
-// ---- shop
+// ---- shop (includes accessories store)
 function initShop(){
   const list=$("#shopList");
   function draw(){
@@ -293,6 +305,24 @@ function initShop(){
   }
   draw();
   $("#addShop").addEventListener("click",()=>{ const t=$("#shopItem").value.trim(); if(!t) return; state.log.shop.items.push({title:t, done:false}); $("#shopItem").value=""; saveState(state); draw(); });
+
+  // Accessories store
+  const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
+  const storeEl=el('div',{className:'panel-list'});
+  storeEl.appendChild(el('h3',{textContent:'Accessories Store'}));
+  STORE.forEach(it=>{
+    const owned=(state.economy.ownedAcc||[]).includes(it.id);
+    const row=el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'})]);
+    row.querySelector('button').addEventListener('click',()=>{
+      if(owned) return;
+      if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
+      state.economy.gold -= it.cost;
+      state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
+      saveState(state); renderHUD(); initShop();
+    });
+    storeEl.appendChild(row);
+  });
+  list.parentElement.appendChild(storeEl);
 }
 
 // ---- rewards
@@ -316,7 +346,7 @@ function initRewards(){
 function initCheckin(){
   let chosen=null;
   $$(".mood").forEach(b=> b.addEventListener("click",()=>{ $$(".mood").forEach(x=> x.classList.remove("active")); b.classList.add("active"); chosen=b.dataset.mood; }));
-  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); saveState(state); renderHUD(); alert("Logged!"); });
+  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); alert("Logged!"); });
 }
 
 // ---- journal
@@ -324,7 +354,7 @@ const PROMPTS = ["Name one tiny win from today.","What do you need less of right
 function initJournal(){
   const sel=$("#journalPrompt"); sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
   $("#newPrompt").addEventListener("click",()=>{ sel.value = PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; });
-  $("#saveJournal").addEventListener("click",()=>{ const prompt=sel.value; const text=$("#journalText").value.trim(); if(!text) return; state.log.journal.push({ id: crypto.randomUUID(), ts: Date.now(), prompt, text }); touchStreak(state); addXP(state,6); saveState(state); initJournal(); });
+  $("#saveJournal").addEventListener("click",()=>{ const prompt=sel.value; const text=$("#journalText").value.trim(); if(!text) return; state.log.journal.push({ id: crypto.randomUUID(), ts: Date.now(), prompt, text }); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); saveState(state); initJournal(); });
   const list=$("#journalList"); list.replaceChildren(); state.log.journal.slice().reverse().forEach(j=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}), el("div",{textContent:j.text}) ])));
 }
 
@@ -335,7 +365,7 @@ function startBreathing(circleEl, phaseEl, onFinish){
 function animateCircle(el, phase){ if(phase==="Inhale"){ el.style.transform="scale(1.2)"; el.style.borderColor="var(--accent)"; } else if(phase==="Exhale"){ el.style.transform="scale(0.85)"; el.style.borderColor="var(--accent-2)"; } else { el.style.transform="scale(1)"; el.style.borderColor="var(--muted)"; } }
 function initBreathe(){
   const circle=$("#breathCircle"), phase=$("#breathPhase"); let stop=null;
-  $("#startBreath").addEventListener("click",()=>{ if(stop) stop(); stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); saveState(state); alert("Nice breathing session ✨"); renderHUD(); }); });
+  $("#startBreath").addEventListener("click",()=>{ if(stop) stop(); stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert("Nice breathing session ✨"); renderHUD(); }); });
   $("#stopBreath").addEventListener("click",()=>{ if(stop){ stop(); stop=null; } });
 }
 
@@ -368,7 +398,7 @@ function initPet(){
   $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
   $("#petName").value = state.pet.name; $("#petSpecies").value = state.pet.species;
   $("#savePet").addEventListener("click",()=>{ state.pet.name=$("#petName").value.trim()||"Pebble"; state.pet.species=$("#petSpecies").value; saveState(state); initPet(); renderHUD(); });
-  const acc=["cap","bow","glasses"]; const accList=$("#accList"); accList.replaceChildren();
+  const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses'])); const accList=$("#accList"); accList.replaceChildren();
   acc.forEach(a=>{ const btn=el("button",{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener("click",()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
 }
 
@@ -390,6 +420,14 @@ function initSettings(){
   $("#resetApp").addEventListener("click",()=>{ if(confirm("Reset all data?")){ resetState(); state=loadState(); applyTheme(); renderRoute(); } });
 }
 
+// ---- Characters & Companion screens
+function characterCards(){ return [ {id:'witch', label:'Witch', svg:petPixelSVG('sprout',1)}, {id:'knight', label:'Knight', svg:petPixelSVG('blob',1)}, {id:'ranger', label:'Ranger', svg:petPixelSVG('birb',1)} ]; }
+function initCharacters(){ const grid=$('#charGrid'); grid.replaceChildren(); characterCards().forEach(c=>{ const card=el('div',{className:'char-card'},[ el('div',{className:'char-portrait', innerHTML:c.svg}), el('div',{textContent:c.label}) ]); card.addEventListener('click',()=>{ state.user.character={id:c.id,img:null}; saveState(state); fxToast('Character selected'); renderHUD(); routeTo('companion'); renderRoute(); }); grid.appendChild(card); }); const up=$('#uploadChar'); const file=$('#charFile'); up.addEventListener('click',()=> file.click()); file.addEventListener('change', ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ state.user.character={id:'custom', img:rd.result}; saveState(state); renderHUD(); routeTo('companion'); renderRoute(); }; rd.readAsDataURL(f); }); }
+function initCompanion(){ const grid=$('#compGrid'); grid.replaceChildren(); const opts=[ {id:'solo', label:'Solo Week', desc:'Just you + companion'}, {id:'toddler', label:'Toddler Week', desc:'Two characters co-op'} ]; opts.forEach(o=>{ const card=el('div',{className:'comp-card'},[ el('div',{className:'char-portrait', innerHTML: petPixelSVG('birb',1) }), el('div',{textContent:o.label}), el('div',{className:'sub', textContent:o.desc}) ]); card.addEventListener('click',()=>{ state.log.coop.toddlerWeek = (o.id==='toddler'); saveState(state); fxToast('Mode: '+o.label); routeTo('home'); renderRoute(); }); grid.appendChild(card); }); }
+
+// Unlocks
+function maybeUnlockAccessory(){ const POOL=['cap','bow','glasses']; const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
+
 // --- export/import
 $("#exportBtn").addEventListener("click", ()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="soothebirb-data.json"; a.click(); URL.revokeObjectURL(url); });
 $("#importBtn").addEventListener("click", ()=> $("#importFile").click());
@@ -398,5 +436,5 @@ $("#importFile").addEventListener("change", ev=>{ const file=ev.target.files[0];
 // --- boot
 touchStreak(state); saveState(state);
 const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); }
-if(!location.hash || !['#home','#tasks','#clean','#coop','#budget','#meals','#calendar','#shop','#rewards','#checkin','#journal','#breathe','#pet','#settings'].includes(location.hash)){ location.hash = '#home'; }
+if(!location.hash || !['#home','#tasks','#clean','#coop','#budget','#meals','#calendar','#shop','#rewards','#checkin','#journal','#breathe','#pet','#settings','#characters','#companion'].includes(location.hash)){ location.hash = '#home'; }
 renderRoute();
