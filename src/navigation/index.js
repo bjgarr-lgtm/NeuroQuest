@@ -39,6 +39,7 @@ export default function RootNav() {
         <Stack.Screen name="Character" component={CharacterSelect} options={{ title:'Choose Character' }} />
         <Stack.Screen name="Companion" component={CompanionSelect} options={{ title:'Choose Companion' }} />
         <Stack.Screen name="Start" component={StartDay} options={{ title:'Start Day' }} />
+        <Stack.Screen name="Dashboard" component={Dashboard} />
 
         <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title:'Daily Quests' }} />
         <Stack.Screen name="FocusTimer" component={FocusTimer} options={{ title:'Focus Timer' }} />
