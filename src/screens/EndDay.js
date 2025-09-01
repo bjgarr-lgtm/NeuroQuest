@@ -1,36 +1,45 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
 import { useGame } from '../game/store';
 
 export default function EndDay({ navigation }) {
   const { state, actions } = useGame();
-  const s = state.summary;
-  const tips = useMemo(()=> actions.insights(), [state.history]);
 
-  const finish = () => {
-    actions.endDay({ startNext:true });
-    navigation.navigate('QuestBoard');
+  // ensure we have a summary for today
+  useEffect(() => {
+    if (!state.summary) actions.lockInDay();
+  }, [state.summary]);
+
+  const s = state.summary || {
+    total: (state.quests||[]).length,
+    done: Object.keys(state.completed||{}).length,
+    gainedXP: 0, gainedCoins: 0, byCat: {}
   };
 
-  const summary = s || { total:(state.quests||[]).length, done:Object.keys(state.completed||{}).length, gainedXP:0, gainedCoins:0, byCat:{} };
+  const tips = useMemo(() => actions.insights(), [state.history]);
+
+  const finish = () => {
+    actions.endDay({ startNext: true });     // save history + roll tomorrow
+    navigation.replace('QuestBoard');        // jump to fresh quests
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:32 }}>
       <Text style={styles.h1}>Day Summary</Text>
 
       <View style={styles.card}>
-        <Text style={styles.line}>Quests: {summary.done}/{summary.total}</Text>
-        <Text style={styles.line}>XP earned: {summary.gainedXP}</Text>
-        <Text style={styles.line}>Coins earned: {summary.gainedCoins}</Text>
+        <Text style={styles.line}>Quests: {s.done}/{s.total}</Text>
+        <Text style={styles.line}>XP earned: {s.gainedXP}</Text>
+        <Text style={styles.line}>Coins earned: {s.gainedCoins}</Text>
         <Text style={[styles.line,{marginTop:6}]}>By category:</Text>
-        {Object.entries(summary.byCat || {}).map(([k,v])=>(
+        {Object.entries(s.byCat || {}).map(([k,v])=>(
           <Text key={k} style={styles.meta}>• {k}: {v.done}/{v.total}</Text>
         ))}
       </View>
 
       {!!tips?.length && (
         <View style={styles.card}>
-          <Text style={styles.h2}>Tips & Trends</Text>
+          <Text style={styles.h2}>Trends & Tips</Text>
           {tips.map((t,i)=>(<Text key={i} style={styles.tip}>• {t}</Text>))}
         </View>
       )}
@@ -51,5 +60,5 @@ const styles = StyleSheet.create({
   meta:{ color:'#c9cbe0' },
   tip:{ color:'#80FFEA', marginBottom:4 },
   btn:{ backgroundColor:'#fff', paddingVertical:14, borderRadius:12, alignItems:'center' },
-  btnText:{ color:'#0d0a17', fontWeight:'700' },
+  btnText:{ color:'#0d0a17', fontWeight:'800' },
 });

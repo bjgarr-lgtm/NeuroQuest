@@ -1,8 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable, ScrollView, Platform, Dimensions } from 'react-native';
 
 export default function Welcome({ navigation }) {
   const start = () => navigation.navigate('Character');
+
+  // responsive hero height (taller on web so the rules card is readable)
+  const win = Dimensions.get('window');
+  const heroHeight = Platform.OS === 'web'
+    ? Math.min( Math.max(420, Math.round(win.height * 0.55)), 680 ) // 420–680px
+    : 360;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
@@ -10,10 +16,9 @@ export default function Welcome({ navigation }) {
       <Text style={styles.tag}>Questing for focus, powered by snacks & spite.</Text>
 
       <View style={styles.heroCard}>
-        {/* Use your welcome graphic */}
         <Image
           source={require('../../assets/welcome-rules.png')}
-          style={styles.heroImg}
+          style={[styles.heroImg, { height: heroHeight }]}
           resizeMode="contain"
         />
       </View>
@@ -38,20 +43,15 @@ const styles = StyleSheet.create({
   tag: { color: '#c9cbe0', marginTop: 4, marginBottom: 12 },
   heroCard: {
     backgroundColor: '#131024',
-    borderWidth: 2,
-    borderColor: '#2d2450',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 14,
+    borderWidth: 2, borderColor: '#2d2450',
+    borderRadius: 14, padding: 12, marginBottom: 14,
+    alignItems: 'center', justifyContent: 'center'
   },
-  heroImg: { width: '100%', height: 240 },
+  heroImg: { width: '100%' },
   rules: {
     backgroundColor: '#131024',
-    borderWidth: 2,
-    borderColor: '#2d2450',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
+    borderWidth: 2, borderColor: '#2d2450',
+    borderRadius: 14, padding: 14, marginBottom: 16
   },
   rulesH: { color: '#FFD166', fontSize: 16, fontWeight: '700', marginBottom: 8 },
   rule: { color: '#e8e8ee', marginBottom: 6 },
