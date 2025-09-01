@@ -9,6 +9,7 @@ import CompanionSelect from '../screens/CompanionSelect';
 import StartDay from '../screens/StartDay';
 import QuestBoard from '../screens/QuestBoard';
 import EndDay from '../screens/EndDay';
+import Trends from '../screens/Trends';
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,7 @@ export default function RootNav({ appFontFamily }) {
       <Stack.Screen name="Start" component={StartDay} options={{ title:'Start Day' }} />
       <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title:'Daily Activities' }} />
       <Stack.Screen name="EndDay" component={EndDay} options={{ title: 'End of Day' }} />
+      <Stack.Screen name="Trends" component={Trends} options={{ title:'Trends' }} />
     </Stack.Navigator>
   );
 }
