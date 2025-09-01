@@ -1,15 +1,18 @@
 // src/screens/QuestBoard.js
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TopNav from '../ui/TopNav';
 import { useGame } from '../game/store';
 import { heroArt, companionArt } from '../art';
 import { Panel, ShinyButton, colors } from '../ui/Skin';
 import { useToasts } from '../ui/Toasts';
 import * as FX from '../ui/FX';
+
 const ConfettiBurst = FX.ConfettiBurst || (() => null);
-const playSFX = FX.playSFX || (() => {}); const haptic = FX.haptic || (() => {});
-const fxStyles = FX.fxStyles || { portal: { position:'absolute', inset:0, pointerEvents:'none' } };
+const playSFX = FX.playSFX || (() => {});
+const haptic  = FX.haptic  || (() => {});
+const fxStyles = FX.fxStyles || { portal:{ position:'absolute', inset:0, pointerEvents:'none' } };
 const usePulse = FX.usePulse || (() => ({}));
 
 function useFloat(range = 10, dur = 1400, delay = 0) {
@@ -21,18 +24,30 @@ function useFloat(range = 10, dur = 1400, delay = 0) {
     ]));
     loop.start(); return () => loop.stop();
   }, [v, range, dur, delay]);
-  return { transform:[{ translateY: v.interpolate({ inputRange:[0,1], outputRange:[0,-range] }) }, { scale: v.interpolate({ inputRange:[0,1], outputRange:[1,1.04] }) }] };
+  return {
+    transform: [
+      { translateY: v.interpolate({ inputRange:[0,1], outputRange:[0,-range] }) },
+      { scale: v.interpolate({ inputRange:[0,1], outputRange:[1,1.04] }) },
+    ],
+  };
 }
-function minutesFromTitle(title=''){ const m = String(title).match(/(\d+)\s*m/gi) || String(title).match(/(\d+)\s*$/); const n = m ? parseInt(String(m[0]).replace(/[^\d]/g,''),10) : 10; return Math.max(5, Math.min(60, n||10)); }
+
+function minutesFromTitle(title=''){
+  const m = String(title).match(/(\d+)\s*m/gi) || String(title).match(/(\d+)\s*$/);
+  const n = m ? parseInt(String(m[0]).replace(/[^\d]/g,''),10) : 10;
+  return Math.max(5, Math.min(60, n||10));
+}
 
 export default function QuestBoard({ navigation }) {
   const { state, actions } = useGame();
   const toasts = useToasts();
+  const insets = useSafeAreaInsets();
+  const FOOTER_H = 64;
 
-  const quests = state?.quests || [];
+  const quests    = state?.quests || [];
   const completed = state?.completed || {};
-  const heroKey = state?.hero || 'bambi';
-  const compKey = state?.companion || 'molly';
+  const heroKey   = state?.hero || 'bambi';
+  const compKey   = state?.companion || 'molly';
 
   const heroAnim = useFloat(10, 1200, 0);
   const compAnim = useFloat(10, 1500, 200);
@@ -40,7 +55,11 @@ export default function QuestBoard({ navigation }) {
   const [tapBurst, setTapBurst] = useState(0);
   const [allBurst, setAllBurst] = useState(0);
 
-  const allDone = useMemo(() => quests.length > 0 && quests.every(q => completed[q.id]), [quests, completed]);
+  const allDone = useMemo(
+    () => quests.length > 0 && quests.every(q => completed[q.id]),
+    [quests, completed]
+  );
+
   const pulseBorder = usePulse(900);
 
   const toggleQuest = (q, evt) => {
@@ -54,6 +73,7 @@ export default function QuestBoard({ navigation }) {
       toasts?.push?.(`+${xp}⭐  +${c}🪙`, { x, y, color:'#46FFC8' });
     }
   };
+
   const longPressQuest = (q) => {
     const mins = minutesFromTitle(q.title);
     playSFX('select'); haptic('light');
@@ -61,7 +81,11 @@ export default function QuestBoard({ navigation }) {
   };
 
   useEffect(() => {
-    if (allDone) { setAllBurst(k => k + 1); playSFX('levelup'); haptic('success'); toasts?.push?.('All quests complete!', { color:'#FFD166' }); }
+    if (allDone) {
+      setAllBurst(k => k + 1);
+      playSFX('levelup'); haptic('success');
+      toasts?.push?.('All quests complete!', { color:'#FFD166' });
+    }
   }, [allDone]);
 
   const goEndDay = () => { actions?.lockInDay?.(); navigation.navigate('EndDay'); };
@@ -70,6 +94,7 @@ export default function QuestBoard({ navigation }) {
     <View style={styles.screen}>
       <TopNav active="QuestBoard" />
 
+      {/* Sprites banner */}
       <View style={styles.banner}>
         <View style={styles.spriteCol}>
           <Animated.Image source={heroArt[heroKey]} style={[styles.sprite, heroAnim]} resizeMode="contain" />
@@ -82,9 +107,14 @@ export default function QuestBoard({ navigation }) {
         </View>
       </View>
 
+      {/* Journal list */}
       <Panel title="Daily Quests" style={styles.journal}>
         <View style={fxStyles.portal}><ConfettiBurst burstKey={tapBurst} /></View>
-        <ScrollView style={{ flex:1 }} contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView
+          style={{ flex:1, minHeight:0 }}
+          contentContainerStyle={{ paddingBottom: FOOTER_H + insets.bottom + 24 }}
+          showsVerticalScrollIndicator
+        >
           {quests.map((q) => {
             const done = !!completed[q.id];
             return (
@@ -99,7 +129,9 @@ export default function QuestBoard({ navigation }) {
                 <View style={styles.bullet}><Text style={{ color: done ? '#46FFC8' : '#FFD166' }}>✦</Text></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.title, done && { color:'#46FFC8' }]}>{q.title}</Text>
-                  <Text style={styles.meta}>+{q.reward?.xp ?? 5} XP · +{q.reward?.coins ?? 1}g · {q.cat ?? 'quest'}</Text>
+                  <Text style={styles.meta}>
+                    +{q.reward?.xp ?? 5} XP · +{q.reward?.coins ?? 1}g · {q.cat ?? 'quest'}
+                  </Text>
                 </View>
                 {done && <Text style={styles.check}>🪙</Text>}
               </TouchableOpacity>
@@ -112,8 +144,13 @@ export default function QuestBoard({ navigation }) {
         <ConfettiBurst burstKey={allBurst} count={36} size={24} spread={140} duration={1200} />
       </View>
 
-      <View style={styles.footer}>
-        <ShinyButton onPress={goEndDay} style={[{ borderWidth: 2, borderRadius: 16 }, allDone && pulseBorder]} textStyle={{ fontSize: 16 }}>
+      {/* Sticky footer – safely above the device bottom inset */}
+      <View style={[styles.footer, { bottom: insets.bottom + 12 }]}>
+        <ShinyButton
+          onPress={goEndDay}
+          style={[{ borderWidth: 2, borderRadius: 16 }, allDone && pulseBorder]}
+          textStyle={{ fontSize: 16 }}
+        >
           {allDone ? 'All Quests Complete!  End Day →' : 'End Day →'}
         </ShinyButton>
       </View>
@@ -122,7 +159,8 @@ export default function QuestBoard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0d0a17' },
+  screen: { flex: 1, backgroundColor: colors.bg },
+
   banner: {
     marginHorizontal:16, marginTop:0,
     flexDirection:'row', alignItems:'center', justifyContent:'space-between',
@@ -136,6 +174,7 @@ const styles = StyleSheet.create({
   ring:   { width: 12, height: 12, borderRadius: 12, backgroundColor: '#211a3a', borderWidth: 2, borderColor: '#3a2c66' },
 
   journal: { flex:1, minHeight:0, marginHorizontal:16, position: 'relative' },
+
   entry: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#18122c', borderRadius: 12,
@@ -147,5 +186,5 @@ const styles = StyleSheet.create({
   meta:      { color: '#c9cbe0' },
   check:     { color: '#FFD166', fontSize: 18, paddingLeft: 8 },
 
-  footer: { position: 'absolute', left: 16, right: 16, bottom: 16 },
+  footer: { position: 'absolute', left: 16, right: 16 },
 });
