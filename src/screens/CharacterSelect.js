@@ -1,100 +1,66 @@
-import React, { useState, useRef } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, Animated, Dimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
+import { colors, Panel, ShinyButton } from '../ui/Skin';
+import TopNav from '../ui/TopNav';
 import { useGame } from '../game/store';
 import { heroArt } from '../art';
-import { Panel, ShinyButton, colors } from '../ui/Skin';
-import { ConfettiBurst, playSFX, haptic, fxStyles } from '../ui/FX';
-
-const HEROES = [
-  { id: 'bambi', label: 'Bambi' },
-  { id: 'ash',   label: 'Ash'   },
-  { id: 'odin',  label: 'Odin'  },
-  { id: 'fox',   label: 'Fox'   },
-];
-
-// route name in your navigator:
-const NEXT_ROUTE = 'Companion';
-
-function Portrait({ src, label, selected, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  if (selected) Animated.spring(scale, { toValue: 1.06, useNativeDriver: false }).start();
-
-  return (
-    <Pressable onPress={onPress} style={[styles.card, selected && styles.cardOn]}>
-      <Animated.Image
-        source={src}
-        resizeMode="contain"
-        style={[styles.img, { transform: [{ scale }] }]}
-      />
-      <Text style={styles.name}>{label}</Text>
-    </Pressable>
-  );
-}
 
 export default function CharacterSelect({ navigation }) {
   const { state, actions } = useGame();
-  const [pick, setPick] = useState(state.hero || 'bambi');
-  const [burstKey, setBurstKey] = useState(0);
+  const [sel, setSel] = useState(state?.hero || null);
 
-  const choose = (id) => {
-    setPick(id);
-    actions.setHero?.(id);
-    setBurstKey(k => k + 1);
-    playSFX('select'); haptic('light');
-    setTimeout(() => navigation.navigate(NEXT_ROUTE), 160);
+  const heroKeys = useMemo(() => Object.keys(heroArt || {}), []);
+  const canNext = !!sel;
+
+  const onNext = () => {
+    actions?.setParty?.(sel, state?.companion || 'molly');
+    navigation.navigate('Companion');
   };
 
-  const next = () => choose(pick);
-
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scrollPad}>
-        <Panel title="Choose your character" style={styles.panel}>
-          <View style={fxStyles.portal}><ConfettiBurst burstKey={burstKey} /></View>
-          <View style={styles.grid}>
-            {HEROES.map(h => (
-              <Portrait
-                key={h.id}
-                src={heroArt[h.id]}
-                label={h.label}
-                selected={pick === h.id}
-                onPress={() => choose(h.id)}
-              />
+    <View style={s.screen}>
+      <TopNav active="Dashboard" />
+      <ScrollView contentContainerStyle={{ padding:16, paddingBottom:24 }}>
+        <Panel title="Choose your Hero">
+          <View style={s.grid}>
+            {heroKeys.map((k) => (
+              <Pressable
+                key={k}
+                onPress={() => setSel(k)}
+                style={[s.card, sel === k && s.cardActive]}
+              >
+                <Image
+                  source={heroArt[k]}
+                  style={s.art}
+                  resizeMode="contain"
+                />
+                <Text style={s.name}>{k}</Text>
+              </Pressable>
             ))}
           </View>
 
-          <ShinyButton onPress={next} style={{ marginTop: 10 }}>Next →</ShinyButton>
+          <ShinyButton style={[s.cta, !canNext && { opacity:0.5 }]} onPress={onNext} disabled={!canNext}>
+            Next →
+          </ShinyButton>
         </Panel>
       </ScrollView>
     </View>
   );
 }
 
-const W = Dimensions.get('window').width;
-const twoCol = W >= 700;
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  scrollPad: { padding: 16, paddingBottom: 32 },
-  panel: {},
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: twoCol ? 'space-between' : 'center',
+const s = StyleSheet.create({
+  screen:{ flex:1, backgroundColor: colors.bg },
+  grid:{
+    flexDirection:'row', flexWrap:'wrap', justifyContent:'space-between',
   },
-  card: {
-    flexBasis: twoCol ? '48%' : '100%',
-    maxWidth: 520,
-    backgroundColor: colors.panel,
-    borderWidth: 2, borderColor: colors.border, borderRadius: 16,
-    padding: 10, alignItems: 'center', alignSelf: 'center',
+  card:{
+    width:'48%',
+    backgroundColor:'#131024',
+    borderWidth:2, borderColor: colors.border, borderRadius:14,
+    padding:10, marginBottom:12, alignItems:'center',
   },
-  cardOn: {
-    borderColor: colors.neon,
-    shadowColor: colors.neon, shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
-  },
-  // Fixed height keeps portraits from going HUGE
-  img: { width: '100%', height: 220, borderRadius: 12, backgroundColor: colors.ink, borderWidth: 2, borderColor: colors.border },
-  name: { color: '#c9cbe0', marginTop: 6 },
+  cardActive:{ borderColor:'#46FFC8', backgroundColor:'#0f1e1b' },
+  art:{ width:'100%', height:160, backgroundColor:'transparent' }, // kill white box
+  name:{ color:'#fff', marginTop:6, fontWeight:'800', textTransform:'capitalize' },
+  cta:{ marginTop:8 },
 });
