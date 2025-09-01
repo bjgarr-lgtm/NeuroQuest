@@ -1,13 +1,13 @@
 // src/screens/QuestBoard.js
-// Daily quest board with juicy FX, bobbing sprites, and sticky End Day.
+// Daily quest board with juicy FX, bobbing sprites, sticky End Day, and SCROLL FIX.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Pressable } from 'react-native';
 import { useGame } from '../game/store';
 import { heroArt, companionArt } from '../art';
 import { Panel, ShinyButton, colors } from '../ui/Skin';
 
-// Import FX *safely* so this screen never white-screens even if FX is missing/partial.
+// Safe FX imports (won't crash if missing)
 import * as FX from '../ui/FX';
 const ConfettiBurst = FX.ConfettiBurst || (() => null);
 const playSFX       = FX.playSFX       || (() => {});
@@ -15,7 +15,6 @@ const haptic        = FX.haptic        || (() => {});
 const fxStyles      = FX.fxStyles      || { portal: { position:'absolute', inset:0, pointerEvents:'none' } };
 const usePulse      = FX.usePulse      || (() => ({}));
 
-/* ---- helpers ---- */
 function useFloat(range = 10, dur = 1400, delay = 0) {
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -35,7 +34,6 @@ function useFloat(range = 10, dur = 1400, delay = 0) {
   };
 }
 
-/* ---- screen ---- */
 export default function QuestBoard({ navigation }) {
   const { state, actions } = useGame();
   const quests    = state?.quests || [];
@@ -46,14 +44,13 @@ export default function QuestBoard({ navigation }) {
   const heroAnim = useFloat(10, 1200, 0);
   const compAnim = useFloat(10, 1500, 200);
 
-  const [tapBurst, setTapBurst]   = useState(0);
-  const [allBurst, setAllBurst]   = useState(0);
+  const [tapBurst, setTapBurst] = useState(0);
+  const [allBurst, setAllBurst] = useState(0);
 
   const allDone = useMemo(
     () => quests.length > 0 && quests.every(q => completed[q.id]),
     [quests, completed]
   );
-
   const pulseBorder = usePulse(900);
 
   const toggleQuest = (q) => {
@@ -73,12 +70,22 @@ export default function QuestBoard({ navigation }) {
 
   const goEndDay = () => {
     actions?.lockInDay?.();
-    navigation.navigate('EndDay'); // change if your route name differs
+    navigation.navigate('EndDay');
   };
+
+  const goHome = () => navigation.navigate('Home');
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.h1}>Quest Log</Text>
+      {/* Header row: title + quick home + currency */}
+      <View style={styles.topRow}>
+        <Text style={styles.h1}>Quest Log</Text>
+        <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
+          <View style={styles.pill}><Text style={styles.pillText}>🪙 {state?.coins ?? 0}</Text></View>
+          <View style={styles.pill}><Text style={styles.pillText}>⭐ {state?.xp ?? 0}</Text></View>
+          <Pressable onPress={goHome} style={styles.homeBtn}><Text style={{ fontSize:16 }}>🏠</Text></Pressable>
+        </View>
+      </View>
 
       {/* Party banner */}
       <View style={styles.banner}>
@@ -106,10 +113,11 @@ export default function QuestBoard({ navigation }) {
       </View>
 
       {/* Journal list with confetti layer */}
+      {/* SCROLL FIX: Panel flex:1 + minHeight:0, and ScrollView style={{flex:1}} */}
       <Panel title="Daily Quests" style={styles.journal}>
         <View style={fxStyles.portal}><ConfettiBurst burstKey={tapBurst} /></View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
+        <ScrollView style={{ flex:1 }} contentContainerStyle={{ paddingBottom: 120 }}>
           {quests.map((q) => {
             const done = !!completed[q.id];
             return (
@@ -155,10 +163,14 @@ export default function QuestBoard({ navigation }) {
   );
 }
 
-/* ---- styles ---- */
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0d0a17', padding: 16 },
-  h1:     { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 10 },
+  topRow:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 },
+  h1:     { color: '#fff', fontSize: 20, fontWeight: '800' },
+
+  pill:{ backgroundColor:'#17132b', borderWidth:2, borderColor:'#2d2450', paddingVertical:6, paddingHorizontal:10, borderRadius:999 },
+  pillText:{ color:'#c9cbe0', fontWeight:'700' },
+  homeBtn:{ backgroundColor:'#fff', borderRadius:10, paddingHorizontal:10, paddingVertical:6 },
 
   banner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -172,7 +184,8 @@ const styles = StyleSheet.create({
   rings:  { width: 36, alignItems: 'center', gap: 10, paddingVertical: 6 },
   ring:   { width: 12, height: 12, borderRadius: 12, backgroundColor: '#211a3a', borderWidth: 2, borderColor: '#3a2c66' },
 
-  journal: { marginTop: 6, position: 'relative' },
+  // SCROLL FIX: make the journal take remaining space and allow the ScrollView to compute height
+  journal: { flex:1, minHeight:0, marginTop: 6, position: 'relative' },
 
   entry: {
     flexDirection: 'row', alignItems: 'center',
