@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import TopNav from '../ui/TopNav';
 import { useGame } from '../game/store';
-import { Panel, colors } from '../ui/Skin';
+import { Panel, ShinyButton, colors } from '../ui/Skin'; // named exports
 import * as FX from '../ui/FX';
 const playSFX = FX.playSFX || (()=>{}); const haptic = FX.haptic || (()=>{});
 

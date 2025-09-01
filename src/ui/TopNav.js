@@ -1,41 +1,36 @@
-// src/ui/TopNav.js
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-export default function TopNav({ active }) {
-  const nav = useNavigation();
-  const route = useRoute();
-  const cur = active || route.name;
+const TABS = [
+  { key: 'Dashboard', label: 'Home' },
+  { key: 'QuestBoard', label: 'Quests' },
+  { key: 'PetRoom', label: 'Pet' },
+  { key: 'Shop', label: 'Shop' },
+  { key: 'Trends', label: 'Trends' },
+];
 
-  const Item = ({ label, to }) => (
-    <Pressable onPress={() => nav.navigate(to)} style={[s.tab, cur===to && s.on]}>
-      <Text style={[s.tabTxt, cur===to && s.onTxt]}>{label}</Text>
-    </Pressable>
-  );
-
+export default function TopNav({ navigation, active }) {
+  // `navigation` is optional; we fallback to nav from context if not passed
+  const nav = navigation;
   return (
-    <View style={s.wrap}>
-      <Item label="Home"   to="Home" />
-      <Item label="Quests" to="QuestBoard" />
-      <Item label="Pet"    to="PetRoom" />
-      <Item label="Shop"   to="Shop" />
-      <Item label="Trends" to="Trends" />
+    <View style={s.bar}>
+      {TABS.map(t => {
+        const isActive = active === t.key || active === t.label;
+        const onPress = () => nav?.navigate?.(t.key) ?? nav?.navigate?.(t.label);
+        return (
+          <Pressable key={t.key} onPress={onPress} style={[s.tab, isActive && s.active]}>
+            <Text style={[s.tabTxt, isActive && s.activeTxt]}>{t.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap:{
-    flexDirection:'row', justifyContent:'space-between', alignItems:'center',
-    backgroundColor:'#17132b', borderWidth:2, borderColor:'#2d2450',
-    borderRadius:12, padding:6, margin:16, marginBottom:8,
-  },
-  tab:{
-    paddingVertical:8, paddingHorizontal:12, borderRadius:10,
-    borderWidth:2, borderColor:'transparent',
-  },
-  on:{ borderColor:'#46FFC8', backgroundColor:'#10231e' },
-  tabTxt:{ color:'#c9cbe0', fontWeight:'800' },
-  onTxt:{ color:'#46FFC8' },
+  bar:{ flexDirection:'row', backgroundColor:'#130f23', borderBottomWidth:2, borderColor:'#2d2450' },
+  tab:{ flex:1, paddingVertical:12, alignItems:'center' },
+  tabTxt:{ color:'#d7d5e6', fontWeight:'700' },
+  active:{ backgroundColor:'#1a1530' },
+  activeTxt:{ color:'#fff' },
 });

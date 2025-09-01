@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, Animated, Pressable } from 'react-native';
 import { colors } from '../ui/Skin';
+import { Panel, ShinyButton, colors } from '../ui/Skin'; // named exports
 
 export default function Splash({ navigation }) {
   const [imgOk, setImgOk] = useState(true);

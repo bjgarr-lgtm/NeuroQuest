@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TopNav from '../ui/TopNav';
-import { Panel, ShinyButton, colors } from '../ui/Skin';
+import { Panel, ShinyButton, colors } from '../ui/Skin'; // named exports
 import { useGame } from '../game/store';
 import { companionArt } from '../art';
 import * as FX from '../ui/FX';
