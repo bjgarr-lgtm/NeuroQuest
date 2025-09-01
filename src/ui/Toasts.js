@@ -1,63 +1,34 @@
-// src/ui/Toasts.js
-import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
-import { View, Animated, StyleSheet, Dimensions } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 
-const Ctx = createContext({ push: () => {} });
+let pushToast = null;
 
 export function ToastHost() {
-  const [items, setItems] = useState([]);
-  const idRef = useRef(1);
+  const [msg, setMsg] = React.useState(null);
+  const fade = React.useRef(new Animated.Value(0)).current;
 
-  const push = (text = '+5 XP', opts = {}) => {
-    const id = idRef.current++;
-    const a = new Animated.Value(0);
-    const life = opts.life ?? 1200;
-    const x = opts.x ?? (Dimensions.get('window').width / 2 - 40);
-    const y = opts.y ?? 140;
-    const color = opts.color ?? '#fff';
+  React.useEffect(() => { pushToast = (m) => {
+    setMsg(m);
+    fade.setValue(0);
+    Animated.sequence([
+      Animated.timing(fade, { toValue:1, duration:150, useNativeDriver:false }),
+      Animated.delay(900),
+      Animated.timing(fade, { toValue:0, duration:200, useNativeDriver:false })
+    ]).start();
+  }; }, [fade]);
 
-    setItems(arr => [...arr, { id, text, a, x, y, color }]);
-    Animated.timing(a, { toValue: 1, duration: 280, useNativeDriver: false }).start(() => {
-      Animated.timing(a, { toValue: 2, duration: life, useNativeDriver: false }).start(() => {
-        Animated.timing(a, { toValue: 3, duration: 260, useNativeDriver: false }).start(() => {
-          setItems(arr => arr.filter(t => t.id !== id));
-        });
-      });
-    });
-  };
-
-  const v = useMemo(() => ({ push }), []);
-
+  if (!msg) return null;
   return (
-    <Ctx.Provider value={v}>
-      <View pointerEvents="none" style={styles.portal}>
-        {items.map(t => {
-          const top = t.a.interpolate({ inputRange:[0,3], outputRange:[t.y, t.y - 36, t.y - 44, t.y - 52] });
-          const op  = t.a.interpolate({ inputRange:[0,0.2,2.7,3], outputRange:[0,1,1,0] });
-          return (
-            <Animated.Text
-              key={t.id}
-              style={[styles.toast, { top, left:t.x, opacity:op, color:t.color }]}
-            >
-              {t.text}
-            </Animated.Text>
-          );
-        })}
-      </View>
-      {/* Render children via portal pattern (top-level host sits in App.js) */}
-    </Ctx.Provider>
+    <Animated.View style={[s.wrap, { opacity:fade }]}>
+      <View style={s.box}><Text style={s.txt}>{msg}</Text></View>
+    </Animated.View>
   );
 }
 
-export function useToasts() {
-  return useContext(Ctx);
-}
+export function toast(m) { if (pushToast) pushToast(m); }
 
-const styles = StyleSheet.create({
-  portal:{ position:'absolute', left:0, right:0, top:0, bottom:0, zIndex: 9999 },
-  toast:{
-    position:'absolute',
-    fontSize:18, fontWeight:'900',
-    textShadowColor:'#000', textShadowRadius:6,
-  },
+const s = StyleSheet.create({
+  wrap:{ position:'absolute', top:18, left:0, right:0, alignItems:'center', zIndex:9999 },
+  box:{ backgroundColor:'#1b1632', borderWidth:2, borderColor:'#2d2450', borderRadius:12, paddingVertical:8, paddingHorizontal:12 },
+  txt:{ color:'#fff', fontWeight:'800' },
 });

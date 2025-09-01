@@ -1,11 +1,8 @@
-// src/screens/Shop.js
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import TopNav from '../ui/TopNav';
+import { Panel, colors } from '../ui/Skin';
 import { useGame } from '../game/store';
-import { Panel, ShinyButton, colors } from '../ui/Skin'; // named exports
-import * as FX from '../ui/FX';
-const playSFX = FX.playSFX || (()=>{}); const haptic = FX.haptic || (()=>{});
 
 const GOODS = [
   { id:'skin-nightcloak', name:'Night Cloak', cost:40 },
@@ -15,26 +12,22 @@ const GOODS = [
 
 export default function Shop() {
   const { state, actions } = useGame();
-  const coins = state?.coins ?? 0;
-  const owned = new Set(state?.cosmetics?.owned || []);
-  const buy = (g) => {
-    const ok = actions?.purchase?.(g);
-    if (ok) { playSFX('coin'); haptic('medium'); }
-    else    { playSFX('deny'); haptic('error'); }
-  };
+  const coins = state.coins;
+  const owned = new Set(state.cosmetics.owned);
+  const buy = (g) => { if (!owned.has(g.id) && coins >= g.cost) actions.purchase(g); };
 
   return (
-    <View style={styles.screen}>
-      <TopNav active="Shop" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal:16, paddingBottom:24 }}>
+    <View style={s.screen}>
+      <TopNav />
+      <ScrollView contentContainerStyle={{ padding:16, paddingBottom:24 }}>
         <Panel title={`Shop • Coins: ${coins}`}>
           {GOODS.map(g => {
             const isOwned = owned.has(g.id);
             return (
-              <View key={g.id} style={styles.row}>
-                <Text style={styles.name}>{g.name}</Text>
-                <Pressable style={[styles.buy, isOwned && { opacity:0.5 }]} onPress={()=>buy(g)} disabled={isOwned}>
-                  <Text style={styles.buyTxt}>{isOwned ? 'Owned' : `Buy ${g.cost}g`}</Text>
+              <View key={g.id} style={s.row}>
+                <Text style={s.name}>{g.name}</Text>
+                <Pressable onPress={()=>buy(g)} disabled={isOwned || coins < g.cost} style={[s.buy, (isOwned || coins < g.cost) && { opacity:0.5 }]}>
+                  <Text style={s.buyTxt}>{isOwned ? 'Owned' : `Buy ${g.cost}g`}</Text>
                 </Pressable>
               </View>
             );
@@ -45,7 +38,7 @@ export default function Shop() {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   screen:{ flex:1, backgroundColor: colors.bg },
   row:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:10, borderBottomWidth:1, borderColor:'#2d2450' },
   name:{ color:'#fff', fontWeight:'800' },

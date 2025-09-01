@@ -1,32 +1,17 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import TopNav from '../ui/TopNav';
 import { Panel, colors } from '../ui/Skin';
 import { useGame } from '../game/store';
 import { heroArt, companionArt } from '../art';
-
-function useFloat(range=10, dur=1400) {
-  const v = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(v, { toValue: 1, duration: dur, useNativeDriver: false }),
-      Animated.timing(v, { toValue: 0, duration: dur, useNativeDriver: false }),
-    ]));
-    loop.start(); return () => loop.stop();
-  }, [v, range, dur]);
-  return { transform: [{ translateY: v.interpolate({ inputRange:[0,1], outputRange:[0,-range] }) }] };
-}
+import { floatStyle } from '../ui/FX';
 
 export default function Home({ navigation }) {
-  const { state, actions } = useGame();
-  const floatA = useFloat(8, 1300);
-  const floatB = useFloat(8, 1600);
-
-  const goQuests = () => navigation.navigate('Quests');
-  const goPet    = () => navigation.navigate('PetRoom');
-
-  const heroKey = state?.hero || 'bambi';
-  const compKey = state?.companion || 'molly';
+  const { state } = useGame();
+  const floatA = floatStyle(8, 1300);
+  const floatB = floatStyle(8, 1600);
+  const heroKey = state.hero || 'bambi';
+  const compKey = state.companion || 'molly';
 
   return (
     <View style={s.screen}>
@@ -39,21 +24,21 @@ export default function Home({ navigation }) {
             <Animated.Image source={companionArt[compKey] || companionArt.molly} style={[s.sprite, floatB]} resizeMode="contain" />
           </View>
           <View style={s.statsRow}>
-            <Text style={s.stat}>⭐ XP: {state?.xp ?? 0}</Text>
-            <Text style={s.stat}>🪙 Coins: {state?.coins ?? 0}</Text>
-            <Text style={s.stat}>🔥 Streak: {state?.streak ?? 0}</Text>
+            <Text style={s.stat}>⭐ XP: {state.xp}</Text>
+            <Text style={s.stat}>🪙 Coins: {state.coins}</Text>
+            <Text style={s.stat}>🔥 Streak: {state.streak}</Text>
           </View>
           <View style={s.ctaRow}>
-            <Pressable style={s.cta} onPress={goQuests}><Text style={s.ctaTxt}>Start Day →</Text></Pressable>
-            <Pressable style={s.cta} onPress={goPet}><Text style={s.ctaTxt}>Pet Room</Text></Pressable>
+            <Pressable style={s.cta} onPress={()=>navigation.navigate('Quests')}><Text style={s.ctaTxt}>Start Day →</Text></Pressable>
+            <Pressable style={s.cta} onPress={()=>navigation.navigate('PetRoom')}><Text style={s.ctaTxt}>Pet Room</Text></Pressable>
           </View>
         </Panel>
 
         <Panel title="Shortcuts" style={{ marginTop:12 }}>
           <View style={s.shortRow}>
-            <Pressable style={s.short} onPress={() => navigation.navigate('Shop')}><Text style={s.shortTxt}>Shop</Text></Pressable>
-            <Pressable style={s.short} onPress={() => navigation.navigate('Trends')}><Text style={s.shortTxt}>Trends</Text></Pressable>
-            <Pressable style={s.short} onPress={() => navigation.navigate('EndDay')}><Text style={s.shortTxt}>End Day</Text></Pressable>
+            <Pressable style={s.short} onPress={()=>navigation.navigate('Shop')}><Text style={s.shortTxt}>Shop</Text></Pressable>
+            <Pressable style={s.short} onPress={()=>navigation.navigate('Trends')}><Text style={s.shortTxt}>Trends</Text></Pressable>
+            <Pressable style={s.short} onPress={()=>navigation.navigate('EndDay')}><Text style={s.shortTxt}>End Day</Text></Pressable>
           </View>
         </Panel>
       </View>

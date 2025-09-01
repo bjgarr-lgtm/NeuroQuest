@@ -1,4 +1,4 @@
-// App.js — single root container (SafeArea + GameProvider + NavigationContainer + RootNav)
+// App.js — single root: SafeArea + GameProvider + NavigationContainer + RootNav
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
@@ -14,7 +14,6 @@ export default function App() {
       <GameProvider>
         <NavigationContainer>
           <StatusBar style="light" />
-          {/* Global FX overlay for pop-ups */}
           <ToastHost />
           <RootNav />
         </NavigationContainer>
