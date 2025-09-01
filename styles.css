@@ -167,3 +167,18 @@ button:active{ transform: translateY(1px) }
 
 /* XP bar smooth fill */
 .xp-bar>div{ transition: width .35s cubic-bezier(.2,.9,.2,1) }
+
+/* Music toggle */
+.music-toggle{ position:absolute; right:.6rem; top:.6rem; width:34px; height:34px; border-radius:999px; border:1px solid rgba(255,255,255,.12);
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.02)); color:var(--text); cursor:pointer; font-weight:900 }
+.music-toggle.on{ box-shadow:0 0 18px color-mix(in oklab, var(--accent-2) 40%, transparent); }
+
+.tile{ cursor:pointer; position:relative; overflow:hidden }
+.tile::after{ content:""; position:absolute; inset:auto 0 0 0; height:0; background:linear-gradient(90deg, var(--accent), var(--accent-2)); opacity:.2; transition:height .2s ease }
+.tile:hover::after{ height:100% }
+
+/* Blast FX */
+.bloom{ position:fixed; inset:0; background: radial-gradient(circle at center, rgba(255,255,255,.18), rgba(255,255,255,0) 60%); pointer-events:none; z-index:45; animation:bloomFade 700ms ease forwards }
+@keyframes bloomFade{ from{ opacity:.8 } to{ opacity:0 } }
+.shock{ position:fixed; left:50%; top:40%; width:20px; height:20px; border-radius:50%; border:3px solid color-mix(in oklab, var(--accent) 60%, transparent); transform:translate(-50%,-50%) scale(.5); z-index:46; animation:shockExpand 800ms cubic-bezier(.2,.9,.2,1) forwards }
+@keyframes shockExpand{ to{ transform:translate(-50%,-50%) scale(40); opacity:0 } }
