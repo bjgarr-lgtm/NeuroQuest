@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SootheBirb — Neon Pixel</title>
+  <title>SootheBirb — Finch Mode</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
+  <!-- Pixel font from Google Fonts (no local WOFF2 needed) -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
 </head>
 <body class="pixel crt">
@@ -50,7 +52,7 @@
     <button id="importBtn" class="secondary">Import</button>
   </footer>
 
-  <!-- Dashboard -->
+  <!-- Home -->
   <template id="tpl-home">
     <section class="dash-board">
       <div class="xp-slab">
@@ -59,14 +61,14 @@
         <div class="xp-meta"><span id="xpBigLabel">Lv 1</span></div>
       </div>
       <div class="tile-grid">
-        <a class="tile" data-route="tasks"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/planner.svg" alt=""/></div><div class="tile-label">Daily Planner</div></a>
-        <a class="tile" data-route="rewards"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/></div><div class="tile-label">Rewards</div></a>
-        <a class="tile" data-route="clean"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/broom.svg" alt=""/></div><div class="tile-label">Cleaning</div></a>
-        <a class="tile" data-route="coop"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/></div><div class="tile-label">Co‑Op</div></a>
-        <a class="tile" data-route="calendar"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/calendar.svg" alt=""/></div><div class="tile-label">Calendar</div></a>
-        <a class="tile" data-route="shop"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/></div><div class="tile-label">Shopping</div></a>
-        <a class="tile" data-route="budget"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/></div><div class="tile-label">Budget</div></a>
-        <a class="tile" data-route="meals"><div class="tile-ico"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/></div><div class="tile-label">Meals</div></a>
+        <a class="tile" data-route="tasks"><img class="tile-ico-img" src="assets/icons/planner.svg" alt=""/><div class="tile-label">Daily Planner</div></a>
+        <a class="tile" data-route="rewards"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Rewards</div></a>
+        <a class="tile" data-route="clean"><img class="tile-ico-img" src="assets/icons/broom.svg" alt=""/><div class="tile-label">Cleaning</div></a>
+        <a class="tile" data-route="coop"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Co‑Op</div></a>
+        <a class="tile" data-route="calendar"><img class="tile-ico-img" src="assets/icons/calendar.svg" alt=""/><div class="tile-label">Calendar</div></a>
+        <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
+        <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
+        <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
       </div>
     </section>
   </template>
@@ -302,7 +304,7 @@
       </label>
       <label class="field"><span>Typeface</span>
         <select id="fontSelect">
-          <option value="pixel">Pixel</option>
+          <option value="press2p">Press Start 2P</option>
           <option value="system-ui">System</option>
           <option value="serif">Serif</option>
           <option value="mono">Mono</option>
