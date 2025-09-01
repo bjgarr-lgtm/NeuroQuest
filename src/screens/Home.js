@@ -1,32 +1,26 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Image } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import TopNav from '../ui/TopNav';
 import { Panel, colors } from '../ui/Skin';
 import { useGame } from '../game/store';
 import { heroArt, companionArt } from '../art';
-
-function useFloat(range=10, dur=1400) {
-  const v = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(v, { toValue: 1, duration: dur, useNativeDriver: false }),
-      Animated.timing(v, { toValue: 0, duration: dur, useNativeDriver: false }),
-    ]));
-    loop.start(); return () => loop.stop();
-  }, [v, range, dur]);
-  return { transform: [{ translateY: v.interpolate({ inputRange:[0,1], outputRange:[0,-range] }) }] };
-}
+import { useFloat } from '../ui/FX';
 
 export default function Home({ navigation }) {
-  const { state, actions } = useGame();
+  const { state } = useGame();
   const floatA = useFloat(8, 1300);
   const floatB = useFloat(8, 1600);
 
-  const goQuests = () => navigation.navigate('Quests');
-  const goPet    = () => navigation.navigate('PetRoom');
+  const heroKey = state.hero || 'bambi';
+  const compKey = state.companion || 'molly';
 
-  const heroKey = state?.hero || 'bambi';
-  const compKey = state?.companion || 'molly';
+  const xpPct = Math.min(100, (state.xp % 100)); // simple loop to 100
+  const coinPct = Math.min(100, Math.round((state.coins % 200)/2));
+
+  const xpW = useRef(new Animated.Value(0)).current;
+  const cW  = useRef(new Animated.Value(0)).current;
+  useEffect(() => { Animated.timing(xpW,{ toValue: xpPct, duration:500, useNativeDriver:false }).start(); }, [xpPct]);
+  useEffect(() => { Animated.timing(cW,{ toValue: coinPct, duration:500, useNativeDriver:false }).start(); }, [coinPct]);
 
   return (
     <View style={s.screen}>
@@ -38,22 +32,25 @@ export default function Home({ navigation }) {
             <View style={{ width:16 }} />
             <Animated.Image source={companionArt[compKey] || companionArt.molly} style={[s.sprite, floatB]} resizeMode="contain" />
           </View>
-          <View style={s.statsRow}>
-            <Text style={s.stat}>⭐ XP: {state?.xp ?? 0}</Text>
-            <Text style={s.stat}>🪙 Coins: {state?.coins ?? 0}</Text>
-            <Text style={s.stat}>🔥 Streak: {state?.streak ?? 0}</Text>
+
+          <View style={s.bars}>
+            <Text style={s.label}>⭐ XP</Text>
+            <View style={s.bar}><Animated.View style={[s.fill, { width: xpW.interpolate({ inputRange:[0,100], outputRange:['0%','100%'] }) }]} /></View>
+            <Text style={s.label}>🪙 Coins</Text>
+            <View style={s.bar}><Animated.View style={[s.fillGold, { width: cW.interpolate({ inputRange:[0,100], outputRange:['0%','100%'] }) }]} /></View>
           </View>
+
           <View style={s.ctaRow}>
-            <Pressable style={s.cta} onPress={goQuests}><Text style={s.ctaTxt}>Start Day →</Text></Pressable>
-            <Pressable style={s.cta} onPress={goPet}><Text style={s.ctaTxt}>Pet Room</Text></Pressable>
+            <Pressable style={s.cta} onPress={()=>navigation.navigate('Quests')}><Text style={s.ctaTxt}>Start Day →</Text></Pressable>
+            <Pressable style={s.cta} onPress={()=>navigation.navigate('PetRoom')}><Text style={s.ctaTxt}>Pet Room</Text></Pressable>
           </View>
         </Panel>
 
         <Panel title="Shortcuts" style={{ marginTop:12 }}>
           <View style={s.shortRow}>
-            <Pressable style={s.short} onPress={() => navigation.navigate('Shop')}><Text style={s.shortTxt}>Shop</Text></Pressable>
-            <Pressable style={s.short} onPress={() => navigation.navigate('Trends')}><Text style={s.shortTxt}>Trends</Text></Pressable>
-            <Pressable style={s.short} onPress={() => navigation.navigate('EndDay')}><Text style={s.shortTxt}>End Day</Text></Pressable>
+            <Pressable style={s.short} onPress={()=>navigation.navigate('Shop')}><Text style={s.shortTxt}>Shop</Text></Pressable>
+            <Pressable style={s.short} onPress={()=>navigation.navigate('Trends')}><Text style={s.shortTxt}>Trends</Text></Pressable>
+            <Pressable style={s.short} onPress={()=>navigation.navigate('EndDay')}><Text style={s.shortTxt}>End Day</Text></Pressable>
           </View>
         </Panel>
       </View>
@@ -65,9 +62,14 @@ const s = StyleSheet.create({
   screen:{ flex:1, backgroundColor: colors.bg },
   banner:{ flexDirection:'row', alignItems:'center', justifyContent:'center', backgroundColor:'#0e0b1d', borderWidth:2, borderColor:'#2d2450', borderRadius:16, padding:12 },
   sprite:{ flex:1, height:160, backgroundColor:'transparent' },
-  statsRow:{ flexDirection:'row', justifyContent:'space-between', marginTop:10 },
-  stat:{ color:'#c9cbe0', fontWeight:'700' },
-  ctaRow:{ flexDirection:'row', marginTop:12 },
+
+  bars:{ marginTop:12 },
+  label:{ color:'#c9cbe0', marginBottom:6, fontWeight:'700' },
+  bar:{ height:14, borderRadius:999, borderWidth:2, borderColor:'#2d2450', backgroundColor:'#0f0b1f', overflow:'hidden', marginBottom:10 },
+  fill:{ height:'100%', backgroundColor:'#46FFC8' },
+  fillGold:{ height:'100%', backgroundColor:'#FFD166' },
+
+  ctaRow:{ flexDirection:'row', marginTop:8 },
   cta:{ flex:1, alignItems:'center', paddingVertical:12, borderRadius:12, borderWidth:2, borderColor:'#2d2450', backgroundColor:'#17132b', marginHorizontal:4 },
   ctaTxt:{ color:'#fff', fontWeight:'800' },
 

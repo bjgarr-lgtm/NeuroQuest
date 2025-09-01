@@ -1,15 +1,16 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from 'react-native';
 import { colors, Panel } from '../ui/Skin';
 import TopNav from '../ui/TopNav';
 import { useGame } from '../game/store';
 import { heroArt } from '../art';
-import { floatStyle } from '../ui/FX';
+import { useFloat, usePulse } from '../ui/FX';
 
 export default function CharacterSelect({ navigation }) {
   const { state, actions } = useGame();
-  const float = floatStyle(8, 1400);
   const heroKeys = useMemo(()=>Object.keys(heroArt||{}), []);
+  const float = useFloat(8, 1400);
+  const pulse = usePulse();
 
   const pick = (k) => { actions.setParty(k, state.companion || 'molly'); navigation.navigate('Companion'); };
 
@@ -21,7 +22,7 @@ export default function CharacterSelect({ navigation }) {
           <View style={s.grid}>
             {heroKeys.map(k => (
               <Pressable key={k} onPress={()=>pick(k)} style={s.card}>
-                <Animated.Image source={heroArt[k]} style={[s.art, float]} resizeMode="contain" />
+                <Animated.Image source={heroArt[k]} style={[s.art, float, pulse]} resizeMode="contain" />
                 <Text style={s.name}>{k}</Text>
               </Pressable>
             ))}

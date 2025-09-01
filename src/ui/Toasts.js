@@ -7,19 +7,21 @@ export function ToastHost() {
   const [msg, setMsg] = React.useState(null);
   const fade = React.useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => { pushToast = (m) => {
-    setMsg(m);
-    fade.setValue(0);
-    Animated.sequence([
-      Animated.timing(fade, { toValue:1, duration:150, useNativeDriver:false }),
-      Animated.delay(900),
-      Animated.timing(fade, { toValue:0, duration:200, useNativeDriver:false })
-    ]).start();
-  }; }, [fade]);
+  React.useEffect(() => {
+    pushToast = (m) => {
+      setMsg(m);
+      fade.setValue(0);
+      Animated.sequence([
+        Animated.timing(fade, { toValue:1, duration:150, useNativeDriver:false }),
+        Animated.delay(900),
+        Animated.timing(fade, { toValue:0, duration:200, useNativeDriver:false })
+      ]).start();
+    };
+  }, [fade]);
 
   if (!msg) return null;
   return (
-    <Animated.View style={[s.wrap, { opacity:fade }]}>
+    <Animated.View pointerEvents="none" style={[s.wrap, { opacity:fade }]}>
       <View style={s.box}><Text style={s.txt}>{msg}</Text></View>
     </Animated.View>
   );

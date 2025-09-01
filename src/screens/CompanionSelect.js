@@ -4,27 +4,24 @@ import { colors, Panel } from '../ui/Skin';
 import TopNav from '../ui/TopNav';
 import { useGame } from '../game/store';
 import { heroArt, companionArt } from '../art';
-import { floatStyle } from '../ui/FX';
+import { useFloat, usePulse } from '../ui/FX';
 
 export default function CompanionSelect({ navigation }) {
   const { state, actions } = useGame();
-  const float = floatStyle(8, 1400);
+  const float = useFloat(8, 1400);
+  const pulse = usePulse();
   const hero = state.hero;
 
   const options = useMemo(() => {
     const set = new Set([...Object.keys(heroArt||{}), ...Object.keys(companionArt||{})]);
     if (hero) set.delete(hero);
-    set.add('molly');
+    set.add('molly'); // ensure Molly
     return Array.from(set);
   }, [hero]);
 
   const artFor = (k) => companionArt[k] || heroArt[k];
 
-  const pick = (k) => {
-    actions.setParty(hero, k);
-    actions.startDay();
-    navigation.replace('Dashboard');
-  };
+  const pick = (k) => { actions.setParty(hero, k); actions.startDay(); navigation.replace('Dashboard'); };
 
   return (
     <View style={s.screen}>
@@ -34,7 +31,7 @@ export default function CompanionSelect({ navigation }) {
           <View style={s.grid}>
             {options.map(k => (
               <Pressable key={k} onPress={()=>pick(k)} style={s.card}>
-                <Animated.Image source={artFor(k)} style={[s.art, float]} resizeMode="contain" />
+                <Animated.Image source={artFor(k)} style={[s.art, float, pulse]} resizeMode="contain" />
                 <Text style={s.name}>{k}</Text>
               </Pressable>
             ))}
