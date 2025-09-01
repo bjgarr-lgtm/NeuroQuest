@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Platform } from 'react-native';
 
-// ---------- CONFETTI ----------
+/* -------------------- Confetti -------------------- */
 export function ConfettiBurst({ burstKey = 0, count = 18, size = 18, spread = 90, duration = 900 }) {
   const parts = useMemo(
     () => Array.from({ length: count }).map((_, i) => ({
@@ -49,7 +49,7 @@ export function ConfettiBurst({ burstKey = 0, count = 18, size = 18, spread = 90
 
 export const fxStyles = { portal: { position:'absolute', inset:0, pointerEvents:'none' } };
 
-// ---------- SFX (web-safe; uses WAVs you’ll add under assets/sfx) ----------
+/* -------------------- Sounds (WAV) -------------------- */
 const WAV = {
   select:  () => require('../../assets/sfx/select.wav'),
   coin:    () => require('../../assets/sfx/coin.wav'),
@@ -81,7 +81,7 @@ export async function playSFX(name) {
   } catch {}
 }
 
-// ---------- Haptics (optional, safe if module missing) ----------
+/* -------------------- Haptics (optional) -------------------- */
 export function haptic(kind='selection') {
   try {
     const H = require('expo-haptics');
@@ -94,4 +94,23 @@ export function haptic(kind='selection') {
     };
     (map[kind] || map.selection)();
   } catch {}
+}
+
+/* -------------------- Pulse border helper -------------------- */
+export function usePulse(duration = 800) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(a, { toValue: 1, duration, useNativeDriver:false }),
+        Animated.timing(a, { toValue: 0, duration, useNativeDriver:false }),
+      ])
+    );
+    loop.start(); return () => loop.stop();
+  }, []);
+  const borderColor = a.interpolate({
+    inputRange:[0,1],
+    outputRange:['#ffffff22', '#ffffff66'],
+  });
+  return { borderColor };
 }
