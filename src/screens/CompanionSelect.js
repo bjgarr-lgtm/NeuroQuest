@@ -1,48 +1,56 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, FlatList, useWindowDimensions, Alert } from 'react-native';
+import Sprite from '../ui/Sprite';
 import { HEROES } from './CharacterSelect';
 import { heroArt, companionArt } from '../art';
 
 export default function CompanionSelect({ navigation, route }) {
+  const { width } = useWindowDimensions();
+  const columns = width >= 1100 ? 3 : width >= 720 ? 2 : 1;
   const heroKey = route?.params?.heroKey ?? null;
 
-  // base: other heroes; if we have a companion sprite use it, else hero sprite
-  const base = HEROES
-    .filter(h => h.key !== heroKey)
-    .map(h => ({ key:h.key, label:h.label, img: companionArt[h.key] || heroArt[h.key] }));
-
-  // extras always available
-  const extras = [
-    { key:'molly', label:'Molly 🐶', img: companionArt.molly },
-    { key:'bird',  label:'Bird',     img: companionArt.bird },
-    { key:'star',  label:'Star',     img: companionArt.star },
-  ];
-
-  // merge + dedupe by key
-  const options = useMemo(()=>{
+  const options = useMemo(() => {
+    const base = HEROES
+      .filter(h => h.key !== heroKey)
+      .map(h => ({ key:h.key, label:h.label, img: companionArt[h.key] || heroArt[h.key] }));
+    const extras = [
+      { key:'molly', label:'Molly 🐶', img: companionArt.molly },
+      { key:'bird',  label:'Bird',     img: companionArt.bird  },
+      { key:'star',  label:'Star',     img: companionArt.star  },
+    ];
     const seen = new Set(); const out = [];
     [...base, ...extras].forEach(x => { if (!seen.has(x.key)) { seen.add(x.key); out.push(x); }});
     return out;
   }, [heroKey]);
 
   const [selected, setSelected] = useState(null);
-
   const goStart = () => {
     if (!selected) return Alert.alert('Pick a companion');
     navigation.navigate('Start', { heroKey, companionKey: selected });
   };
 
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      onPress={() => setSelected(item.key)}
+      style={[styles.card, selected === item.key && styles.sel]}>
+      <Sprite source={item.img} label={item.label} style={styles.img} />
+      <Text style={styles.label}>{item.label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.h2}>Choose a companion</Text>
-      <View style={styles.grid}>
-        {options.map(c => (
-          <TouchableOpacity key={c.key} onPress={() => setSelected(c.key)} style={[styles.card, selected === c.key && styles.sel]}>
-            <Image source={c.img} style={styles.img} />
-            <Text style={styles.label}>{c.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+
+      <FlatList
+        data={options}
+        key={columns}
+        numColumns={columns}
+        renderItem={renderItem}
+        keyExtractor={(it) => it.key}
+        columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
+        contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+      />
 
       <View style={styles.row}>
         <Pressable style={styles.btnGhost} onPress={() => navigation.goBack()}><Text style={styles.ghostText}>← Back</Text></Pressable>
@@ -52,13 +60,21 @@ export default function CompanionSelect({ navigation, route }) {
   );
 }
 
+const CARD_MAX = 320;
+
 const styles = StyleSheet.create({
   wrap:{ flex:1, backgroundColor:'#0d0a17', padding:16 },
   h2:{ color:'#fff', fontSize:18, marginBottom:10 },
-  grid:{ flexDirection:'row', flexWrap:'wrap', gap:12 },
-  card:{ flexGrow:1, minWidth:220, backgroundColor:'#1b1731', borderWidth:2, borderColor:'#2d2450', borderRadius:12, padding:8, alignItems:'center' },
-  sel:{ borderColor:'#B887FF' },
-  img:{ width:'100%', aspectRatio:4/3, borderRadius:10, borderWidth:2, borderColor:'#2d2450' },
+  card:{
+    flex:1,
+    maxWidth: CARD_MAX,
+    alignSelf:'center',
+    backgroundColor:'#1b1731',
+    borderWidth:2, borderColor:'#2d2450',
+    borderRadius:12, padding:8, alignItems:'center'
+  },
+  sel:{ borderColor:'#B887FF', shadowColor:'#B887FF', shadowOpacity:0.25, shadowRadius:10, shadowOffset:{width:0,height:2} },
+  img:{ borderRadius:10, borderWidth:2, borderColor:'#2d2450' },
   label:{ color:'#fff', marginTop:6 },
   row:{ flexDirection:'row', gap:10, marginTop:12 },
   btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
