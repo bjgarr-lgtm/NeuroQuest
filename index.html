@@ -22,7 +22,7 @@
       <button data-route="budget" class="nav-btn">Budget</button>
       <button data-route="meals" class="nav-btn">Meals</button>
       <button data-route="calendar" class="nav-btn">Calendar</button>
-      <button data-route="shop" class="nav-btn">Shopping</button>
+      <button data-route="shop" class="nav-btn">Shop</button>
       <button data-route="pet" class="nav-btn">Companion</button>
       <button data-route="breathe" class="nav-btn">Breathe</button>
       <button data-route="journal" class="nav-btn">Journal</button>
@@ -57,17 +57,23 @@
   <template id="tpl-characters">
     <section class="cardish">
       <h2 class="dash">Choose Your Character</h2>
-      <p class="sub">Upload art later; for now pick a style.</p>
+      <p class="sub">Pick a style or upload a custom portrait.</p>
       <div class="char-grid" id="charGrid"></div>
-      <div class="row"><button id="uploadChar" class="secondary">Upload custom art</button><input id="charFile" type="file" accept="image/*" style="display:none"/></div>
+      <div class="row"><button id="uploadChar" class="secondary">Upload custom</button><input id="charFile" type="file" accept="image/*" style="display:none"/></div>
     </section>
   </template>
 
-  <!-- Companion Mode -->
+  <!-- Companion Select + Mode -->
   <template id="tpl-companion">
     <section class="cardish">
-      <h2 class="dash">Choose Companion Mode</h2>
-      <div class="comp-grid" id="compGrid"></div>
+      <h2 class="dash">Choose Companion</h2>
+      <p class="sub">Play Solo or Toddler Week, then pick a companion portrait (or upload one).</p>
+      <div class="row">
+        <button id="modeSolo" class="primary small">Solo Week</button>
+        <button id="modeToddler" class="secondary small">Toddler Week</button>
+      </div>
+      <div class="comp-grid hero-grid" id="companionGrid"></div>
+      <div class="row"><button id="uploadComp" class="secondary">Upload companion</button><input id="compFile" type="file" accept="image/*" style="display:none"/></div>
     </section>
   </template>
 
@@ -85,7 +91,7 @@
         <a class="tile" data-route="clean"><img class="tile-ico-img" src="assets/icons/broom.svg" alt=""/><div class="tile-label">Cleaning</div></a>
         <a class="tile" data-route="coop"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Co‑Op</div></a>
         <a class="tile" data-route="calendar"><img class="tile-ico-img" src="assets/icons/calendar.svg" alt=""/><div class="tile-label">Calendar</div></a>
-        <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
+        <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shop</div></a>
         <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
         <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
         <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Character</div></a>
@@ -232,9 +238,10 @@
   <!-- Shop -->
   <template id="tpl-shop">
     <section class="shop">
-      <h2 class="dash">Shopping List</h2>
+      <h2 class="dash">Pet Shop — Accessories & Upgrades</h2>
       <div id="shopList" class="panel-list"></div>
-      <div class="row"><input id="shopItem" placeholder="Add item…"/><button id="addShop" class="primary">Add</button></div>
+      <div class="row"><input id="shopItem" placeholder="Add item…"/><button id="addShop" class="secondary">Add</button></div>
+      <div class="store" id="storeGrid"></div>
     </section>
   </template>
 
@@ -291,7 +298,7 @@
         </label>
         <button id="savePet" class="primary">Save</button>
       </div>
-      <details><summary>Accessories</summary><div class="grid two" id="accList"></div></details>
+      <details open><summary>Accessories</summary><div class="grid two" id="accList"></div></details>
     </section>
   </template>
 
@@ -330,9 +337,6 @@
           <option value="serif">Serif</option>
           <option value="mono">Mono</option>
         </select>
-      </label>
-      <label class="field"><span>Art Style</span>
-        <select id="artSelect"><option value="pixel">Pixel</option><option value="classic">Classic</option></select>
       </label>
       <label class="field"><span>CRT Scanlines</span><input type="checkbox" id="scanlinesToggle" checked/></label>
       <div class="row"><button id="saveSettings" class="primary">Save</button><button id="resetApp" class="danger">Reset app</button></div>
