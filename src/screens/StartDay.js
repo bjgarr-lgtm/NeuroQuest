@@ -1,53 +1,79 @@
-// StartDay.js — simple, reliable start gate
-import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
-import { useGame } from '../game/store';
-import { heroArt, companionArt } from '../art';
+// src/screens/StartDay.js
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Panel, ShinyButton, colors } from '../ui/Skin';
+import * as FX from '../ui/FX';
+const playSFX = FX.playSFX || (()=>{}); const haptic = FX.haptic || (()=>{});
+
+const MAIN = [
+  { id:'deep',   label:'Deep Work 20m',  payload:{xp:15, coins:5, cat:'main'} },
+  { id:'admin',  label:'Admin Sweep',    payload:{xp:10, coins:4, cat:'main'} },
+  { id:'move',   label:'Move Body 10m',  payload:{xp:10, coins:4, cat:'main'} },
+];
+const SIDE = [
+  { id:'hydrate', label:'Hydrate + Meds',  payload:{xp:5, coins:2,  cat:'side'} },
+  { id:'tidy',    label:'Tidy Corner',     payload:{xp:6, coins:2,  cat:'side'} },
+  { id:'msg',     label:'Send 1 Message',  payload:{xp:5, coins:2,  cat:'side'} },
+];
+
+function Chip({ on, label, onPress }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.chip, on && styles.chipOn]}>
+      <Text style={[styles.chipText, on && styles.chipTextOn]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function StartDay({ navigation, route }) {
-  const { state, actions } = useGame();
-  const heroKey = route?.params?.heroKey ?? state.hero ?? 'bambi';
-  const companionKey = route?.params?.companionKey ?? state.companion ?? 'molly';
-
-  // ensure party is stored (coming from deep refresh/back)
-  if (state.hero !== heroKey || state.companion !== companionKey) {
-    actions.setParty(heroKey, companionKey);
-  }
+  const [main, setMain] = useState(MAIN[0]);
+  const [side, setSide] = useState(SIDE[0]);
 
   const begin = () => {
-    actions.startDay();               // roll quests for today
-    navigation.replace('QuestBoard'); // go straight to quests
+    playSFX('select'); haptic('light');
+    // Store call if available
+    try {
+      const { useGame } = require('../game/store');
+      const { actions } = useGame.getState ? useGame.getState() : { actions:null };
+      actions?.startDay?.({ main, side });
+    } catch {}
+    navigation.navigate('Home');
   };
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.h1}>Begin Adventure</Text>
+      <Panel title="Pick your Main Quest" style={{ margin:16 }}>
+        <View style={styles.row}>
+          {MAIN.map(m => (
+            <Chip key={m.id} on={main.id===m.id} label={m.label} onPress={()=>setMain(m)} />
+          ))}
+        </View>
+      </Panel>
 
-      <View style={styles.row}>
-        <View style={styles.card}>
-          <Image source={heroArt[heroKey]} style={styles.img} resizeMode="contain" />
-          <Text style={styles.caption}>Hero: {heroKey}</Text>
+      <Panel title="Pick a Side Quest" style={{ marginHorizontal:16 }}>
+        <View style={styles.row}>
+          {SIDE.map(s => (
+            <Chip key={s.id} on={side.id===s.id} label={s.label} onPress={()=>setSide(s)} />
+          ))}
         </View>
-        <View style={styles.card}>
-          <Image source={companionArt[companionKey] || heroArt[companionKey]} style={styles.img} resizeMode="contain" />
-          <Text style={styles.caption}>Companion: {companionKey}</Text>
-        </View>
+      </Panel>
+
+      <View style={{ margin:16 }}>
+        <ShinyButton onPress={begin}>Begin Adventure →</ShinyButton>
       </View>
-
-      <Pressable style={styles.btn} onPress={begin}>
-        <Text style={styles.btnText}>Begin Adventure →</Text>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen:{ flex:1, backgroundColor:'#0d0a17', padding:16, gap:16 },
-  h1:{ color:'#fff', fontSize:20, fontWeight:'800' },
-  row:{ flexDirection:'row', gap:12 },
-  card:{ flex:1, backgroundColor:'#131024', borderWidth:2, borderColor:'#2d2450', borderRadius:14, padding:10, alignItems:'center' },
-  img:{ width:'100%', height:220, borderRadius:10, borderWidth:2, borderColor:'#2d2450' },
-  caption:{ color:'#c9cbe0', marginTop:6 },
-  btn:{ backgroundColor:'#fff', paddingVertical:14, borderRadius:12, alignItems:'center' },
-  btnText:{ color:'#0d0a17', fontWeight:'800' },
+  screen:{ flex:1, backgroundColor: colors.bg },
+  row:{ flexDirection:'row', flexWrap:'wrap', gap:10 },
+  chip:{
+    paddingVertical:10, paddingHorizontal:12, borderRadius:12,
+    borderWidth:2, borderColor:'#2d2450', backgroundColor:'#17132b'
+  },
+  chipOn:{
+    backgroundColor:'#10231e', borderColor:'#46FFC8'
+  },
+  chipText:{ color:'#c9cbe0', fontWeight:'700' },
+  chipTextOn:{ color:'#46FFC8' },
 });

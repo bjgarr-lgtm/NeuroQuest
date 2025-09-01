@@ -12,7 +12,10 @@ import CompanionSelect from '../screens/CompanionSelect';
 import StartDay from '../screens/StartDay';
 
 import QuestBoard from '../screens/QuestBoard';
-import Activities from '../screens/Activities'; // alias that re-exports QuestBoard
+import FocusTimer from '../screens/FocusTimer';
+import PetRoom from '../screens/PetRoom';
+import Shop from '../screens/Shop';
+
 import EndDay from '../screens/EndDay';
 import Trends from '../screens/Trends';
 
@@ -37,8 +40,10 @@ export default function RootNav() {
         <Stack.Screen name="Companion" component={CompanionSelect} options={{ title:'Choose Companion' }} />
         <Stack.Screen name="Start" component={StartDay} options={{ title:'Start Day' }} />
 
-        <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title: 'Daily Activities' }} />
-        <Stack.Screen name="Activities" component={Activities} options={{ title: 'Daily Activities' }} />
+        <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title: 'Daily Quests' }} />
+        <Stack.Screen name="FocusTimer" component={FocusTimer} options={{ title:'Focus Timer' }} />
+        <Stack.Screen name="PetRoom" component={PetRoom} options={{ title:'Pet Room' }} />
+        <Stack.Screen name="Shop" component={Shop} options={{ title:'Shop' }} />
 
         <Stack.Screen name="EndDay" component={EndDay} options={{ title: 'End of Day' }} />
         <Stack.Screen name="Trends" component={Trends} options={{ title: 'Trends' }} />
