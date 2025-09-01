@@ -94,3 +94,106 @@ input, textarea, select{
 .stats{ opacity:.9; display:flex; gap:1rem; flex-wrap:wrap }
 .cta{ display:inline-block; text-decoration:none }
 .hidden{ display:none !important }
+
+
+/* Retro Neon Dungeon theme */
+:root.theme-retro {
+  --bg:#000000; --surface:#0b0b0b; --muted:#151515; --text:#e6faff;
+  --accent:#00eaff; --accent-2:#ff3ea5; --danger:#ff3860;
+}
+body.pixel {
+  font-family: monospace;
+  letter-spacing: 0.3px;
+  /* simulate crisp bitmap edges */
+  -webkit-font-smoothing: none; -moz-osx-font-smoothing: grayscale;
+}
+
+/* Neon buttons */
+button, .cta{
+  position: relative;
+  text-shadow: 0 0 8px rgba(255,255,255,.15);
+  box-shadow: 0 0 12px rgba(0,0,0,.5), 0 0 18px color-mix(in oklab, var(--accent) 50%, transparent);
+  border: 1px solid rgba(255,255,255,.08);
+}
+button:hover, .cta:hover{
+  box-shadow: 0 0 16px color-mix(in oklab, var(--accent) 60%, transparent), 0 0 32px color-mix(in oklab, var(--accent-2) 40%, transparent);
+}
+
+/* Pixel edges & crisp SVG */
+.pet-stage svg{ shape-rendering: crispEdges }
+.pixelize { image-rendering: pixelated; }
+
+/* CRT scanlines */
+body.crt::before{
+  content:""; pointer-events:none; position:fixed; inset:0;
+  background: repeating-linear-gradient( to bottom, rgba(255,255,255,.04), rgba(255,255,255,.04) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode: overlay; opacity:.25;
+}
+body.crt::after{
+  content:""; pointer-events:none; position:fixed; inset:0;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,.06), transparent 60%);
+  opacity:.15;
+}
+
+/* D20 faint background for cards (neon) */
+.card{
+  background:
+    radial-gradient(1200px 400px at 50% -300px, rgba(255,255,255,.06), transparent),
+    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+  position: relative;
+  overflow:hidden;
+}
+.card::after{
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='32,2 61,20 50,60 14,60 3,20' fill='none' stroke='%23ffffff' stroke-width='2'/%3E%3Cline x1='32' y1='2' x2='32' y2='60' stroke='%23ffffff' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 95% 10%; background-size: 80px 80px;
+}
+
+/* Headings neon glow */
+h1,h2,h3{ text-shadow: 0 0 10px color-mix(in oklab, var(--accent) 50%, transparent) }
+
+
+/* HUD strip */
+.hud{ display:flex; gap:1rem; align-items:center; padding:.4rem .6rem .8rem; }
+.hud .hearts{ display:flex; gap:.35rem }
+.heart{ width:22px; height:20px; display:inline-block; background: conic-gradient(from 45deg, #ff6584, #ff2d55); clip-path:path("M10,3 C10,1 12,0 13.5,1.5 C15,0 17,1 17,3 C17,6 13.5,8.5 13.5,8.5 L10,12 L6.5,8.5 C6.5,8.5 3,6 3,3 C3,1 5,0 6.5,1.5 C8,0 10,1 10,3 Z"); filter: drop-shadow(0 0 6px rgba(255,46,115,.6)); }
+.heart.off{ opacity:.25; filter:none }
+
+.xp-wrap{ display:grid; gap:.25rem; min-width: 220px }
+.xp-label{ display:flex; align-items:center; gap:.5rem; font-weight:800; letter-spacing:.5px }
+.xp-label .flame{ filter: drop-shadow(0 0 10px rgba(255,120,0,.6)); }
+.xp-bar{ width:100%; height:12px; border:2px solid rgba(255,255,255,.08); border-radius:999px; background:#0b0b0b; overflow:hidden; box-shadow:0 0 12px rgba(0,0,0,.4) inset }
+.xp-bar>div{ height:100%; width:0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow:0 0 12px color-mix(in oklab, var(--accent) 60%, transparent); }
+
+/* Quest Board Panels */
+.quest-board{ display:grid; gap:1rem }
+.panels{ display:grid; gap:1rem }
+@media (min-width:700px){ .panels{ grid-template-columns: repeat(3, 1fr) } }
+.panel{
+  background: var(--surface);
+  border-radius: 16px;
+  padding:.8rem;
+  position: relative;
+  border: 2px solid rgba(255,255,255,.06);
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,.7) inset,
+    0 0 24px rgba(0,0,0,.5);
+}
+.panel-title{
+  font-weight:900; letter-spacing:.8px; margin-bottom:.5rem; text-transform:uppercase;
+  text-shadow: 0 0 8px color-mix(in oklab, var(--accent) 40%, transparent);
+}
+.panel-red    { border-color: #ff3e6c; box-shadow: 0 0 0 2px #2a0b15 inset, 0 0 18px #ff3e6c30; }
+.panel-green  { border-color: #00ffa7; box-shadow: 0 0 0 2px #06231b inset, 0 0 18px #00ffa730; }
+.panel-purple { border-color: #8a5cff; box-shadow: 0 0 0 2px #1b0d36 inset, 0 0 18px #8a5cff30; }
+.add-panel    { border-style:dashed; opacity:.9 }
+
+.panel-list{ display:grid; gap:.5rem }
+.quest-row{ display:flex; align-items:center; gap:.6rem; padding:.45rem .5rem; border:1px solid rgba(255,255,255,.08); border-radius:.6rem; background: rgba(255,255,255,.02) }
+.quest-row.done{ opacity:.6; text-decoration: line-through; }
+
+.checkbox{ width:20px; height:20px; border:2px solid rgba(255,255,255,.18); border-radius:4px; display:grid; place-items:center; background:rgba(0,0,0,.25); cursor:pointer }
+.checkbox.checked{ background: linear-gradient(180deg, #67ffb1, #00ffa7); border-color:#00ffa7; color:#052b22 }
+
+/* Dashboard headings */
+.dash{ font-size:1.25rem; text-transform:uppercase; letter-spacing:1px; text-shadow:0 0 10px color-mix(in oklab, var(--accent-2) 40%, transparent) }

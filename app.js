@@ -4,7 +4,7 @@
 const KEY = "soothebirb.v1";
 
 const defaultState = () => ({
-  user: { name: "", theme: "forest", font: "system-ui" },
+  user: { name: "", theme: "forest", font: "system-ui", art:"classic", scanlines:true },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: [], discovered: ["cap","bow","glasses"] },
   streak: { current: 0, best: 0, lastCheck: "" },
   log: {
@@ -153,6 +153,86 @@ const ALL_ACC = [
 ];
 
 
+function petPixelSVG(species, level, acc=[]){
+  const px = (x,y,c)=> `<rect x='${x}' y='${y}' width='1' height='1' fill='${c}'/>`;
+  // Simple 16x16 sprites using accent colors
+  const C1 = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#00eaff';
+  const C2 = getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim() || '#ff3ea5';
+  const B = 'rgba(0,0,0,.0)';
+  const sprites = {
+    birb: [
+      "................",
+      "......11........",
+      ".....1111.......",
+      "....111111......",
+      "...11111111.....",
+      "...11122111.....",
+      "...11222111.....",
+      "...11122111.....",
+      "...11111111.....",
+      "....111111......",
+      ".....1..1.......",
+      ".....1..1.......",
+      "................",
+      "................",
+      "................",
+      "................",
+    ],
+    sprout: [
+      "................",
+      "......22........",
+      ".....2222.......",
+      ".......22.......",
+      "....111111......",
+      "...11111111.....",
+      "...11111111.....",
+      "...11111111.....",
+      "...11111111.....",
+      "...11111111.....",
+      "....111111......",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+    ],
+    blob: [
+      "................",
+      "................",
+      "....111111......",
+      "..1111111111....",
+      "..1111111111....",
+      ".111111111111...",
+      ".111111111111...",
+      ".111111111111...",
+      ".111111111111...",
+      "..1111111111....",
+      "..1111111111....",
+      "....111111......",
+      "................",
+      "................",
+      "................",
+      "................",
+    ],
+  };
+  const grid = sprites[species] || sprites.blob;
+  let pixels = "";
+  for(let y=0; y<16; y++){
+    for(let x=0; x<16; x++){
+      const ch = grid[y][x];
+      if(ch==='1') pixels += px(x,y,C1);
+      if(ch==='2') pixels += px(x,y,C2);
+    }
+  }
+  const levelBadge = `<text x="2" y="8" font-size="4" fill="rgba(255,255,255,.8)">Lv.${level}</text>`;
+  return `<svg viewBox="0 0 16 16" width="140" height="140" class="pixelize" role="img" aria-label="Companion (pixel)">
+    <rect x="0" y="0" width="16" height="16" fill="rgba(255,255,255,.04)" rx="2"/>
+    ${pixels}
+    ${levelBadge}
+  </svg>`;
+}
+
+
 // == activities.js ==
 
 // Breathing animation and prompts
@@ -205,6 +285,10 @@ const PROMPTS = [
 
 let state = loadState();
 
+// Patch old tasks without 'tier'
+state.log.tasks.forEach(t=>{ if(!('tier' in t)) t.tier='side'; });
+
+
 // Wire nav
 $$(".top-nav .nav-btn").forEach(btn=> btn.addEventListener("click", ()=>{
   routeTo(btn.dataset.route);
@@ -232,14 +316,37 @@ function importData(ev){
 }
 
 function applyTheme(){
-  document.documentElement.classList.remove("theme-forest","theme-dusk","theme-sunrise","theme-ocean","theme-punk");
+  document.documentElement.classList.remove("theme-forest","theme-dusk","theme-sunrise","theme-ocean","theme-punk","theme-retro");
   document.documentElement.classList.add("theme-"+(state.user.theme||"forest"));
   document.body.style.fontFamily = state.user.font || "system-ui";
+  document.body.classList.toggle('pixel', state.user.art === 'pixel');
+  document.body.classList.toggle('crt', !!state.user.scanlines);
 }
 applyTheme();
+renderHUD();
 
 window.addEventListener("hashchange", renderRoute);
 renderRoute();
+
+
+function renderHUD(){
+  const hud = document.getElementById("hudStrip");
+  if(!hud) return;
+  hud.classList.remove("hidden");
+  // hearts: 3 static for now; later tie to wellness meter
+  const hp = 3, cur = Math.min(3, Math.floor(1 + (state.streak.current>0 ? 1:0) + (state.pet.level>3 ? 1:0)));
+  const hearts = Array.from({length:3}, (_,i)=> `<span class="heart ${i<cur?'':'off'}"></span>`).join('');
+  document.getElementById("hudHearts").innerHTML = hearts;
+
+  // xp bar
+  const lvl = state.pet.level;
+  const xp = state.pet.xp;
+  const next = xpForLevel(lvl+1);
+  const prev = xpForLevel(lvl);
+  const pct = Math.max(0, Math.min(100, Math.round(((xp - prev)/(next - prev))*100)));
+  document.getElementById("hudLevel").textContent = `Lv ${lvl}`;
+  document.getElementById("hudXp").style.width = pct + "%";
+}
 
 function renderRoute(){
   const name = (location.hash||"#home").replace("#","");
@@ -266,7 +373,8 @@ function updateFooter(){
 
 function renderHome(){
   $("#welcomeName").textContent = state.user.name ? `, ${state.user.name}` : "";
-  $("#homePet").innerHTML = `<div class="pet">${petSVG(state.pet.species, state.pet.level, state.pet.acc)}</div>`;
+  const petMarkup = (state.user.art==='pixel') ? petPixelSVG(state.pet.species, state.pet.level, state.pet.acc) : petSVG(state.pet.species, state.pet.level, state.pet.acc);
+  $("#homePet").innerHTML = `<div class="pet">${petMarkup}</div>`;
   // Today summary
   const dkey = dayKey();
   const todayMoods = state.log.moods.filter(m=> dayKey(m.ts)===dkey);
@@ -312,44 +420,48 @@ function initCheckin(){
 }
 
 const DEFAULT_TASKS = [
-  "2 minutes of stretching",
-  "Drink a glass of water",
-  "Look outside for 30 seconds",
-  "Tidy one tiny thing",
-  "Send a kind text to someone",
+  {title:"Pay a bill", tier:"main"},
+  {title:"Pick up prescription", tier:"main"},
+  {title:"Clean bathroom", tier:"side"},
+  {title:"Journal", tier:"side"},
+  {title:"Organize drawer", tier:"bonus"},
 ];
 function initTasks(){
-  const list = $("#taskList");
   // Ensure task list has today's defaults
   if(state.log.tasks.length===0){
-    DEFAULT_TASKS.forEach(t=> state.log.tasks.push({id:crypto.randomUUID(), title:t, done:false, ts:0}));
+    DEFAULT_TASKS.forEach(t=> state.log.tasks.push({id:crypto.randomUUID(), title:t.title, tier:t.tier, done:false, ts:0}));
     saveState(state);
   }
+  const panelMain = $("#panelMain"), panelSide=$("#panelSide"), panelBonus=$("#panelBonus");
   function render(){
-    list.replaceChildren();
+    panelMain.replaceChildren(); panelSide.replaceChildren(); panelBonus.replaceChildren();
+    const tiers = {main:panelMain, side:panelSide, bonus:panelBonus};
     state.log.tasks.forEach(task=>{
-      const row = el("div",{className:"row"});
-      const cb = el("input",{type:"checkbox"});
-      cb.checked = task.done;
-      cb.addEventListener("change", ()=>{
-        task.done = cb.checked; task.ts = cb.checked? Date.now():0;
+      const row = el("div",{className:"quest-row"});
+      if(task.done) row.classList.add("done");
+      // faux checkbox
+      const box = el("div",{className: "checkbox" + (task.done?" checked":"")});
+      box.innerHTML = task.done? "✓" : "";
+      box.addEventListener("click", ()=>{
+        task.done = !task.done; task.ts = task.done? Date.now():0;
         if(task.done){ touchStreak(state); addXP(state, 3); }
-        saveState(state); render(); updateFooter();
+        saveState(state); render(); updateFooter(); renderHUD();
       });
-      const title = el("span",{textContent: task.title, style: task.done? "text-decoration:line-through; opacity:.7":""});
+      const title = el("span",{textContent: task.title});
       const del = el("button",{className:"secondary", textContent:"Delete"});
       del.addEventListener("click", ()=>{
         state.log.tasks = state.log.tasks.filter(x=> x.id!==task.id);
         saveState(state); render();
       });
-      row.append(cb, title, del);
-      list.appendChild(row);
+      row.append(box, title, del);
+      (tiers[task.tier||'side']||panelSide).appendChild(row);
     });
   }
   render();
   $("#addTaskBtn").addEventListener("click", ()=>{
     const t = $("#newTaskTitle").value.trim(); if(!t) return;
-    state.log.tasks.push({id:crypto.randomUUID(), title:t, done:false, ts:0});
+    const tier = $("#newTaskTier").value || 'side';
+    state.log.tasks.push({id:crypto.randomUUID(), title:t, tier, done:false, ts:0});
     $("#newTaskTitle").value = ""; saveState(state); render();
   });
 }
@@ -397,7 +509,8 @@ function initJournal(){
 
 function initPet(){
   const stage = $("#petStage");
-  stage.innerHTML = `<div class="pet">${petSVG(state.pet.species, state.pet.level, state.pet.acc)}</div>`;
+  const petMarkup2 = (state.user.art==='pixel') ? petPixelSVG(state.pet.species, state.pet.level, state.pet.acc) : petSVG(state.pet.species, state.pet.level, state.pet.acc);
+  stage.innerHTML = `<div class="pet">${petMarkup2}</div>`;
 
   const stats = $("#petStats");
   const xp = state.pet.xp, lvl = state.pet.level, next = xpForLevel(lvl+1);
@@ -428,16 +541,22 @@ function initSettings(){
   $("#userName").value = state.user.name || "";
   $("#themeSelect").value = state.user.theme || "forest";
   $("#fontSelect").value = state.user.font || "system-ui";
+  $("#artSelect").value = state.user.art || "classic";
+  $("#scanlinesToggle").checked = !!state.user.scanlines;
 
   $("#saveSettings").addEventListener("click", ()=>{
     state.user.name = $("#userName").value.trim();
     state.user.theme = $("#themeSelect").value;
     state.user.font = $("#fontSelect").value;
-    applyTheme(); saveState(state); alert("Saved!");
+    state.user.art = $("#artSelect").value;
+    state.user.scanlines = $("#scanlinesToggle").checked;
+    applyTheme();
+renderHUD(); saveState(state); alert("Saved!");
   });
 
   $("#resetApp").addEventListener("click", ()=>{
-    if(confirm("Reset all data?")){ resetState(); state = loadState(); applyTheme(); renderRoute(); }
+    if(confirm("Reset all data?")){ resetState(); state = loadState(); applyTheme();
+renderHUD(); renderRoute(); }
   });
 
   // Preview swatches inherit CSS variables, no extra logic needed
@@ -445,8 +564,3 @@ function initSettings(){
 
 // Initial streak touch on load for the day
 touchStreak(state); saveState(state);
-
-
-
-// mark init
-window.__SOOTHEBIRB_OK__ = true;

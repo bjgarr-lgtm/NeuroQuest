@@ -23,6 +23,13 @@
       <button data-route="pet" class="nav-btn">Companion</button>
       <button data-route="settings" class="nav-btn">Settings</button>
     </nav>
+    <div id="hudStrip" class="hud hidden">
+      <div class="hearts" id="hudHearts" aria-label="HP"></div>
+      <div class="xp-wrap" aria-label="XP">
+        <div class="xp-label"><span id="hudLevel">Lv 1</span><span class="flame" aria-hidden="true">🔥</span></div>
+        <div class="xp-bar"><div id="hudXp"></div></div>
+      </div>
+    </div>
   </header>
 
   <main id="view" class="view"></main>
@@ -83,13 +90,32 @@
   </template>
 
   <template id="tpl-tasks">
-    <section class="card">
-      <h2>Quests</h2>
-      <p>Small, doable things that earn XP.</p>
-      <div id="taskList" class="list"></div>
-      <div class="row">
-        <input id="newTaskTitle" placeholder="Add custom quest…"/>
-        <button id="addTaskBtn" class="primary">Add</button>
+    <section class="quest-board">
+      <h2 class="dash">Daily Quest Board</h2>
+      <div class="panels">
+        <div class="panel panel-red">
+          <div class="panel-title">Main Quest</div>
+          <div id="panelMain" class="panel-list"></div>
+        </div>
+        <div class="panel panel-green">
+          <div class="panel-title">Side Quests</div>
+          <div id="panelSide" class="panel-list"></div>
+        </div>
+        <div class="panel panel-purple">
+          <div class="panel-title">Bonus Loot</div>
+          <div id="panelBonus" class="panel-list"></div>
+        </div>
+      </div>
+      <div class="panel add-panel">
+        <div class="row">
+          <input id="newTaskTitle" placeholder="Add a quest…"/>
+          <select id="newTaskTier">
+            <option value="main">Main</option>
+            <option value="side">Side</option>
+            <option value="bonus">Bonus</option>
+          </select>
+          <button id="addTaskBtn" class="primary">Add</button>
+        </div>
       </div>
     </section>
   </template>
@@ -165,6 +191,7 @@
           <option value="sunrise">Sunrise</option>
           <option value="ocean">Ocean</option>
           <option value="punk">Punk</option>
+          <option value="retro">Retro Neon</option>
         </select>
       </label>
       <label class="field"><span>Typeface</span>
@@ -173,6 +200,15 @@
           <option value="serif">Serif</option>
           <option value="mono">Mono</option>
         </select>
+      </label>
+      <label class="field"><span>Art Style</span>
+        <select id="artSelect">
+          <option value="classic">Classic</option>
+          <option value="pixel">Pixel</option>
+        </select>
+      </label>
+      <label class="field"><span>CRT Scanlines</span>
+        <input type="checkbox" id="scanlinesToggle"/>
       </label>
       <div class="row">
         <button id="saveSettings" class="primary">Save</button>
