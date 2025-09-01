@@ -1,0 +1,15 @@
+PATCH: v2.5.0 -> v2.7.0 (Finch-Plus)
+Files replaced:
+- index.html
+- styles.css
+- app.js
+New/updated assets:
+- assets/icon.svg
+- assets/icons/*.svg
+- assets/heroes/*.png (Bambi, Ash, Odin, Fox, Molly)
+
+Notes:
+- No schema-breaking changes in localStorage key 'soothebirb.v27' (separate key from old).
+- If your project already uses a different key, you can rename KEY at top of app.js.
+- Pet rendering is now crisp SVG; accessories update instantly.
+- Character/Companion upload works out of the box.
