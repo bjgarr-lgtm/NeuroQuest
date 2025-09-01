@@ -1,37 +1,52 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Image, StyleSheet, Animated, Pressable } from 'react-native';
+// src/screens/Splash.js
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Image, StyleSheet, Animated, Pressable } from 'react-native';
+import { colors } from '../ui/Skin';
 
 export default function Splash({ navigation }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale   = useRef(new Animated.Value(0.95)).current;
-
-  const go = () => navigation.replace('Welcome');
+  const [imgOk, setImgOk] = useState(true);
+  const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // fade in → hold → fade out → Welcome
     Animated.sequence([
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 900, useNativeDriver: false }),
-        Animated.timing(scale,   { toValue: 1, duration: 900, useNativeDriver: false }),
-      ]),
-      Animated.delay(3200),                    // 👈 linger here
-      Animated.timing(opacity, { toValue: 0, duration: 800, useNativeDriver: false }),
-    ]).start(go);
-  }, []);
+      Animated.timing(fade, { toValue: 1, duration: 600, useNativeDriver:false }),
+      Animated.delay(1600),
+      Animated.timing(fade, { toValue: 0, duration: 500, useNativeDriver:false }),
+    ]).start(() => navigation.replace('Welcome'));
+  }, [fade, navigation]);
+
+  const goNow = () => navigation.replace('Welcome');
 
   return (
-    <Pressable onPress={go} style={styles.screen}>
-      <Animated.View style={{ opacity, transform: [{ scale }] }}>
-        <Image
-          source={require('../../assets/splash.png')}
-          resizeMode="contain"
-          style={styles.img}
-        />
+    <Pressable onPress={goNow} style={styles.screen}>
+      <Animated.View style={[styles.card, { opacity: fade }]}>
+        {imgOk ? (
+          <Image
+            source={require('../../assets/splash.png')} // ensure this file exists
+            onError={()=>setImgOk(false)}
+            style={styles.hero}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={[styles.hero,{ alignItems:'center', justifyContent:'center' }]}>
+            <Text style={{ color:'#fff', fontSize:28, fontWeight:'800' }}>NEUROQUEST</Text>
+            <Text style={{ color:'#c9cbe0', marginTop:6 }}>Questing for focus, powered by snacks & spite.</Text>
+          </View>
+        )}
+        <Text style={styles.hint}>tap to skip</Text>
       </Animated.View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0d0a17', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  img:    { width: '100%', height: 520, maxWidth: 1100 },
+  screen:{ flex:1, backgroundColor: colors.bg, alignItems:'center', justifyContent:'center' },
+  card:{
+    width:'90%', maxWidth:900,
+    backgroundColor:'#131024', borderRadius:18, borderWidth:2, borderColor:'#2d2450',
+    padding:16, alignItems:'center'
+  },
+  hero:{ width:'100%', height:260 },
+  hint:{ color:'#8c89a6', marginTop:8, fontSize:12 },
 });

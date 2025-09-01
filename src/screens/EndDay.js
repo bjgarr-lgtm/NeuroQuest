@@ -1,54 +1,67 @@
-// src/screens/Shop.js
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Panel, ShinyButton, colors } from '../ui/Skin';
+// src/screens/EndDay.js
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import TopNav from '../ui/TopNav';
+import { Panel, colors } from '../ui/Skin';
+import { useGame } from '../game/store';
 import * as FX from '../ui/FX';
-const ConfettiBurst = FX.ConfettiBurst || (()=>null);
 const playSFX = FX.playSFX || (()=>{}); const haptic = FX.haptic || (()=>{});
 
-const ITEMS = [
-  { id:'hoodie', name:'Neon Hoodie', price:80, icon:'🧥' },
-  { id:'cloak',  name:'Star Cloak',  price:60, icon:'🧥' },
-  { id:'ears',   name:'Fox Ears',    price:30, icon:'🪄' },
-  { id:'cape',   name:'Aurora Cape', price:100,icon:'🧥' },
+const GOODS = [
+  { id:'skin-neon-hoodie', name:'Neon Hoodie', cost:80 },
+  { id:'skin-star-cloak',  name:'Star Cloak',  cost:60 },
+  { id:'trinket-fox-ears', name:'Fox Ears',    cost:30 },
+  { id:'skin-aurora-cape', name:'Aurora Cape', cost:100 },
 ];
 
-export default function Shop() {
-  const [burstKey, setBurstKey] = useState(0);
-  let coins = 0, owned = new Set();
-  try {
-    const { useGame } = require('../game/store');
-    const s = useGame.getState?.().state;
-    coins = s?.coins ?? 0;
-    owned = new Set(s?.skins ?? []);
-  } catch {}
+export default function EndDay({ navigation }) {
+  const { state, actions } = useGame();
+  const coins = state?.coins ?? 0;
+  const owned = new Set(state?.cosmetics?.owned || []);
 
-  const buy = (item) => {
-    if (owned.has(item.id) || coins < item.price) { playSFX('cheer'); return; }
-    try {
-      const { useGame } = require('../game/store');
-      const a = useGame.getState?.().actions;
-      a?.buySkin?.(item.id, item.price);
-    } catch {}
-    setBurstKey(k=>k+1); playSFX('coin'); haptic('medium');
+  const buy = (g) => {
+    const ok = actions?.purchase?.(g);
+    if (ok) { playSFX('coin'); haptic('medium'); }
+    else    { playSFX('deny'); haptic('error'); }
   };
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={{ padding:16, paddingBottom:32 }}>
-        <Panel title="Shop • Cosmetics Only">
-          <View style={FX.fxStyles?.portal || { position:'absolute', inset:0 }}><ConfettiBurst burstKey={burstKey} /></View>
-          <View style={styles.row}>
-            {ITEMS.map(it => (
-              <Pressable key={it.id} onPress={()=>buy(it)} style={[styles.card, owned.has(it.id) && styles.owned]}>
-                <Text style={styles.icon}>{it.icon}</Text>
-                <Text style={styles.name}>{it.name}</Text>
-                <Text style={styles.price}>{owned.has(it.id) ? 'Owned' : `🪙 ${it.price}`}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.note}>Coins from quests & timers. No pay-to-win.</Text>
+      {/* Top navigation so this page isn’t a trap */}
+      <TopNav />
+
+      <ScrollView contentContainerStyle={{ paddingHorizontal:16, paddingBottom:24 }}>
+        <Panel title="Day Summary">
+          <Text style={styles.txt}>+{state?.today?.xpGain ?? 0} XP  •  +{state?.today?.coinGain ?? 0}g  •  Streak {state?.streak ?? 0}</Text>
         </Panel>
+
+        <Panel title={`Shop • Cosmetics Only (Coins: ${coins})`} style={{ marginTop:12 }}>
+          {GOODS.map((g) => {
+            const isOwned = owned.has(g.id);
+            return (
+              <View key={g.id} style={styles.row}>
+                <Text style={styles.name}>{g.name}</Text>
+                <Pressable
+                  disabled={isOwned}
+                  onPress={()=>buy(g)}
+                  style={[styles.buy, isOwned && { opacity:0.5 }]}
+                >
+                  <Text style={styles.buyTxt}>{isOwned ? 'Owned' : `Buy ${g.cost}g`}</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+          <Text style={[styles.txt,{ marginTop:12 }]}>Coins are earned from quests & timers. No pay-to-win.</Text>
+        </Panel>
+
+        <View style={{ flexDirection:'row', marginTop:16 }}>
+          <Pressable style={[styles.navBtn,{ marginRight:8 }]} onPress={()=>navigation.navigate('Dashboard')}>
+            <Text style={styles.navBtnTxt}>Back to Home</Text>
+          </Pressable>
+          <Pressable style={[styles.navBtn,{ marginLeft:8 }]} onPress={()=>actions?.startDay?.()}>
+            <Text style={styles.navBtnTxt}>Roll Tomorrow</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );
@@ -56,11 +69,11 @@ export default function Shop() {
 
 const styles = StyleSheet.create({
   screen:{ flex:1, backgroundColor: colors.bg },
-  row:{ flexDirection:'row', flexWrap:'wrap', gap:12, marginTop:6 },
-  card:{ flexBasis:'48%', backgroundColor:'#18122c', borderRadius:16, borderWidth:2, borderColor:'#2d2450', alignItems:'center', paddingVertical:14 },
-  owned:{ borderColor:'#46FFC8', backgroundColor:'#10231e' },
-  icon:{ fontSize:34, marginBottom:6 },
-  name:{ color:'#fff', fontWeight:'900' },
-  price:{ color:'#c9cbe0', marginTop:4 },
-  note:{ color:'#c9cbe0', marginTop:10 },
+  txt:{ color:'#c9cbe0' },
+  row:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:12, borderBottomWidth:1, borderColor:'#2d2450' },
+  name:{ color:'#fff', fontWeight:'800' },
+  buy:{ backgroundColor:'#17132b', borderWidth:2, borderColor:'#2d2450', borderRadius:10, paddingVertical:8, paddingHorizontal:12 },
+  buyTxt:{ color:'#46FFC8', fontWeight:'800' },
+  navBtn:{ flex:1, alignItems:'center', paddingVertical:12, borderRadius:12, borderWidth:2, borderColor:'#2d2450', backgroundColor:'#17132b' },
+  navBtnTxt:{ color:'#fff', fontWeight:'800' },
 });

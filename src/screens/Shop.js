@@ -15,24 +15,30 @@ const GOODS = [
 
 export default function Shop() {
   const { state, actions } = useGame();
+  const coins = state?.coins ?? 0;
+  const owned = new Set(state?.cosmetics?.owned || []);
   const buy = (g) => {
-    if ((state?.coins ?? 0) < g.cost) { playSFX('deny'); haptic('error'); return; }
-    actions?.purchase?.(g); playSFX('coin'); haptic('medium');
+    const ok = actions?.purchase?.(g);
+    if (ok) { playSFX('coin'); haptic('medium'); }
+    else    { playSFX('deny'); haptic('error'); }
   };
 
   return (
     <View style={styles.screen}>
       <TopNav active="Shop" />
       <ScrollView contentContainerStyle={{ paddingHorizontal:16, paddingBottom:24 }}>
-        <Panel title={`Shop • Coins: ${state?.coins ?? 0}`}>
-          {GOODS.map(g => (
-            <View key={g.id} style={styles.row}>
-              <Text style={styles.name}>{g.name}</Text>
-              <Pressable style={styles.buy} onPress={()=>buy(g)}>
-                <Text style={styles.buyTxt}>Buy {g.cost}g</Text>
-              </Pressable>
-            </View>
-          ))}
+        <Panel title={`Shop • Coins: ${coins}`}>
+          {GOODS.map(g => {
+            const isOwned = owned.has(g.id);
+            return (
+              <View key={g.id} style={styles.row}>
+                <Text style={styles.name}>{g.name}</Text>
+                <Pressable style={[styles.buy, isOwned && { opacity:0.5 }]} onPress={()=>buy(g)} disabled={isOwned}>
+                  <Text style={styles.buyTxt}>{isOwned ? 'Owned' : `Buy ${g.cost}g`}</Text>
+                </Pressable>
+              </View>
+            );
+          })}
         </Panel>
       </ScrollView>
     </View>

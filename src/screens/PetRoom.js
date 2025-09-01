@@ -1,64 +1,75 @@
 // src/screens/PetRoom.js
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TopNav from '../ui/TopNav';
 import { Panel, ShinyButton, colors } from '../ui/Skin';
+import { useGame } from '../game/store';
 import { companionArt } from '../art';
 import * as FX from '../ui/FX';
 const playSFX = FX.playSFX || (()=>{}); const haptic = FX.haptic || (()=>{});
 
 export default function PetRoom() {
-  const [emo, setEmo] = useState('✨');
-  const a = useRef(new Animated.Value(0)).current;
+  const { state, actions } = useGame();
+  const insets = useSafeAreaInsets();
+  const FOOTER_H = 64;
 
-  const emote = (icon='✨') => {
-    setEmo(icon);
-    a.setValue(0);
-    Animated.timing(a, { toValue:1, duration:600, useNativeDriver:false }).start();
-  };
+  const compKey = state?.companion || 'molly';
+  const affection = state?.pet?.affection ?? 0;
 
-  const pet = () => {
-    emote('❤️'); playSFX('cheer'); haptic('light');
-    try { const { useGame } = require('../game/store'); useGame.getState()?.actions?.petInteract?.('pet'); } catch {}
-  };
-  const treat = () => {
-    emote('🍪'); playSFX('coin'); haptic('medium');
-    try { const { useGame } = require('../game/store'); useGame.getState()?.actions?.petInteract?.('treat'); } catch {}
-  };
-
-  const top = a.interpolate({ inputRange:[0,1], outputRange:[0,-28] });
-  const op  = a.interpolate({ inputRange:[0,1], outputRange:[0.9,0] });
-
-  const compKey = (require('../game/store').useGame.getState?.().state?.companion) || 'molly';
+  const pet = () => { actions?.petInteract?.('pet'); playSFX('sparkle'); haptic('light'); };
+  const treat = () => { actions?.petInteract?.('treat'); playSFX('coin'); haptic('medium'); };
 
   return (
     <View style={styles.screen}>
-      <TopNav active="PetRoom" />
-      <Panel title="Pet Room" style={{ marginHorizontal:16 }}>
-        <View style={styles.petStage}>
-          <Animated.Image source={companionArt[compKey] || companionArt.molly} resizeMode="contain" style={styles.petImg} />
-          <Animated.Text style={[styles.emote, { opacity:op, transform:[{ translateY: top }] }]}>{emo}</Animated.Text>
-        </View>
+      <TopNav active="Pet" />
 
-        <View style={styles.actions}>
-          <ShinyButton onPress={pet} style={{ flex:1 }}>Pet ❤️</ShinyButton>
-          <ShinyButton onPress={treat} style={{ flex:1 }}>Treat 🍪</ShinyButton>
-        </View>
+      <Panel title="Pet Room" style={styles.panel}>
+        <ScrollView
+          style={{ flex:1, minHeight:0 }}
+          contentContainerStyle={{ padding:16, paddingBottom: FOOTER_H + insets.bottom + 24 }}
+          showsVerticalScrollIndicator
+        >
+          <View style={styles.stage}>
+            <Image
+              source={companionArt[compKey] || companionArt.molly}
+              style={styles.petImg}
+              resizeMode="contain"
+            />
+          </View>
 
-        <View style={styles.meterTrack}><View style={[styles.meterFill]} /></View>
-        <Text style={styles.meta}>Affection ↑ when you interact & complete quests.</Text>
+          <Text style={styles.h2}>Affection</Text>
+          <View style={styles.barWrap}>
+            <View style={[styles.barFill, { width: `${Math.max(0, Math.min(100, affection))}%` }]} />
+          </View>
+          <Text style={styles.meta}>{affection}/100 • unlock cosmetics as you bond</Text>
+        </ScrollView>
       </Panel>
+
+      {/* sticky footer actions */}
+      <View style={[styles.footer, { bottom: insets.bottom + 12 }]}>
+        <ShinyButton style={{ flex:1, marginRight:8 }} onPress={pet}>Pet ❤️</ShinyButton>
+        <ShinyButton style={{ flex:1, marginLeft:8 }} onPress={treat}>Treat 🍪</ShinyButton>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen:{ flex:1, backgroundColor: colors.bg },
-  petStage:{ alignItems:'center', justifyContent:'center', paddingVertical:8, marginTop:8 },
-  petImg:{ width:'100%', height:220, backgroundColor:'#0e0b1d', borderRadius:12, borderWidth:2, borderColor:'#2d2450' },
-  emote:{ position:'absolute', top:20, fontSize:28 },
-  actions:{ flexDirection:'row', gap:10, marginTop:10, paddingHorizontal:2 },
-  meterTrack:{ height:14, backgroundColor:'#0f0b1f', borderRadius:999, borderWidth:2, borderColor:'#2d2450', overflow:'hidden', marginTop:10 },
-  meterFill:{ width:'40%', height:'100%', backgroundColor:'#FFD166' },
+  panel:{ flex:1, minHeight:0, marginHorizontal:16 },
+  stage:{
+    height:260, borderRadius:16, borderWidth:2, borderColor:'#2d2450',
+    backgroundColor:'#131024', alignItems:'center', justifyContent:'center', marginBottom:16
+  },
+  petImg:{ width:'70%', height:'90%' },
+  h2:{ color:'#fff', fontWeight:'800', marginBottom:8 },
+  barWrap:{ height:14, borderRadius:999, borderWidth:2, borderColor:'#2d2450', backgroundColor:'#0f0b1f', overflow:'hidden' },
+  barFill:{ height:'100%', backgroundColor:'#FFD166' },
   meta:{ color:'#c9cbe0', marginTop:6 },
+
+  footer:{
+    position:'absolute', left:16, right:16,
+    flexDirection:'row',
+  },
 });
