@@ -47,10 +47,24 @@ const CARD_W = 260;
 const styles = StyleSheet.create({
   screen:{ flex:1, backgroundColor:'#0d0a17', padding:16 },
   h2:{ color:'#fff', fontSize:18, marginBottom:10, letterSpacing:0.5 },
-  grid:{ flexDirection:'row', flexWrap:'wrap', justifyContent:'center', gap:16, paddingBottom:24 },
-  card:{ width:CARD_W, backgroundColor:'#1b1731', borderWidth:2, borderColor:'#2d2450', borderRadius:12, padding:10, alignItems:'center' },
+  grid:{
+    flexDirection:'row',
+    flexWrap:'wrap',
+    justifyContent:'center',
+    alignItems:'flex-start',       // ← stop stretching
+    alignContent:'flex-start',     // ← stop line stretching
+    gap:16,
+    paddingBottom:24,
+  },
+  card:{
+    width:CARD_W,
+    alignSelf:'flex-start',        // ← don’t stretch to row height
+    backgroundColor:'#1b1731',
+    borderWidth:2, borderColor:'#2d2450',
+    borderRadius:12, padding:10, alignItems:'center'
+  },
   sel:{ borderColor:'#B887FF', shadowColor:'#B887FF', shadowOpacity:0.25, shadowRadius:10, shadowOffset:{width:0,height:2} },
-  img:{ width:'100%', height:undefined, aspectRatio:3/4, borderRadius:10, borderWidth:2, borderColor:'#2d2450' },
+  img:{ width:'100%', height:undefined, aspectRatio:2/3, borderRadius:10, borderWidth:2, borderColor:'#2d2450' },
   label:{ color:'#fff', marginTop:6 },
   row:{ flexDirection:'row', gap:10, marginTop:12, justifyContent:'space-between' },
   btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
