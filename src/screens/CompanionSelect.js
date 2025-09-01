@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, Alert 
 import Sprite from '../ui/Sprite';
 import { HEROES } from './CharacterSelect';
 import { heroArt, companionArt } from '../art';
+import { useGame } from '../game/store';
+
 
 const CARD_W = 240;
 const IMG_H  = 300;
@@ -23,11 +25,14 @@ export default function CompanionSelect({ navigation, route }) {
   }, [heroKey]);
 
   const [selected, setSelected] = useState(null);
+  const { actions } = useGame();
+
   const goStart = () => {
     if (!selected) return Alert.alert('Pick a companion');
+    actions.setParty(heroKey, selected);           // ✅ persist party now
     navigation.navigate('Start', { heroKey, companionKey: selected });
-  };
-
+};
+  
   return (
     <View style={styles.screen}>
       <Text style={styles.h2}>Choose a companion</Text>

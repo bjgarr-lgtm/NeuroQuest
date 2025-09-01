@@ -8,7 +8,7 @@ export default function WebSplash() {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const timer = setTimeout(() => {
-      Animated.timing(fade, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => setVisible(false));
+      Animated.timing(fade, { toValue: 0, duration: 400, useNativeDriver: false }).start(() => setVisible(false));
     }, 800); // show briefly; doesn’t block app
     return () => clearTimeout(timer);
   }, [fade]);

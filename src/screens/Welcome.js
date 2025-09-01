@@ -4,6 +4,8 @@ import { View, Text, StyleSheet, Image, Pressable, ScrollView } from 'react-nati
 export default function Welcome({ navigation }) {
   const start = () => navigation.navigate('Character');
 
+ <Image source={require('../../assets/welcome-rules.png')} style={styles.heroImg} resizeMode="contain" />
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding:16, paddingBottom:32 }}>
       <Text style={styles.title}>NEUROQUEST</Text>

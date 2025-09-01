@@ -31,8 +31,8 @@ export default function RootNav({ appFontFamily }) {
       <Stack.Screen name="Welcome" component={Welcome} options={{ title: 'Welcome' }} />
       <Stack.Screen name="Character" component={CharacterSelect} options={{ title: 'Character' }} />
       <Stack.Screen name="Companion" component={CompanionSelect} options={{ title: 'Companion' }} />
-      <Stack.Screen name="Start" component={StartDay} options={{ title: 'Start Day' }} />
-      <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title: 'Daily Activities' }} />
+      <Stack.Screen name="Start" component={StartDay} options={{ title:'Start Day' }} />
+      <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title:'Daily Activities' }} />
       <Stack.Screen name="EndDay" component={EndDay} options={{ title: 'End of Day' }} />
     </Stack.Navigator>
   );
