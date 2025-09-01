@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import RootNav from './src/navigation';
 import { GameProvider } from './src/game/store';
 import { useFonts } from 'expo-font';
+import WebSplash from './src/ui/WebSplash';
 
 export default function App() {
   const [loaded] = useFonts({
@@ -16,6 +17,7 @@ export default function App() {
       <GameProvider>
         <RootNav appFontFamily={loaded ? 'PressStart2P_400Regular' : undefined} />
       </GameProvider>
+      <WebSplash />
     </NavigationContainer>
   );
 }
