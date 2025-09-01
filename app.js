@@ -49,7 +49,7 @@ function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(undefine
 
 // --- dopamine FX ---
 function fxToast(text){ const t=document.createElement('div'); t.className='toast'; t.textContent=text; document.body.appendChild(t); setTimeout(()=>t.remove(), 1400); }
-function fxConfetti(x=window.innerWidth/2, y=window.innerHeight*0.18, n=20){
+function fxConfetti(x=window.innerWidth/2, y=window.innerHeight*0.18, n=200){
   const layer = document.getElementById('fxLayer'); if(!layer) return;
   for(let i=0;i<n;i++){
     const s=document.createElement('span'); s.className='confetti'+(i%2?' alt':''); s.style.left=x+'px'; s.style.top=y+'px';
