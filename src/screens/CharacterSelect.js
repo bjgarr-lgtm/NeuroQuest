@@ -10,6 +10,9 @@ export const HEROES = [
   { key:'fox',   label:'Fox',   img: heroArt.fox },
 ];
 
+const CARD_W = 240;
+const IMG_H  = 300;
+
 export default function CharacterSelect({ navigation }) {
   const [selected, setSelected] = useState(null);
   const next = () => {
@@ -26,10 +29,9 @@ export default function CharacterSelect({ navigation }) {
           {HEROES.map(item => (
             <TouchableOpacity
               key={item.key}
-              activeOpacity={0.9}
               onPress={() => setSelected(item.key)}
               style={[styles.card, selected === item.key && styles.sel]}>
-              <Sprite source={item.img} label={item.label} style={styles.img} />
+              <Sprite source={item.img} label={item.label} style={{ width:'100%', height:IMG_H, borderRadius:10, borderWidth:2, borderColor:'#2d2450' }} />
               <Text style={styles.label}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -38,7 +40,7 @@ export default function CharacterSelect({ navigation }) {
 
       <View style={styles.row}>
         <Pressable style={styles.ghost} onPress={() => navigation.goBack()}><Text style={styles.ghostText}>← Back</Text></Pressable>
-        <Pressable style={[styles.btn, !selected && { opacity: 0.5 }]} disabled={!selected} onPress={next}>
+        <Pressable style={[styles.btn, !selected && {opacity:0.5}]} disabled={!selected} onPress={next}>
           <Text style={styles.btnText}>Next →</Text>
         </Pressable>
       </View>
@@ -46,38 +48,31 @@ export default function CharacterSelect({ navigation }) {
   );
 }
 
-const CARD_W = 240;
-
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0d0a17', padding: 16 },
-  h2: { color: '#fff', fontSize: 18, marginBottom: 10 },
+  screen:{ flex:1, backgroundColor:'#0d0a17', padding:16 },
+  h2:{ color:'#fff', fontSize:18, marginBottom:10 },
 
-  // key: don't let the row stretch children — fixed width + margin boxes
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    alignContent: 'flex-start',
-    marginHorizontal: -8,   // neutralize child margins
-    paddingBottom: 24,
+  grid:{
+    flexDirection:'row',
+    flexWrap:'wrap',
+    justifyContent:'center',
+    alignItems:'flex-start',
+    alignContent:'flex-start',
+    marginHorizontal:-8,
+    paddingBottom:24,
   },
-
-  card: {
-    width: CARD_W,
-    margin: 8,
-    alignSelf: 'auto',       // never stretch
-    backgroundColor: '#1b1731',
-    borderWidth: 2, borderColor: '#2d2450',
-    borderRadius: 12, padding: 10, alignItems: 'center'
+  card:{
+    width:CARD_W,
+    margin:8,
+    backgroundColor:'#1b1731',
+    borderWidth:2, borderColor:'#2d2450',
+    borderRadius:12, padding:10, alignItems:'center'
   },
-  sel: { borderColor: '#B887FF', shadowColor: '#B887FF', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 2 } },
-  img: { width: '100%', height: undefined, aspectRatio: 2 / 3, borderRadius: 10, borderWidth: 2, borderColor: '#2d2450' },
-  label: { color: '#fff', marginTop: 6 },
-
-  row: { flexDirection: 'row', gap: 10, marginTop: 12, justifyContent: 'space-between' },
-  btn: { backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
-  btnText: { color: '#0d0a17', fontWeight: '700' },
-  ghost: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 2, borderColor: '#2d2450' },
-  ghostText: { color: '#c9cbe0' },
+  sel:{ borderColor:'#B887FF', shadowColor:'#B887FF', shadowOpacity:0.25, shadowRadius:10, shadowOffset:{width:0,height:2} },
+  label:{ color:'#fff', marginTop:6 },
+  row:{ flexDirection:'row', gap:10, marginTop:12, justifyContent:'space-between' },
+  btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
+  btnText:{ color:'#0d0a17', fontWeight:'700' },
+  ghost:{ paddingVertical:12, paddingHorizontal:16, borderRadius:12, borderWidth:2, borderColor:'#2d2450' },
+  ghostText:{ color:'#c9cbe0' },
 });

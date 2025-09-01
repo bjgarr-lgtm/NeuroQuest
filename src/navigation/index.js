@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Welcome from '../screens/Welcome';
 import EndDay from '../screens/EndDay';
 import Splash from '../screens/Splash';
 import Character from '../screens/CharacterSelect';
@@ -12,22 +13,13 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNav({ appFontFamily }) {
   return (
-    <Stack.Navigator
-      initialRouteName="Splash"
-      screenOptions={{
-        headerStyle: { backgroundColor: '#0d0a17' },
-        headerTintColor: '#fff',
-        headerTitleStyle: appFontFamily ? { fontFamily: appFontFamily } : undefined,
-        contentStyle: { backgroundColor: '#0d0a17' },
-      }}
-    >
-      <Stack.Screen name="Splash" component={Splash} options={{ headerShown:false }} />
-      <Stack.Screen name="Character" component={Character} />
-      <Stack.Screen name="Companion" component={Companion} />
-      <Stack.Screen name="Start" component={Start} />
-      <Stack.Screen name="EndDay" component={EndDay} options={{ title:'End of Day' }} />
-      <Stack.Screen name="Home" component={Home} options={{ title: 'Dashboard' }} />
-      <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title:'Daily Quests' }} />
-    </Stack.Navigator>
+   <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown:true }}>
+    <Stack.Screen name="Welcome" component={Welcome} options={{ title:'Welcome' }} />
+    <Stack.Screen name="Character" component={CharacterSelect} options={{ title:'Character' }} />
+    <Stack.Screen name="Companion" component={CompanionSelect} options={{ title:'Companion' }} />
+    <Stack.Screen name="Start" component={StartDay} options={{ title:'Start Day' }} />
+    <Stack.Screen name="QuestBoard" component={QuestBoard} options={{ title:'Daily Activities' }} />
+    <Stack.Screen name="EndDay" component={EndDay} options={{ title:'End of Day' }} />
+   </Stack.Navigator>
   );
 }

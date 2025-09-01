@@ -4,6 +4,9 @@ import Sprite from '../ui/Sprite';
 import { HEROES } from './CharacterSelect';
 import { heroArt, companionArt } from '../art';
 
+const CARD_W = 240;
+const IMG_H  = 300;
+
 export default function CompanionSelect({ navigation, route }) {
   const heroKey = route?.params?.heroKey ?? null;
 
@@ -14,9 +17,8 @@ export default function CompanionSelect({ navigation, route }) {
     { key:'bird',  label:'Bird',     img: companionArt.bird  },
     { key:'star',  label:'Star',     img: companionArt.star  },
   ];
-  const options = useMemo(() => {
-    const seen = new Set(); const out = [];
-    [...base, ...extras].forEach(x => { if (!seen.has(x.key)) { seen.add(x.key); out.push(x); }});
+  const options = useMemo(()=>{
+    const seen=new Set(), out=[]; [...base, ...extras].forEach(x=>{ if(!seen.has(x.key)){ seen.add(x.key); out.push(x);} });
     return out;
   }, [heroKey]);
 
@@ -34,18 +36,18 @@ export default function CompanionSelect({ navigation, route }) {
           {options.map(c => (
             <TouchableOpacity
               key={c.key}
-              activeOpacity={0.9}
-              onPress={() => setSelected(c.key)}
-              style={[styles.card, selected === c.key && styles.sel]}>
-              <Sprite source={c.img} label={c.label} style={styles.img} />
+              onPress={()=>setSelected(c.key)}
+              style={[styles.card, selected===c.key && styles.sel]}>
+              <Sprite source={c.img} label={c.label} style={{ width:'100%', height:IMG_H, borderRadius:10, borderWidth:2, borderColor:'#2d2450' }} />
               <Text style={styles.label}>{c.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+
       <View style={styles.row}>
-        <Pressable style={styles.ghost} onPress={() => navigation.goBack()}><Text style={styles.ghostText}>← Back</Text></Pressable>
-        <Pressable style={[styles.btn, !selected && { opacity: 0.5 }]} disabled={!selected} onPress={goStart}>
+        <Pressable style={styles.ghost} onPress={()=>navigation.goBack()}><Text style={styles.ghostText}>← Back</Text></Pressable>
+        <Pressable style={[styles.btn, !selected && {opacity:0.5}]} disabled={!selected} onPress={goStart}>
           <Text style={styles.btnText}>Start Day →</Text>
         </Pressable>
       </View>
@@ -53,34 +55,30 @@ export default function CompanionSelect({ navigation, route }) {
   );
 }
 
-const CARD_W = 240;
-
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0d0a17', padding: 16 },
-  h2: { color: '#fff', fontSize: 18, marginBottom: 10 },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    alignContent: 'flex-start',
-    marginHorizontal: -8,
-    paddingBottom: 24,
+  screen:{ flex:1, backgroundColor:'#0d0a17', padding:16 },
+  h2:{ color:'#fff', fontSize:18, marginBottom:10 },
+  grid:{
+    flexDirection:'row',
+    flexWrap:'wrap',
+    justifyContent:'center',
+    alignItems:'flex-start',
+    alignContent:'flex-start',
+    marginHorizontal:-8,
+    paddingBottom:24,
   },
-  card: {
-    width: CARD_W,
-    margin: 8,
-    alignSelf: 'auto',
-    backgroundColor: '#1b1731',
-    borderWidth: 2, borderColor: '#2d2450',
-    borderRadius: 12, padding: 10, alignItems: 'center'
+  card:{
+    width:CARD_W,
+    margin:8,
+    backgroundColor:'#1b1731',
+    borderWidth:2, borderColor:'#2d2450',
+    borderRadius:12, padding:10, alignItems:'center'
   },
-  sel: { borderColor: '#B887FF', shadowColor: '#B887FF', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 2 } },
-  img: { width: '100%', height: undefined, aspectRatio: 2 / 3, borderRadius: 10, borderWidth: 2, borderColor: '#2d2450' },
-  label: { color: '#fff', marginTop: 6 },
-  row: { flexDirection: 'row', gap: 10, marginTop: 12, justifyContent: 'space-between' },
-  btn: { backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
-  btnText: { color: '#0d0a17', fontWeight: '700' },
-  ghost: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 2, borderColor: '#2d2450' },
-  ghostText: { color: '#c9cbe0' },
+  sel:{ borderColor:'#B887FF', shadowColor:'#B887FF', shadowOpacity:0.25, shadowRadius:10, shadowOffset:{width:0,height:2} },
+  label:{ color:'#fff', marginTop:6 },
+  row:{ flexDirection:'row', gap:10, marginTop:12, justifyContent:'space-between' },
+  btn:{ backgroundColor:'#fff', paddingVertical:12, paddingHorizontal:16, borderRadius:12 },
+  btnText:{ color:'#0d0a17', fontWeight:'700' },
+  ghost:{ paddingVertical:12, paddingHorizontal:16, borderRadius:12, borderWidth:2, borderColor:'#2d2450' },
+  ghostText:{ color:'#c9cbe0' },
 });
