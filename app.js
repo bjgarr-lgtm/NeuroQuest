@@ -1,151 +1,174 @@
-// SootheBirb v2.5.0+ — Adds: Toddler Mode, Party companions, Character equip (paper-doll), Mini-game,
-// confetti + crown drop, sounds, and keeps the neon/pixel UI.
-const STORAGE_KEY = 'soothebirb.v250p';
+/* SootheBirb v2.5.0+ ADD-ONS
+   - Leaves your existing HTML/CSS/routes alone.
+   - Adds: Toddler Mode, Party companions (multi-select), Character equip overlays,
+           Mini-game (Bubble Pop), crown/coin/level sfx+fx, cursor trail.
+   - Caps sprite sizes so animations never overflow.
+   - Tries hard to “hook into” existing DOM if present; otherwise, no-ops gracefully.
+*/
+const STORAGE_KEY = 'soothebirb.addons.v260';
 
-function defaultState(){
+// ---------- Safe state merge ----------
+function defaults() {
   return {
-    settings: { toddler:false, music:false },
-    user: {
-      name: '',
-      character: { id:'witch', img:'assets/heroes/hero-bambi.png', anim:'walk', rig:null }
-    },
-    party: { companions: [] },
-    economy: { gold: 0, ownedAcc: ['glasses'] },
-    equip: { head:null, face:null, back:null, hand:null },
-    pet: { level:1, xp:0 },     // used for XP bar
+    settings: { toddler: false, music: false },
+    party: { companions: [] },                        // ['molly','ash',...]
+    economy: { gold: 0, ownedAcc: ['glasses'] },     // cosmetics you own
+    equip: { head: null, face: null, back: null, hand: null }, // equipped
+    user: { character: { id: 'witch', img: 'assets/heroes/hero-bambi.png', anim: 'walk', rig: null } },
+    pet: { level: 1, xp: 0 },
     log: { tasks: [] },
-    streak: { cur:0, best:0 }
+    streak: { cur: 0, best: 0 }
   };
 }
-function load(){ try{ return Object.assign(defaultState(), JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')); }catch(e){ return defaultState(); } }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function loadState() {
+  try {
+    const base = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return deepMerge(defaults(), base);
+  } catch {
+    return defaults();
+  }
+}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function deepMerge(a, b) {
+  if (Array.isArray(a)) return Array.isArray(b) ? b.slice() : a.slice();
+  if (a && typeof a === 'object') {
+    const o = { ...a };
+    for (const k of Object.keys(b || {})) o[k] = deepMerge(a[k], b[k]);
+    return o;
+  }
+  return b === undefined ? a : b;
+}
+let state = loadState();
 
-let state = load();
+// ---------- Small utilities ----------
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const exists = (sel) => !!$(sel);
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+function on(el, type, fn, opts) { el && el.addEventListener(type, fn, opts); }
 
-/* --------------------------- SOUND FX --------------------------- */
+function xpFor(level) { return level * level * 10; }
+function maybeLevelUp() {
+  const need = xpFor(state.pet.level + 1);
+  if (state.pet.xp >= need) {
+    state.pet.level++;
+    SFX.level();
+    FX.confetti(260);
+    FX.crown();
+    saveState();
+    renderHUD();
+  }
+}
+
+// ---------- Inject tiny additive CSS so we don’t touch your styles.css ----------
+(function injectAddOnStyles() {
+  if ($('#addonStyles')) return;
+  const css = `
+    /* Keep sprites small & contained, regardless of base theme */
+    .sprite, .rig { position:relative; width: 132px; height: 132px; }
+    .sprite img { width:100%; height:100%; object-fit:contain; image-rendering:pixelated }
+    .rig .layer { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:132px; height:132px; object-fit:contain; image-rendering:pixelated }
+    .rig .body{ z-index:2 } .rig .head{ z-index:3; transform-origin:50% 70% } .rig .armL{ z-index:4; transform-origin:45% 20% } .rig .armR{ z-index:4; transform-origin:55% 20% } .rig .prop{ z-index:5 }
+
+    /* Equip overlays (paper-doll) */
+    .acc { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); pointer-events:none }
+    .acc.head{ z-index:6; transform-origin:50% 70% } .acc.face{ z-index:6 } .acc.back{ z-index:1 } .acc.hand{ z-index:6 }
+
+    /* Simple motions (align with your existing vibe) */
+    @keyframes step { 0%,100% { transform: translateY(0)} 50%{ transform: translateY(-6px)} }
+    @keyframes headBob { 0%,100%{ transform: translate(-50%,-50%) rotate(0)} 50%{ transform: translate(-50%,-52%) rotate(-3deg)} }
+    @keyframes armWave { 0%,100%{ transform: translate(-50%,-50%) rotate(0)} 50%{ transform: translate(-50%,-50%) rotate(28deg)} }
+    .anim-walk img, .anim-walk .layer { animation: step .38s ease-in-out infinite }
+    .anim-wave .head, .anim-wave img { animation: headBob 1.6s ease-in-out infinite }
+    .anim-wave .armR { animation: armWave 1.1s ease-in-out infinite }
+
+    /* Toddler ON theme hint only; your theme stays intact */
+    body.toddler-on { background: radial-gradient(1200px 500px at 30% -10%, rgba(255,182,193,.12), transparent), #000; }
+
+    /* Mini-game canvas frame (non-invasive) */
+    canvas.game { width:100%; background:#0a0a0a; border:2px solid rgba(255,255,255,.08); border-radius:10px }
+  `;
+  const style = document.createElement('style');
+  style.id = 'addonStyles';
+  style.textContent = css;
+  document.head.appendChild(style);
+})();
+
+// ---------- Sounds & FX (tiny, no assets required) ----------
 const SFX = {
-  ding(){
-    try{ const a=new AudioContext(); const o=a.createOscillator(); const g=a.createGain();
-      o.type='square'; o.frequency.value=880; o.connect(g); g.connect(a.destination);
-      const T=a.currentTime; g.gain.setValueAtTime(.0001,T); g.gain.linearRampToValueAtTime(.06,T+.01);
-      g.gain.exponentialRampToValueAtTime(.0001,T+.12); o.start(T); o.stop(T+.13);
-    }catch(e){}
+  ding() { try {
+    const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain();
+    o.type='square'; o.frequency.value=880; o.connect(g); g.connect(a.destination);
+    const t=a.currentTime; g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.06,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+.12);
+    o.start(t); o.stop(t+.13);
+  } catch(e){} },
+  coin() { try {
+    const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain();
+    o.type='triangle'; o.frequency.setValueAtTime(600,a.currentTime); g.gain.value=.06; o.connect(g); g.connect(a.destination);
+    o.frequency.exponentialRampToValueAtTime(1200,a.currentTime+.08); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.2);
+    o.start(); o.stop(a.currentTime+.22);
+  } catch(e){} },
+  level() { try {
+    const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain();
+    o.type='sawtooth'; o.frequency.value=220; g.gain.value=.05; o.connect(g); g.connect(a.destination);
+    const t=a.currentTime; o.frequency.exponentialRampToValueAtTime(1760,t+.6); g.gain.exponentialRampToValueAtTime(.0001,t+.65);
+    o.start(t); o.stop(t+.66);
+  } catch(e){} }
+};
+const FX = {
+  layer: (() => { const d=document.createElement('div'); d.id='fxLayer'; d.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9999'; document.body.appendChild(d); return d; })(),
+  confetti(n=180){
+    const frag=document.createDocumentFragment();
+    for(let i=0;i<n;i++){
+      const p=document.createElement('i');
+      p.style.cssText=`position:fixed;left:${Math.random()*100}vw;top:-8px;width:8px;height:8px;background:hsl(${Math.random()*360} 90% 60%);opacity:.95;border-radius:2px;pointer-events:none;transform:translateY(0) rotate(${Math.random()*360}deg);transition: transform 1.2s ease-out, top 1.2s ease-out, opacity 1.2s ease-out`;
+      frag.appendChild(p);
+      requestAnimationFrame(()=>{ p.style.top='110vh'; p.style.transform=`translateY(${50+Math.random()*60}vh) rotate(${360+Math.random()*360}deg)`; p.style.opacity='0'; });
+      setTimeout(()=>p.remove(),1400);
+    }
+    this.layer.appendChild(frag);
   },
-  coin(){
-    try{ const a=new (window.AudioContext||window.webkitAudioContext)(); const o=a.createOscillator(); const g=a.createGain();
-      o.type='triangle'; o.frequency.setValueAtTime(600,a.currentTime); g.gain.value=.06; o.connect(g); g.connect(a.destination);
-      o.frequency.exponentialRampToValueAtTime(1200,a.currentTime+.08); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.2);
-      o.start(); o.stop(a.currentTime+.22);
-    }catch(e){}
-  },
-  level(){
-    try{ const a=new AudioContext(); const o=a.createOscillator(); const g=a.createGain();
-      o.type='sawtooth'; o.frequency.value=220; g.gain.value=.05; o.connect(g); g.connect(a.destination);
-      const T=a.currentTime; o.frequency.exponentialRampToValueAtTime(1760,T+.6); g.gain.exponentialRampToValueAtTime(.0001,T+.65);
-      o.start(T); o.stop(T+.66);
-    }catch(e){}
+  crown(){
+    const img=document.createElement('img');
+    img.src='assets/acc/crown.svg';
+    img.alt='crown'; img.style.cssText='position:fixed;left:50%;top:-120px;transform:translateX(-50%);width:140px;filter:drop-shadow(0 0 8px rgba(255,210,0,.7))';
+    this.layer.appendChild(img);
+    requestAnimationFrame(()=>{ img.style.transition='transform .9s cubic-bezier(.2,1,.2,1), top .9s cubic-bezier(.2,1,.2,1)'; img.style.top='25vh'; img.style.transform='translateX(-50%) rotate(4deg)'; });
+    setTimeout(()=>{ img.style.top='110vh'; img.style.transform='translateX(-50%) rotate(28deg)'; }, 1200);
+    setTimeout(()=> img.remove(), 2100);
   }
 };
 
-/* --------------------------- FX (confetti + crown) --------------------------- */
-function confettiBurst(count=180){
-  const layer = document.getElementById('fxLayer');
-  const frag = document.createDocumentFragment();
-  for(let i=0;i<count;i++){
-    const p=document.createElement('i');
-    p.style.cssText=`position:fixed;left:${Math.random()*100}vw;top:-10px;width:8px;height:8px;background:hsl(${Math.random()*360} 90% 60%);transform:rotate(${Math.random()*360}deg);opacity:.9;border-radius:2px;pointer-events:none;transition:transform 1.2s ease-out, top 1.2s ease-out, opacity 1.2s ease-out`;
-    frag.appendChild(p);
-    requestAnimationFrame(()=>{ p.style.top='110vh'; p.style.transform=`translateY(${50+Math.random()*60}vh) rotate(${360+Math.random()*360}deg)`; p.style.opacity='0'; });
-    setTimeout(()=>p.remove(),1400);
-  }
-  layer.appendChild(frag);
-}
-function crownDrop(){
-  const layer = document.getElementById('fxLayer');
-  const crown = document.createElement('img');
-  crown.src = 'assets/acc/crown.svg';
-  crown.style.cssText='position:fixed;left:50%;top:-120px;width:140px;height:auto;transform:translateX(-50%);filter:drop-shadow(0 0 8px rgba(255,210,0,.7));pointer-events:none';
-  layer.appendChild(crown);
-  requestAnimationFrame(()=>{
-    crown.style.transition='transform .9s cubic-bezier(.2,1,.2,1), top .9s cubic-bezier(.2,1,.2,1)';
-    crown.style.top='25vh'; crown.style.transform='translateX(-50%) rotate(4deg)';
-  });
-  setTimeout(()=>{ crown.style.top='110vh'; crown.style.transform='translateX(-50%) rotate(28deg)'; }, 1200);
-  setTimeout(()=> crown.remove(), 2100);
-}
+// ---------- Cursor trail (restored) ----------
+(function cursorTrail() {
+  const MAX=20, pts=[];
+  const layer=document.createElement('canvas');
+  layer.width=window.innerWidth; layer.height=window.innerHeight;
+  layer.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9998';
+  document.body.appendChild(layer);
+  const ctx=layer.getContext('2d');
 
-/* --------------------------- ROUTER --------------------------- */
-const $=s=>document.querySelector(s);
-function okRoute(n){ const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','characters','companion','minigames','breathe','journal','checkin','rewards','settings']; return ok.includes(n)?n:'home'; }
-function routeTo(n){ location.hash='#'+n; }
-function setActive(name){
-  const nav=$('.top-nav'); [...nav.querySelectorAll('.nav-btn')].forEach(b=>b.classList.toggle('active', b.dataset.route===name));
-  const hi=$('#navHi'); const btn=nav.querySelector(`.nav-btn[data-route="${name}"]`); if(btn){ const r=btn.getBoundingClientRect(), nr=nav.getBoundingClientRect(); hi.style.transform=`translateX(${r.left-nr.left}px)`; hi.style.width=r.width+'px'; }
-}
-function onHash(){
-  const name = okRoute((location.hash||'#home').slice(1));
-  setActive(name);
-  const v=$('#view'); v.innerHTML='';
-  const tpl=$('#tpl-'+name);
-  if(!tpl){ v.textContent='Not found'; return; }
-  v.appendChild(tpl.content.cloneNode(true));
-  initPage(name);
-}
-window.addEventListener('hashchange', onHash);
+  on(window,'resize',()=>{ layer.width=innerWidth; layer.height=innerHeight; });
 
-/* --------------------------- HUD + XP --------------------------- */
-function xpFor(l){ return l*l*10; }
-function renderHUD(){
-  document.body.classList.toggle('toddler-on', !!state.settings.toddler);
-  document.querySelectorAll('.toddlerOnly').forEach(el=> el.style.display = state.settings.toddler ? '' : 'none');
-  $('#hudGold').textContent = `🪙 ${state.economy.gold||0}`;
-  const lvl=state.pet.level, xp=state.pet.xp, next=xpFor(lvl+1), prev=xpFor(lvl); const pct=Math.round(((xp-prev)/(next-prev))*100);
-  $('#hudLevel').textContent=`Lv ${lvl}`; $('#hudXp').style.width = Math.max(0,Math.min(100,pct))+'%';
-
-  // Portraits in HUD
-  const av=$('#hudAvatars'); av.innerHTML='';
-  av.insertAdjacentHTML('beforeend', `<div class="avatar"><img src="${state.user.character.img}" alt="you"></div>`);
-  (state.party.companions||[]).forEach(id=>{
-    const img = companionCatalog()[id]?.img;
-    if(img) av.insertAdjacentHTML('beforeend', `<div class="avatar"><img src="${img}" alt="${id}"></div>`);
+  on(document,'pointermove',e=>{
+    pts.push({x:e.clientX,y:e.clientY,t:Date.now()});
+    while(pts.length>MAX) pts.shift();
   });
 
-  const toggle = $('#toddlerToggle');
-  if(toggle){ toggle.checked = !!state.settings.toddler; toggle.onchange = ()=>{ state.settings.toddler = toggle.checked; save(); renderHUD(); renderParty(); if(location.hash.includes('#tasks')) regenQuests(); }; }
-}
-function renderParty(){
-  const wrap = $('#partyBanner'); if(!wrap) return; wrap.innerHTML='';
-  // Character
-  wrap.appendChild(partyCard(state.user.character, 'You'));
-  // Pet only in toddler mode
-  if(state.settings.toddler){
-    const pet=document.createElement('div'); pet.className='card';
-    pet.innerHTML = `<div class="sprite anim-dance">
-      <svg viewBox="0 0 120 120" width="120" height="120"><defs><radialGradient id="g" cx=".5" cy=".35"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent-2)"/></radialGradient></defs>
-      <ellipse cx="60" cy="70" rx="40" ry="35" fill="url(#g)"/><circle cx="60" cy="52" r="18" fill="url(#g)"/></svg></div><div class="name">Pet</div>`;
-    wrap.appendChild(pet);
-  }
-  // Companions
-  (state.party.companions||[]).forEach(id=>{
-    const c = companionCatalog()[id]; if(!c) return;
-    const card=document.createElement('div'); card.className='card';
-    card.innerHTML=`<div class="sprite anim-walk"><img src="${c.img}" alt="${c.name}"></div><div class="name">${c.name}</div>`;
-    wrap.appendChild(card);
-  });
-}
-function partyCard(character,label){
-  const div=document.createElement('div'); div.className='card';
-  const anim = character.anim || 'walk';
-  const sprite=document.createElement('div'); sprite.className='sprite '+animClass(anim);
-  sprite.innerHTML = `<img src="${character.img}" alt="char">`;
-  applyEquipLayers(sprite);
-  div.appendChild(sprite);
-  div.appendChild(Object.assign(document.createElement('div'),{className:'name',textContent:label}));
-  return div;
-}
-function animClass(m){ return m==='walk'?'anim-walk':m==='wave'?'anim-wave':m==='dance'?'anim-dance':'anim-walk'; }
+  (function loop(){
+    ctx.clearRect(0,0,layer.width,layer.height);
+    for(let i=0;i<pts.length;i++){
+      const p=pts[i], a=(i+1)/pts.length;
+      ctx.beginPath(); ctx.arc(p.x,p.y, 2+4*a, 0, Math.PI*2);
+      ctx.fillStyle=`rgba(0,234,255,${0.12+0.25*a})`; ctx.fill();
+    }
+    requestAnimationFrame(loop);
+  })();
+})();
 
-/* --------------------------- CATALOGS --------------------------- */
+// ---------- Companions & Accessories ----------
 function companionCatalog(){
   return {
     molly:{ name:'Molly', img:'assets/heroes/comp-molly.png', tasks:[{text:'Feed & water Molly', xp:6, gold:2},{text:'Walk Molly (10m)', xp:8, gold:3}]},
@@ -160,131 +183,295 @@ const ACC_SRC = {
   cape:    'assets/acc/cape.svg',
   torch:   'assets/acc/torch.svg'
 };
-function applyEquipLayers(container){
-  const eq = state.equip || {};
-  const mk=(slot,item)=>{ if(!item||!ACC_SRC[item]) return; const img=document.createElement('img'); img.className='acc '+slot; img.src=ACC_SRC[item]; container.appendChild(img); };
-  mk('back',eq.back); mk('head',eq.head); mk('face',eq.face); mk('hand',eq.hand);
+
+// ---------- HUD / Party banner (non-destructive) ----------
+function renderHUD() {
+  document.body.classList.toggle('toddler-on', !!state.settings.toddler);
+
+  // Gold / XP bars if your HUD uses these IDs (silently ignore if not present)
+  const goldEl = $('#hudGold'); if (goldEl) goldEl.textContent = `🪙 ${state.economy.gold||0}`;
+  const lvlEl  = $('#hudLevel');
+  const xpEl   = $('#hudXp');
+  if (lvlEl && xpEl) {
+    const lvl = state.pet.level, xp = state.pet.xp, next = xpFor(lvl+1), prev = xpFor(lvl);
+    const pct = Math.round(((xp - prev) / (next - prev)) * 100);
+    lvlEl.textContent = `Lv ${lvl}`;
+    xpEl.style.width = clamp(pct, 0, 100) + '%';
+  }
+
+  // Toddler toggle (if present)
+  const tgl = $('#toddlerToggle');
+  if (tgl) {
+    tgl.checked = !!state.settings.toddler;
+    tgl.onchange = () => {
+      state.settings.toddler = tgl.checked;
+      saveState(); renderHUD(); renderParty();
+      // Regenerate quests automatically if your list exists
+      if ($('#questList')) regenerateDailyQuests();
+    };
+  }
+
+  // HUD avatars (if your header has a container for them)
+  const hudAv = $('#hudAvatars');
+  if (hudAv) {
+    hudAv.innerHTML = '';
+    hudAv.insertAdjacentHTML('beforeend', `<div class="avatar"><img src="${state.user.character.img}" alt="you"></div>`);
+    (state.party.companions||[]).forEach(id=>{
+      const img = companionCatalog()[id]?.img;
+      if (img) hudAv.insertAdjacentHTML('beforeend', `<div class="avatar"><img src="${img}" alt="${id}"></div>`);
+    });
+  }
 }
 
-/* --------------------------- TASKS / QUESTS --------------------------- */
-function dailyQuests(){
-  const base = [
+function renderParty() {
+  const wrap = $('#partyBanner'); if (!wrap) return;
+  wrap.innerHTML = '';
+
+  const card = document.createElement('div'); card.className = 'card';
+  const sprite = document.createElement('div'); sprite.className = 'sprite anim-walk';
+  sprite.innerHTML = `<img src="${state.user.character.img}" alt="You">`;
+  applyEquip(sprite);
+  card.appendChild(sprite); card.appendChild(Object.assign(document.createElement('div'),{className:'name',textContent:'You'}));
+  wrap.appendChild(card);
+
+  // Pet only in toddler mode
+  if (state.settings.toddler) {
+    const pet=document.createElement('div'); pet.className='card';
+    pet.innerHTML=`<div class="sprite anim-wave"><svg viewBox="0 0 120 120" width="120" height="120">
+      <defs><radialGradient id="g" cx=".5" cy=".35"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent-2)"/></radialGradient></defs>
+      <ellipse cx="60" cy="70" rx="40" ry="35" fill="url(#g)"/><circle cx="60" cy="52" r="18" fill="url(#g)"/></svg></div><div class="name">Pet</div>`;
+    wrap.appendChild(pet);
+  }
+
+  // Companions
+  const cat = companionCatalog();
+  (state.party.companions||[]).forEach(id=>{
+    const meta = cat[id]; if (!meta) return;
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML = `<div class="sprite anim-walk"><img src="${meta.img}" alt="${meta.name}"></div><div class="name">${meta.name}</div>`;
+    wrap.appendChild(c);
+  });
+}
+
+function applyEquip(container) {
+  const eq = state.equip || {};
+  const add = (slot, key) => {
+    if (!key || !ACC_SRC[key]) return;
+    const img = document.createElement('img');
+    img.className = 'acc ' + slot;
+    img.src = ACC_SRC[key];
+    container.appendChild(img);
+  };
+  add('back', eq.back);
+  add('head', eq.head);
+  add('face', eq.face);
+  add('hand', eq.hand);
+}
+
+// ---------- Quests adapter (optional + additive) ----------
+function baseQuests() {
+  const arr = [
     { text:'Drink water', xp:5, gold:1 },
     { text:'3-min stretch', xp:5, gold:1 }
   ];
-  // Party tasks
   const cat = companionCatalog();
-  (state.party.companions || []).forEach(id => (cat[id]?.tasks||[]).forEach(t=> base.push(t)));
-  // Toddler overlay
-  if(state.settings.toddler){
-    base.push({text:'Read picture book together', xp:8, gold:2});
-    base.push({text:'Outside play 10 min', xp:8, gold:2});
-    base.push({text:'Mini-game time (pop 20)', xp:10, gold:3});
+  (state.party.companions||[]).forEach(id => (cat[id]?.tasks||[]).forEach(t => arr.push(t)));
+  if (state.settings.toddler) {
+    arr.push({text:'Read picture book together', xp:8, gold:2});
+    arr.push({text:'Outside play 10 min',       xp:8, gold:2});
+    arr.push({text:'Mini-game time (pop 20)',   xp:10, gold:3});
   }
-  return base.map((t,i)=> ({id:Date.now()+i, done:false, ...t}));
+  return arr.map((t,i)=>({ id:Date.now()+i, done:false, ...t }));
 }
-function regenQuests(){ state.log.tasks = dailyQuests(); save(); renderTasks(); }
-function renderTasks(){
-  const list=$('#questList'); if(!list) return; list.innerHTML='';
+function regenerateDailyQuests() {
+  state.log.tasks = baseQuests();
+  saveState();
+  renderTasks();
+}
+function renderTasks() {
+  const list = $('#questList'); if (!list) return;
+  list.innerHTML = '';
   state.log.tasks.forEach(t=>{
-    const row=document.createElement('div'); row.className='quest-row';
-    const box=document.createElement('div'); box.className='checkbox'+(t.done?' checked':''); box.textContent=t.done?'✓':'';
-    box.onclick=()=>{ t.done=!t.done; if(t.done){ state.pet.xp += t.xp||5; state.economy.gold=(state.economy.gold||0)+(t.gold||1); SFX.ding(); SFX.coin(); confettiBurst(120); if(Math.random()<0.1) crownDrop(); maybeLevelUp(); save(); renderHUD(); } renderTasks(); };
-    const label=document.createElement('div'); label.textContent=t.text;
-    row.append(box,label); list.appendChild(row);
+    const row = document.createElement('div');
+    row.className = 'quest-row';
+    const box = document.createElement('div');
+    box.className = 'checkbox' + (t.done ? ' checked':'');
+    box.textContent = t.done ? '✓':'';
+    box.onclick = () => {
+      t.done = !t.done;
+      if (t.done) {
+        state.economy.gold = (state.economy.gold||0) + (t.gold||1);
+        state.pet.xp += t.xp||5;
+        SFX.ding(); SFX.coin();
+        FX.confetti(120);
+        if (Math.random() < 0.1) FX.crown();
+        maybeLevelUp();
+        saveState(); renderHUD();
+      }
+      renderTasks();
+    };
+    const lbl = document.createElement('div'); lbl.textContent = t.text;
+    row.append(box,lbl); list.appendChild(row);
   });
 }
-function maybeLevelUp(){
-  const lvl=state.pet.level, xp=state.pet.xp;
-  if(xp >= xpFor(lvl+1)){ state.pet.level++; SFX.level(); confettiBurst(240); crownDrop(); }
+
+// ---------- Shop/Equip helpers (add to existing shop & character pages) ----------
+function wireShop() {
+  $$('.buy').forEach(btn=>{
+    on(btn,'click',()=>{
+      const item = btn.dataset.item;
+      const cost = { crown:30, glasses:12, cape:24, torch:10 }[item] ?? 10;
+      if ((state.economy.gold||0) < cost) return alert('Need more coins.');
+      state.economy.gold -= cost;
+      state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item]));
+      saveState(); renderHUD();
+      SFX.coin(); FX.confetti(120);
+      alert(`Purchased ${item}. Equip it on the Character page.`);
+    });
+  });
 }
 
-/* --------------------------- PAGES --------------------------- */
-function wireTiles(){ document.querySelectorAll('.tile[data-route]').forEach(t=> t.addEventListener('click', ()=>{ routeTo(t.dataset.route); onHash(); })); }
+function wireCharacterPage() {
+  // Preview equip buttons if present
+  $$('.equip').forEach(b=>{
+    on(b,'click',()=>{
+      const slot = b.dataset.slot, item = b.dataset.item;
+      const owned = new Set(state.economy.ownedAcc||[]);
+      if (!owned.has(item)) return alert('Buy it in the shop first.');
+      state.equip[slot] = item; saveState(); renderHUD(); renderParty(); refreshCharacterPreview();
+    });
+  });
+  const un = $('.unequip');
+  on(un,'click',()=>{ state.equip={head:null,face:null,back:null,hand:null}; saveState(); renderHUD(); renderParty(); refreshCharacterPreview(); });
 
-function initCompanion(){
-  const grid=$('#partyPick'); if(!grid) return; grid.innerHTML='';
+  // Upload portrait (if your Character page has #charFile)
+  on($('#uploadChar'),'click',()=> $('#charFile')?.click());
+  on($('#charFile'),'change', async (e)=>{
+    const url = await fileToDataUrl(e.target.files?.[0]); if (!url) return;
+    state.user.character = { ...state.user.character, id:'custom', img:url };
+    saveState(); renderHUD(); renderParty(); refreshCharacterPreview();
+  });
+
+  // Animation select (if present)
+  const select = $('#charAnim'); if (select) {
+    select.value = state.user.character.anim || 'walk';
+    on(select,'change',()=>{ state.user.character.anim = select.value; saveState(); renderParty(); refreshCharacterPreview(); });
+  }
+
+  refreshCharacterPreview();
+}
+function refreshCharacterPreview() {
+  const p = $('#charPreview'); if (!p) return;
+  p.innerHTML = '';
+  const sprite = document.createElement('div');
+  sprite.className = 'sprite anim-walk';
+  sprite.innerHTML = `<img src="${state.user.character.img}" alt="you">`;
+  applyEquip(sprite);
+  p.appendChild(sprite);
+}
+function fileToDataUrl(file) {
+  return new Promise(res=>{
+    if (!file) return res(null);
+    const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file);
+  });
+}
+
+// ---------- Companion selection (multi-select) ----------
+function wireCompanionPage() {
+  const grid = $('#partyPick'); if (!grid) return;
   const cat = companionCatalog();
+  grid.innerHTML = '';
   Object.keys(cat).forEach(id=>{
-    const c=cat[id]; const el=document.createElement('div');
-    el.className='party-card'+(state.party.companions.includes(id)?' selected':'');
+    const c = cat[id];
+    const el = document.createElement('div');
+    el.className = 'party-card' + (state.party.companions.includes(id) ? ' selected' : '');
     el.innerHTML = `<img src="${c.img}" alt="${c.name}"><div class="name">${c.name}</div>`;
-    el.onclick=()=>{ const i=state.party.companions.indexOf(id); if(i>=0) state.party.companions.splice(i,1); else state.party.companions.push(id);
-      save(); initCompanion(); renderHUD(); renderParty(); };
+    el.onclick = () => {
+      const i = state.party.companions.indexOf(id);
+      if (i>=0) state.party.companions.splice(i,1); else state.party.companions.push(id);
+      saveState(); wireCompanionPage(); renderHUD(); renderParty();
+    };
     grid.appendChild(el);
   });
-  $('#saveParty')?.addEventListener('click', ()=>{ alert('Party saved for today'); save(); renderParty(); });
+  on($('#saveParty'),'click',()=>{ alert('Party saved for today'); saveState(); renderParty(); if ($('#questList')) regenerateDailyQuests(); });
 }
 
-function initCharacters(){
-  const grid=$('#charGrid'); if(!grid) return;
-  const cards=[{id:'witch',label:'Witch',img:'assets/heroes/hero-bambi.png'},{id:'fox',label:'Fox',img:'assets/heroes/hero-fox.png'},{id:'bard',label:'Bard',img:'assets/heroes/hero-ash.png'}];
-  grid.innerHTML=''; cards.forEach(c=>{ const card=document.createElement('div'); card.className='hero'; card.innerHTML=`<img src="${c.img}"/><div class="name">${c.label}</div>`;
-    card.onclick=()=>{ state.user.character={...state.user.character,id:c.id,img:c.img}; save(); renderHUD(); preview(); }; grid.appendChild(card); });
+// ---------- Mini-game (only when toddler is ON) ----------
+function initMiniGameIfVisible() {
+  const c = $('#popGame'); if (!c) return;
+  if (!state.settings.toddler) { location.hash = '#home'; return; }
+  const ctx = c.getContext('2d'), W=c.width, H=c.height;
+  let bubbles=[], score=0, last=0;
+  function add(){ bubbles.push({x:Math.random()*W, y:H+20, r:12+Math.random()*18, v:40+Math.random()*50}); }
+  for (let i=0;i<8;i++) add();
 
-  $('#uploadChar')?.addEventListener('click', ()=> $('#charFile').click());
-  $('#charFile')?.addEventListener('change', async e=>{ const url=await fileToUrl(e.target); if(!url) return; state.user.character={...state.user.character,id:'custom',img:url}; save(); renderHUD(); preview(); });
-
-  const enable=$('#charRigEnable'), form=$('#charRigForm'); if(enable && form){ form.style.display='none'; enable.onchange=()=> form.style.display = enable.checked?'block':'none'; }
-  $('#charRigSave')?.addEventListener('click', async ()=>{
-    const rig={...(state.user.character.rig||{})};
-    rig.body = await fileToUrl($('#charRigBody')) || rig.body;
-    rig.head = await fileToUrl($('#charRigHead')) || rig.head;
-    rig.larm = await fileToUrl($('#charRigLArm')) || rig.larm;
-    rig.rarm = await fileToUrl($('#charRigRArm')) || rig.rarm;
-    rig.prop = await fileToUrl($('#charRigProp')) || rig.prop;
-    state.user.character.rig = rig; save(); preview(); renderParty();
+  on(c,'click',e=>{
+    const r=c.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    for (const b of bubbles) {
+      if (Math.hypot(b.x-x,b.y-y) < b.r) { b.pop=true; score++; state.economy.gold++; SFX.coin(); saveState(); renderHUD(); break; }
+    }
   });
 
-  const sel=$('#charAnim'); if(sel){ sel.value=state.user.character.anim||'walk'; sel.onchange=()=>{ state.user.character.anim=sel.value; save(); preview(); renderParty(); }; }
-
-  document.querySelectorAll('.equip').forEach(btn=>{
-    btn.onclick = ()=>{ const slot=btn.dataset.slot, item=btn.dataset.item;
-      const owned = new Set(state.economy.ownedAcc||[]);
-      if(!owned.has(item)) return alert('Buy it in the shop first!');
-      state.equip[slot]=item; save(); preview(); renderParty();
-    };
-  });
-  $('.unequip')?.addEventListener('click', ()=>{ state.equip={head:null,face:null,back:null,hand:null}; save(); preview(); renderParty(); });
-
-  function preview(){ const p=$('#charPreview'); p.innerHTML=''; p.appendChild(partyCard(state.user.character,'You')); }
-  preview();
-}
-async function fileToUrl(input){ return await new Promise(res=>{ const f=input?.files?.[0]; if(!f) return res(null); const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); }); }
-
-function initShop(){
-  document.querySelectorAll('.buy').forEach(b=> b.onclick = ()=>{
-    const item=b.dataset.item; const cost={crown:30,glasses:12,cape:24,torch:10}[item];
-    if((state.economy.gold||0) < cost) return alert('Need more coins.');
-    state.economy.gold -= cost;
-    state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item]));
-    save(); renderHUD(); confettiBurst(120); SFX.coin(); alert('Purchased '+item+'! Equip it on the Character page.');
-  });
-}
-function initTasks(){ $('#tasksHint').textContent = state.settings.toddler ? 'Toddler mode: kid-quests + mini-games.' : 'Solo mode: adult quests.'; if(!state.log.tasks.length) regenQuests(); renderTasks(); }
-function initMiniGames(){ if(!state.settings.toddler){ routeTo('home'); return; } const c=$('#popGame'); if(!c) return; const ctx=c.getContext('2d'), W=c.width,H=c.height; let bubbles=[],score=0,last=0;
-  function add(){ bubbles.push({x:Math.random()*W, y:H+20, r:12+Math.random()*18, v:40+Math.random()*50}); } for(let i=0;i<8;i++) add();
-  c.onclick=e=>{ const r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top; for(const b of bubbles){ if(Math.hypot(b.x-x,b.y-y)<b.r){ b.pop=true; score++; state.economy.gold++; SFX.coin(); save(); renderHUD(); break; } } };
-  (function loop(t){ const dt=(t-last)||16; last=t; ctx.clearRect(0,0,W,H);
-    for(const b of bubbles){ b.y -= b.v*dt/1000; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fillStyle='rgba(135,206,250,0.6)'; ctx.fill(); if(b.pop||b.y+b.r<-10){ Object.assign(b,{x:Math.random()*W,y:H+20,r:12+Math.random()*18,v:40+Math.random()*50,pop:false}); } }
+  (function loop(t){
+    const dt=(t-last)||16; last=t; ctx.clearRect(0,0,W,H);
+    for(const b of bubbles){
+      b.y -= b.v*dt/1000;
+      ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(135,206,250,0.6)'; ctx.fill();
+      if (b.pop || b.y+b.r<-10) Object.assign(b,{x:Math.random()*W,y:H+20,r:12+Math.random()*18,v:40+Math.random()*50,pop:false});
+    }
     ctx.fillStyle='#fff'; ctx.fillText('Popped: '+score, 12, 20);
-    if(score>=20){ state.pet.xp+=20; state.economy.gold+=5; confettiBurst(180); SFX.level(); save(); renderHUD(); ctx.fillText('Great job! +XP +Gold', W/2-80, H/2); return; }
+    if (score>=20){ state.pet.xp+=20; state.economy.gold+=5; saveState(); renderHUD(); FX.confetti(200); SFX.level(); ctx.fillText('Great job! +XP +Gold', W/2-80, H/2); return; }
     requestAnimationFrame(loop);
   })(0);
 }
-function initPage(name){
-  if(name==='home'){ wireTiles(); renderParty(); }
-  if(name==='tasks'){ initTasks(); }
-  if(name==='characters'){ initCharacters(); }
-  if(name==='companion'){ initCompanion(); }
-  if(name==='shop'){ initShop(); }
-  if(name==='minigames'){ initMiniGames(); }
+
+// ---------- Dashboard tiles: make sure clicking tiles routes (non-destructive) ----------
+function wireTiles() {
+  $$('.tile[data-route]').forEach(t => on(t,'click', () => { location.hash = '#'+t.dataset.route; }));
+  // If your nav already uses anchors <a href="#..."> you don’t need this,
+  // but it won’t hurt to also support buttons/divs with data-route.
 }
 
-/* --------------------------- BOOT --------------------------- */
-function boot(){
-  if(!location.hash) location.hash='#home';
-  $('#musicBtn')?.addEventListener('click',()=>{ state.settings.music=!state.settings.music; save(); });
-  renderHUD(); onHash();
+// ---------- Top nav clicks (only if your nav uses data-route buttons) ----------
+function wireTopNav() {
+  const nav = $('.top-nav'); if (!nav) return;
+  nav.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-route]'); if (!btn) return;
+    const r = btn.getAttribute('data-route'); if (!r) return;
+    e.preventDefault(); location.hash = '#'+r;
+  });
+}
+
+// ---------- Routing hook (additive) ----------
+function onHashChange() {
+  renderHUD();
+  renderParty();
+
+  const name = (location.hash || '#home').slice(1);
+  // pages that need wiring
+  if (name === 'home') wireTiles();
+  if (name === 'tasks') { if (!state.log.tasks.length) regenerateDailyQuests(); renderTasks(); }
+  if (name === 'shop') wireShop();
+  if (name === 'characters') wireCharacterPage();
+  if (name === 'companion') wireCompanionPage();
+  if (name === 'minigames') initMiniGameIfVisible();
+}
+window.addEventListener('hashchange', onHashChange);
+
+// ---------- Boot ----------
+function boot() {
+  wireTopNav();
+  renderHUD();
+  renderParty();
+  onHashChange();
+
+  // Global checkbox ding/coin on any quest lists your base already creates
+  document.addEventListener('change', (e)=>{
+    const el = e.target;
+    if (el.matches('input[type="checkbox"]') && el.closest('#questList')) {
+      SFX.ding(); SFX.coin(); FX.confetti(80);
+    }
+  });
 }
 boot();
