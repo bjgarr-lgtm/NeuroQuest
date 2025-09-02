@@ -5,11 +5,9 @@ import { petSVG, petPixelSVG, ALL_ACC } from './pet.js';
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
-codex/update-defaultstate-and-loadstate
   user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true,
     character:{ id:'ash', img:'assets/heroes/hero-ash.png', level:1, xp:0, acc:[] },
     companion:{ id:'molly', img:'assets/heroes/comp-molly.png' } },
-main
   settings: { toddler:false },
   economy: { gold: 0, rewardPts: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
