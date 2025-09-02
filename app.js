@@ -416,8 +416,7 @@ function startBreathing(circleEl, phaseEl, onFinish){
 function animateCircle(el, phase){ if(phase==="Inhale"){ el.style.transform="scale(1.2)"; el.style.borderColor="var(--accent)"; } else if(phase==="Exhale"){ el.style.transform="scale(0.85)"; el.style.borderColor="var(--accent-2)"; } else { el.style.transform="scale(1)"; el.style.borderColor="var(--muted)"; } }
 function initBreathe(){
   const circle=$("#breathCircle"), phase=$("#breathPhase"); let stop=null;
-  $("#startBreath").addEventListener("click",()=>{ if(stop) stop(); stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert("Nice breathing session ✨"); renderHUD(); }); });
-  $("#stopBreath").addEventListener("click",()=>{ if(stop){ stop(); stop=null; } });
+  circle.addEventListener("click",()=>{ if(stop){ stop(); stop=null; return; } stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert("Nice breathing session ✨"); renderHUD(); stop=null; }); });
 }
 
 // ---- pet

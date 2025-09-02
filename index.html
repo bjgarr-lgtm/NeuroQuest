@@ -253,11 +253,11 @@
     <section class="cardish">
       <h2 class="dash">Mood Check‑In</h2>
       <div class="mood-row">
-        <button class="mood" data-mood="awful">😖</button>
-        <button class="mood" data-mood="bad">☹️</button>
-        <button class="mood" data-mood="ok">😐</button>
-        <button class="mood" data-mood="good">🙂</button>
-        <button class="mood" data-mood="great">🤩</button>
+        <span class="mood" data-mood="awful">😖</span>
+        <span class="mood" data-mood="bad">☹️</span>
+        <span class="mood" data-mood="ok">😐</span>
+        <span class="mood" data-mood="good">🙂</span>
+        <span class="mood" data-mood="great">🤩</span>
       </div>
       <label class="field"><span>Tags</span><input id="checkinTags" placeholder="slept well, social…"/></label>
       <label class="field"><span>Notes</span><textarea id="checkinNotes" rows="4"></textarea></label>
@@ -301,12 +301,11 @@
   <template id="tpl-breathe">
     <section class="cardish">
       <h2 class="dash">1‑Minute Breathe</h2>
-      <p>Follow the circle: inhale → hold → exhale → hold.</p>
+      <p>Tap the circle: inhale → hold → exhale → hold.</p>
       <div class="breathe-stage">
-        <div class="circle" id="breathCircle"></div>
+        <div class="circle" id="breathCircle" title="Start or stop breathing"></div>
         <div id="breathPhase" class="phase">Ready</div>
       </div>
-      <div class="row"><button id="startBreath" class="primary">Start</button><button id="stopBreath" class="secondary">Stop</button></div>
     </section>
   </template>
 
