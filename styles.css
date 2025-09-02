@@ -58,8 +58,22 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .xp-bar.big>div{ height:100% }
 .hud .gold{ font-weight:900; letter-spacing:.5px }
 .avatars{ display:flex; align-items:center; gap:.25rem }
-.avatars .avatar{ width:28px; height:28px; border-radius:8px; overflow:hidden; border:2px solid rgba(255,255,255,.16); box-shadow:0 0 10px rgba(0,0,0,.3) }
+.avatars .avatar{ width:50px; height:50px; border-radius:8px; overflow:hidden; border:2px solid rgba(255,255,255,.16); box-shadow:0 0 10px rgba(0,0,0,.3) }
 .avatars .avatar img{ width:100%; height:100%; object-fit:cover; image-rendering:pixelated }
+
+.char-grid, .comp-grid{ display:flex; flex-wrap:wrap; gap:1rem; justify-content:center }
+.char-card, .comp-card{ width:150px; text-align:center; cursor:pointer }
+.char-card img, .comp-card img{ width:100%; height:auto; border-radius:12px }
+
+codex/resize-party-banner-to-2/3-size
+.party-banner{ display:flex; gap:.67rem; justify-content:center; align-items:center; margin-bottom:.67rem }
+.party-member{ width:333px; height:333px; overflow:hidden }
+main
+.party-member img{ width:100%; height:100%; object-fit:contain }
+@keyframes wave{ 0%,100%{ transform:translateY(0)} 50%{ transform:translateY(-12px) } }
+@keyframes dance{ 0%,100%{ transform:rotate(-6deg)} 50%{ transform:rotate(6deg) } }
+.anim-wave img{ animation: wave 3s ease-in-out infinite }
+.anim-dance img{ animation: dance 2.5s ease-in-out infinite }
 
 /* Quest panels */
 .quest-board{ display:grid; gap:1rem }
@@ -114,6 +128,16 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .rewards .exchange{ margin-top:1rem; text-align:center }
 .rewards .exchange .row{ display:flex; gap:.6rem; justify-content:center; margin-top:.4rem }
 
+
+/* Check-In */
+.mood-row{ display:flex; gap:.4rem; justify-content:space-between; margin-bottom:.6rem }
+.mood-row .mood{ background:none; border:none; font-size:2rem; cursor:pointer; opacity:.4; transition:transform .1s ease, opacity .1s ease }
+.mood-row .mood.active{ opacity:1; transform:scale(1.2); filter:drop-shadow(0 0 6px var(--accent)) }
+.mood-entry{ border:2px solid rgba(255,255,255,.08); border-radius:.6rem; background:rgba(255,255,255,.02); padding:.45rem .5rem }
+.mood-entry summary{ cursor:pointer }
+.mood-entry div{ margin-top:.4rem; opacity:.85 }
+
+
 /* Breathe */
 .phase{ margin-top:.6rem; opacity:.9 }
 .breathe-stage{ display:grid; place-items:center; gap:.6rem; padding:.6rem 0 }
@@ -124,6 +148,7 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .pet-stage{ display:grid; place-items:center; height:160px }
 .pet-stage.large{ height:220px }
 .pet{ animation: bob 3s ease-in-out infinite }
+.pet-stage svg, .pet-stage img{ image-rendering:auto }
 @keyframes bob { 0%,100%{ transform: translateY(0)} 50%{ transform: translateY(-6px) } }
 .stats{ opacity:.9; display:flex; gap:1rem; flex-wrap:wrap }
 
