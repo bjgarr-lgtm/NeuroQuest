@@ -74,7 +74,10 @@
   <!-- Home -->
   <template id="tpl-home">
     <section class="dash-board">
-      <div class="party-banner" id="partyBanner"></div>
+      <div class="party-banner">
+        <div class="party-label">Your Party</div>
+        <div class="party-members" id="partyBanner"></div>
+      </div>
       <div class="xp-slab">
         <div class="xp-title">XP</div>
         <div class="xp-bar big"><div id="xpBig"></div></div>
@@ -245,6 +248,13 @@
     <section class="rewards">
       <h2 class="dash">Collectibles & Achievements</h2>
       <div class="badges" id="badgeGrid"></div>
+      <div class="exchange">
+        <p id="rewardPts">Reward Points: 0</p>
+        <div class="row">
+          <button id="rewardToGold" class="secondary">100 pts → 25 gold</button>
+          <button id="rewardToXp" class="secondary">100 pts → 100 XP</button>
+        </div>
+      </div>
     </section>
   </template>
 
