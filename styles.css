@@ -110,6 +110,14 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .badge .b-ico{ font-size:1.6rem }
 .badge .b-txt{ font-size:.9rem; text-align:center }
 
+/* Check-In */
+.mood-row{ display:flex; gap:.4rem; justify-content:space-between; margin-bottom:.6rem }
+.mood-row .mood{ background:none; border:none; font-size:2rem; cursor:pointer; opacity:.4; transition:transform .1s ease, opacity .1s ease }
+.mood-row .mood.active{ opacity:1; transform:scale(1.2); filter:drop-shadow(0 0 6px var(--accent)) }
+.mood-entry{ border:2px solid rgba(255,255,255,.08); border-radius:.6rem; background:rgba(255,255,255,.02); padding:.45rem .5rem }
+.mood-entry summary{ cursor:pointer }
+.mood-entry div{ margin-top:.4rem; opacity:.85 }
+
 /* Breathe */
 .phase{ margin-top:.6rem; opacity:.9 }
 .breathe-stage{ display:grid; place-items:center; gap:.6rem; padding:.6rem 0 }

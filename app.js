@@ -379,7 +379,17 @@ function initRewards(){
 function initCheckin(){
   let chosen=null;
   $$(".mood").forEach(b=> b.addEventListener("click",()=>{ $$(".mood").forEach(x=> x.classList.remove("active")); b.classList.add("active"); chosen=b.dataset.mood; }));
-  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); alert("Logged!"); });
+  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); renderRoute(); alert("Logged!"); });
+  const list=$("#moodList");
+  list.replaceChildren();
+  state.log.moods.slice(-10).reverse().forEach(m=>{
+    const summary=`${fmtDate(m.ts)} — ${m.mood.toUpperCase()}${m.tags? " — "+m.tags:""}`;
+    const det=el("details",{className:"mood-entry"},[
+      el("summary",{textContent:summary}),
+      el("div",{textContent:m.notes||"(no notes)"})
+    ]);
+    list.appendChild(det);
+  });
 }
 
 // ---- journal
