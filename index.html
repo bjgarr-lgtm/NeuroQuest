@@ -253,15 +253,17 @@
     <section class="cardish">
       <h2 class="dash">Mood Check‑In</h2>
       <div class="mood-row">
-        <button class="mood" data-mood="awful">😖</button>
-        <button class="mood" data-mood="bad">☹️</button>
-        <button class="mood" data-mood="ok">😐</button>
-        <button class="mood" data-mood="good">🙂</button>
-        <button class="mood" data-mood="great">🤩</button>
+        <span class="mood" data-mood="awful">😖</span>
+        <span class="mood" data-mood="bad">☹️</span>
+        <span class="mood" data-mood="ok">😐</span>
+        <span class="mood" data-mood="good">🙂</span>
+        <span class="mood" data-mood="great">🤩</span>
       </div>
       <label class="field"><span>Tags</span><input id="checkinTags" placeholder="slept well, social…"/></label>
       <label class="field"><span>Notes</span><textarea id="checkinNotes" rows="4"></textarea></label>
       <button id="saveCheckin" class="primary">Save check‑in</button>
+      <h3>Recent moods</h3>
+      <div id="moodList" class="panel-list"></div>
     </section>
   </template>
 
@@ -273,16 +275,17 @@
       <label class="field"><span>Entry</span><textarea id="journalText" rows="8" placeholder="Let it out…"></textarea></label>
       <div class="row"><button id="saveJournal" class="primary">Save</button><button id="newPrompt" class="secondary">New prompt</button></div>
       <div id="journalList" class="list"></div>
+      <small id="journalStorage"></small>
     </section>
   </template>
 
   <!-- Pet -->
   <template id="tpl-pet">
     <section class="cardish">
-      <h2 class="dash">Your Companion</h2>
+      <h2 id="petTitle" class="dash">Your Companion</h2>
       <div class="pet-stage large" id="petStage"></div>
       <div id="petStats" class="stats"></div>
-      <div class="row">
+      <div class="row" id="petForm">
         <label class="field"><span>Name</span><input id="petName"/></label>
         <label class="field"><span>Species</span>
           <select id="petSpecies">
@@ -294,6 +297,7 @@
         <button id="savePet" class="primary">Save</button>
       </div>
       <details><summary>Accessories</summary><div class="grid two" id="accList"></div></details>
+      <div id="accStore" class="panel-list"></div>
     </section>
   </template>
 
@@ -301,12 +305,11 @@
   <template id="tpl-breathe">
     <section class="cardish">
       <h2 class="dash">1‑Minute Breathe</h2>
-      <p>Follow the circle: inhale → hold → exhale → hold.</p>
+      <p>Tap the circle: inhale → hold → exhale → hold.</p>
       <div class="breathe-stage">
-        <div class="circle" id="breathCircle"></div>
+        <div class="circle" id="breathCircle" title="Start or stop breathing"></div>
         <div id="breathPhase" class="phase">Ready</div>
       </div>
-      <div class="row"><button id="startBreath" class="primary">Start</button><button id="stopBreath" class="secondary">Stop</button></div>
     </section>
   </template>
 
