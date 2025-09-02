@@ -5,11 +5,13 @@ import { petSVG, ALL_ACC } from './pet.js';
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
+codex/update-defaultstate-and-loadstate
   user: {
     name: "", theme: "retro", font: "press2p", art: "pixel", scanlines: true,
     character: { id: "witch", img: null, level: 1, xp: 0, acc: [] },
     companion: { id: "molly", img: "assets/heroes/comp-molly.png" }
   },
+main
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
@@ -159,17 +161,11 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
-codex/add-character-selection-and-party-banners
-  const av=$('#hudAvatars');
-  if(av){
-    av.innerHTML='';
-    [state.user.character, state.user.companion].forEach(m=>{
-      if(m) av.innerHTML += `<div class='avatar'><img src='${m.img}' alt='${m.id}'/></div>`;
-    });
-  if(av){
-    av.innerHTML='';
-    const c=state.user.character;
-    const species=characterSpecies(c?.id);
+    const av=$('#hudAvatars');
+    if(av){
+      av.innerHTML='';
+      const c=state.user.character;
+      const species=characterSpecies(c?.id);
     const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG(species, c.level||1, c.acc)}</div>`;
     av.innerHTML = `<div class='avatar'>${img}</div>`;
     if(state.settings.toddler){
@@ -179,7 +175,6 @@ codex/add-character-selection-and-party-banners
   }
   const petNav=document.querySelector("button.nav-btn[data-route='pet']");
   if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
-main
   document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
 }
 renderHUD();
@@ -498,16 +493,9 @@ function initBreathe(){
 
 // ---- pet
 function initPet(){
-codex/add-player-character-accessorizing-feature
   const stage=$("#petStage");
-  const petMarkup = petSVG(state.pet.species, state.pet.level, state.pet.acc);
-  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
-  const xp=state.pet.xp, lvl=state.pet.level, next=xpForLevel(lvl+1);
-  $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
-
   const nameInput=$("#petName"), speciesInput=$("#petSpecies"), saveBtn=$("#savePet"), accList=$("#accList");
   const editRow=saveBtn?.closest('.row');
-main
   const accDetails=accList?.closest('details');
   document.getElementById('toddlerActions')?.remove();
   const toddler=state.settings?.toddler;
@@ -533,17 +521,6 @@ main
   } else {
     if(form) form.style.display='none';
     if(accDetails) accDetails.style.display='';
-codex/add-player-character-accessorizing-feature
-    accList.replaceChildren();
-    const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses']));
-    acc.forEach(a=>{
-      const btn=el('button',{className: target.acc.includes(a)? '':'secondary', textContent:a});
-      btn.addEventListener('click',()=>{
-        const arr=target.acc; const i=arr.indexOf(a); if(i>=0) arr.splice(i,1); else arr.push(a);
-        saveState(state); initPet(); renderHUD();
-      });
-      accList.appendChild(btn);
-    });
 
     document.getElementById('toddlerActions')?.remove();
     saveBtn.onclick=()=>{ state.pet.name=nameInput.value.trim()||"Pebble"; state.pet.species=speciesInput.value; saveState(state); initPet(); renderHUD(); };
@@ -569,7 +546,6 @@ codex/add-player-character-accessorizing-feature
         store.appendChild(el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), btn]));
       });
     }
-main
   }
 }
 
@@ -604,7 +580,6 @@ function initSettings(){
 }
 
 // ---- Characters & Companion screens
-codex/add-character-selection-and-party-banners
 const HEROES=[
   {id:'ash', name:'Ash', img:'assets/heroes/hero-ash.png'},
   {id:'bambi', name:'Bambi', img:'assets/heroes/hero-bambi.png'},
@@ -652,7 +627,6 @@ function initCompanion(){
     grid.appendChild(card);
   });
 }
-main
 
 // Unlocks
 function maybeUnlockAccessory(){ const POOL=ALL_ACC.map(a=>a.id); const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
