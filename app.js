@@ -9,7 +9,7 @@ const defaultState = () => ({
     character:{ id:'ash', img:'assets/heroes/hero-ash.png', level:1, xp:0, acc:[] },
     companion:{ id:'molly', img:'assets/heroes/comp-molly.png' } },
   settings: { toddler:false },
-  economy: { gold: 0, ownedAcc: ['cap','glasses'] },
+  economy: { gold: 0, rewardPts: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
   streak: { current: 0, best: 0, lastCheck: "" },
   log: {
@@ -122,6 +122,7 @@ document.addEventListener('click', function unlock(){ ensureAudio(); document.re
 // economy
 const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5,raid:15};
 function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); SFX.gold(); saveState(state); renderHUD(); }
+function addRewardPts(n){ state.economy.rewardPts=Math.max(0,(state.economy.rewardPts||0)+n); fxReward('+'+n+' pts'); saveState(state); renderHUD(); }
 
 const RAID_THEMES=["Declutter","Deep clean","Paperwork","Maintenance","Floors"];
 function getWeekOfMonth(d){ const date=new Date(d); const first=new Date(date.getFullYear(), date.getMonth(),1).getDay(); return Math.floor((date.getDate()+first-1)/7)+1; }
@@ -408,12 +409,35 @@ function initRewards(){
     {id:"ten-quests", name:"10 Quests", test:s=>s.log.tasks.filter(t=>t.done).length>=10, ico:"🏅"},
     {id:"budget-boss", name:"Budget Keeper", test:s=>s.log.budget.txns.length>=5, ico:"💰"}
   ];
-  defs.forEach(b=>{ if(!state.log.rewards.badges.find(x=>x.id===b.id) && b.test(state)){ state.log.rewards.badges.push({id:b.id, name:b.name, ts:Date.now()}); } });
+  defs.forEach(b=>{
+    if(!state.log.rewards.badges.find(x=>x.id===b.id) && b.test(state)){
+      state.log.rewards.badges.push({id:b.id, name:b.name, ts:Date.now()});
+      addRewardPts(100);
+    }
+  });
   saveState(state);
   defs.forEach(b=>{
     const unlocked=!!state.log.rewards.badges.find(x=>x.id===b.id);
     grid.appendChild(el("div",{className:"badge "+(unlocked?"":"locked")},[ el("div",{className:"b-ico", textContent:b.ico}), el("div",{className:"b-txt", textContent:b.name}) ]));
   });
+  $("#rewardPts").textContent = `Reward Points: ${state.economy.rewardPts||0}`;
+  $("#rewardToGold").onclick = ()=>{
+    if(state.economy.rewardPts>=100){
+      state.economy.rewardPts-=100;
+      addGold(25);
+      saveState(state);
+      initRewards();
+    }else fxToast("Need 100 points");
+  };
+  $("#rewardToXp").onclick = ()=>{
+    if(state.economy.rewardPts>=100){
+      state.economy.rewardPts-=100;
+      addXP(state,100);
+      saveState(state);
+      renderHUD();
+      initRewards();
+    }else fxToast("Need 100 points");
+  };
 }
 
 // ---- checkin
