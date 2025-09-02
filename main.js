@@ -81,9 +81,6 @@ function renderHome(){
 
 function initCheckin(){
   let chosen = null;
-  $$("#tpl-checkin .mood").forEach(b=>{
-    const clone = $("#view .mood-row").children;
-  });
   $$("#view .mood-row .mood").forEach(b=> b.addEventListener("click", ()=>{
     $$("#view .mood-row .mood").forEach(x=> x.classList.remove("active"));
     b.classList.add("active");
@@ -157,16 +154,20 @@ function initTasks(){
 function initBreathe(){
   const circle = $("#breathCircle"), phase = $("#breathPhase");
   let stop = null;
-  $("#startBreath").addEventListener("click", ()=>{
-    if(stop) stop();
+  circle.addEventListener("click", ()=>{
+    if(stop){
+      stop();
+      stop = null;
+      return;
+    }
     stop = startBreathing(circle, phase, secs=>{
       state.log.breath.push({ ts: Date.now(), secs });
       touchStreak(state); addXP(state, 4);
       saveState(state); alert("Nice breathing session ✨");
       renderRoute();
+      stop = null;
     });
   });
-  $("#stopBreath").addEventListener("click", ()=>{ if(stop){ stop(); stop=null; } });
 }
 
 function initJournal(){
