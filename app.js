@@ -271,7 +271,13 @@ function initCoop(){
   }
   draw();
   $("#addSidekick").addEventListener("click",()=>{ const t=$("#newSidekick").value.trim(); if(!t) return; state.log.coop.quests.push({title:t,done:false}); $("#newSidekick").value=""; saveState(state); draw(); });
-  $("#toggleWeek").addEventListener("click",()=>{ state.log.coop.toddlerWeek=!state.log.coop.toddlerWeek; saveState(state); $("#coopWeek").textContent = state.log.coop.toddlerWeek? "Toddler Week" : "Solo Week"; });
+  $("#toggleWeek").addEventListener("click",()=>{
+    state.log.coop.toddlerWeek = !state.log.coop.toddlerWeek;
+    state.settings.toddler = state.log.coop.toddlerWeek;
+    renderHUD();
+    saveState(state);
+    $("#coopWeek").textContent = state.log.coop.toddlerWeek? "Toddler Week" : "Solo Week";
+  });
 }
 
 // ---- budget
