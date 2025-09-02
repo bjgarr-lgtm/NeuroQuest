@@ -487,8 +487,6 @@ function initSettings(){
   $("#fontSelect").value = state.user.font || "press2p";
   $("#artSelect").value = state.user.art || "pixel";
   $("#scanlinesToggle").checked = !!state.user.scanlines;
-codex/add-toddler-task-list-feature
-=======
   const tt = $("#toddlerToggle");
   if(tt){
     tt.checked = !!(state.settings && state.settings.toddler);
@@ -501,7 +499,6 @@ codex/add-toddler-task-list-feature
       if(document.querySelector('#panelMain')) initTasks();
     });
   }
-main
   $("#saveSettings").addEventListener("click",()=>{
     state.user.name = $("#userName").value.trim();
     state.user.theme = $("#themeSelect").value;
