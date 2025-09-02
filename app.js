@@ -1,12 +1,11 @@
-/* SootheBirb v2.5.0+ ADD-ONS (Drop-in app.js)
-   KEEP your v2.5.0 index.html and styles.css unchanged.
-   Adds: Toddler Mode, Party companions (multi-select), Character equip overlays,
-         Mini-game (Bubble Pop), FX (confetti + crown drop), SFX (ding/coin/level),
-         optional BGM (loop) if #musicBtn exists, cursor trail, and sprite size caps.
-   If an expected element doesn't exist in your HTML, this silently skips it.
+/* SootheBirb v2.5.0p — Router Rescue + Add‑ons (full drop-in app.js)
+   Purpose: FIX pages not switching when hash changes, without touching your HTML/CSS.
+   Also includes: Toddler Mode, Party companions, Character equip overlays,
+   Bubble Pop mini-game, FX/SFX (confetti, crown, ding/coin/level), cursor trail,
+   and strict sprite size caps so animations never overflow.
 */
 (function(){
-const STORAGE_KEY = 'soothebirb.addons.v262';
+const STORAGE_KEY = 'soothebirb.addons.v263';
 
 function defaults() {
   return {
@@ -41,7 +40,7 @@ const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
 function on(el,ev,fn){ if(el) el.addEventListener(ev,fn); }
 
-/* ---------- Inject minimal CSS so we don't touch your styles.css ---------- */
+/* ---------- Inject minimal CSS (non-invasive) ---------- */
 (function injectAddOnStyles(){
   if (document.getElementById('addonStyles')) return;
   const style = document.createElement('style');
@@ -61,12 +60,12 @@ function on(el,ev,fn){ if(el) el.addEventListener(ev,fn); }
     .anim-wave .armR { animation: armWave 1.1s ease-in-out infinite }
     body.toddler-on { background: radial-gradient(1200px 500px at 30% -10%, rgba(255,182,193,.12), transparent), #000; }
     canvas.game { width:100%; background:#0a0a0a; border:2px solid rgba(255,255,255,.08); border-radius:10px }
+    .is-hidden { display:none !important; }
   `;
   document.head.appendChild(style);
 })();
 
 /* ---------- Sounds / FX ---------- */
-// Optional preloaded audio files (if present in assets/sfx/). Falls back to WebAudio beeps.
 const audioAssets = {
   ding:  new Audio('assets/sfx/ding.wav'),
   coin:  new Audio('assets/sfx/coin.wav'),
@@ -76,25 +75,34 @@ const audioAssets = {
 if (audioAssets.bgm) { audioAssets.bgm.loop = true; audioAssets.bgm.volume = 0.35; }
 
 const SFX = {
-  ding(){ if (audioAssets.ding && !isNaN(audioAssets.ding.duration)) { try{ audioAssets.ding.currentTime=0; audioAssets.ding.play(); }catch(e){} return; }
+  ding(){ if (!isNaN(audioAssets.ding.duration)) { try{ audioAssets.ding.currentTime=0; audioAssets.ding.play(); }catch(e){} return; }
     try{ const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain();
       o.type='square'; o.frequency.value=880; o.connect(g); g.connect(a.destination);
       const t=a.currentTime; g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.06,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+.12);
       o.start(t); o.stop(t+.13);
     }catch(e){} },
-  coin(){ if (audioAssets.coin && !isNaN(audioAssets.coin.duration)) { try{ audioAssets.coin.currentTime=0; audioAssets.coin.play(); }catch(e){} return; }
+  coin(){ if (!isNaN(audioAssets.coin.duration)) { try{ audioAssets.coin.currentTime=0; audioAssets.coin.play(); }catch(e){} return; }
     try{ const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain();
       o.type='triangle'; o.frequency.setValueAtTime(600,a.currentTime); g.gain.value=.06; o.connect(g); g.connect(a.destination);
       o.frequency.exponentialRampToValueAtTime(1200,a.currentTime+.08); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.2);
       o.start(); o.stop(a.currentTime+.22);
     }catch(e){} },
-  level(){ if (audioAssets.level && !isNaN(audioAssets.level.duration)) { try{ audioAssets.level.currentTime=0; audioAssets.level.play(); }catch(e){} return; }
+  level(){ if (!isNaN(audioAssets.level.duration)) { try{ audioAssets.level.currentTime=0; audioAssets.level.play(); }catch(e){} return; }
     try{ const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain();
       o.type='sawtooth'; o.frequency.value=220; g.gain.value=.05; o.connect(g); g.connect(a.destination);
       const t=a.currentTime; o.frequency.exponentialRampToValueAtTime(1760,t+.6); g.gain.exponentialRampToValueAtTime(.0001,t+.65);
       o.start(t); o.stop(t+.66);
     }catch(e){} }
 };
+(function wireMusic(){
+  const btn = document.getElementById('musicBtn'); if(!btn) return;
+  btn.addEventListener('click', async ()=>{
+    state.settings.music = !state.settings.music; saveState();
+    btn.classList.toggle('on', state.settings.music);
+    if (state.settings.music) { try{ await audioAssets.bgm.play(); }catch(e){} }
+    else { try{ audioAssets.bgm.pause(); }catch(e){} }
+  });
+})();
 
 const FX = {
   layer: (()=>{ let d=document.getElementById('fxLayer'); if(!d){ d=document.createElement('div'); d.id='fxLayer'; d.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9999'; document.body.appendChild(d);} return d; })(),
@@ -114,17 +122,6 @@ const FX = {
     setTimeout(()=> img.remove(), 2100);
   }
 };
-
-// Music toggle if your header has #musicBtn; ignores otherwise
-(function wireMusic(){
-  const btn = document.getElementById('musicBtn'); if(!btn) return;
-  btn.addEventListener('click', async ()=>{
-    state.settings.music = !state.settings.music; saveState();
-    btn.classList.toggle('on', state.settings.music);
-    if (state.settings.music) { try{ await audioAssets.bgm.play(); }catch(e){} }
-    else { try{ audioAssets.bgm.pause(); }catch(e){} }
-  });
-})();
 
 /* ---------- Cursor trail ---------- */
 (function cursorTrail(){
@@ -165,7 +162,7 @@ const ACC_SRC = {
 function xpFor(l){ return l*l*10; }
 function maybeLevelUp(){ const need=xpFor(state.pet.level+1); if(state.pet.xp>=need){ state.pet.level++; SFX.level(); FX.confetti(260); FX.crown(); saveState(); renderHUD(); }}
 
-/* ---------- HUD & Party Banner (non-destructive) ---------- */
+/* ---------- HUD & Party Banner ---------- */
 function renderHUD(){
   document.body.classList.toggle('toddler-on', !!state.settings.toddler);
   const goldEl=$('#hudGold'); if(goldEl) goldEl.textContent=`🪙 ${state.economy.gold||0}`;
@@ -232,16 +229,77 @@ function initMiniGameIfVisible(){ const c=$('#popGame'); if(!c) return; if(!stat
   })(0);
 }
 
-/* ---------- Tiles + Top Nav (non-destructive support for data-route) ---------- */
+/* ---------- Tiles + Top Nav (support href+data-route) ---------- */
 function wireTiles(){ $$('.tile[data-route]').forEach(t=> on(t,'click',()=>{ location.hash='#'+t.dataset.route; })); }
 function wireTopNav(){ const nav=$('.top-nav'); if(!nav) return; nav.addEventListener('click', e=>{ const b=e.target.closest('[data-route]'); if(!b) return; e.preventDefault(); location.hash='#'+b.dataset.route; }); }
 
-/* ---------- Routing hook ---------- */
+/* ---------- COMPAT ROUTER (the big fix) ----------
+   Looks for route targets by these patterns (first match wins):
+   - element with id == route (e.g., #home, #quests, #shop)
+   - [data-view="route"]
+   - [data-screen="route"]
+   - [data-route-target="route"]
+   Fallback route: 'home' if present, else first detected route.
+*/
+const Router = (function(){
+  let views = {}; let order = [];
+  function detect() {
+    views = {}; order = [];
+    const candidates = new Set();
+
+    // from anchors & data-route buttons
+    $$('a[href^="#"]').forEach(a=>{ const r=a.getAttribute('href').slice(1); if(r) candidates.add(r); });
+    $$('[data-route]').forEach(b=>{ const r=b.getAttribute('data-route'); if(r) candidates.add(r); });
+
+    // add common routes if present in DOM
+    ['home','dashboard','quests','cleaning','shop','characters','companion','minigames','journal','breathe','calendar','budget','meals','rewards','checkin','settings'].forEach(r=>candidates.add(r));
+
+    // find view element for each candidate
+    candidates.forEach(r=>{
+      const el = document.getElementById(r)
+        || document.querySelector(`[data-view="${r}"]`)
+        || document.querySelector(`[data-screen="${r}"]`)
+        || document.querySelector(`[data-route-target="${r}"]`);
+      if (el) { views[r] = el; order.push(r); }
+    });
+
+    // if nothing detected, try generic sections as views
+    if (order.length === 0) {
+      document.querySelectorAll('main section, .view, .screen').forEach((el,i)=>{
+        const id = el.id || ('view'+i);
+        views[id]=el; order.push(id);
+      });
+    }
+  }
+
+  function show(route) {
+    if (!route) route = location.hash.slice(1);
+    if (!route) route = views.home ? 'home' : order[0];
+    // hide all
+    Object.values(views).forEach(el => el.classList.add('is-hidden'));
+    // show target or fallback
+    const target = views[route] || views.home || views[order[0]];
+    if (target) target.classList.remove('is-hidden');
+    // update active class on nav (if present)
+    $$('[data-route], a[href^="#"]').forEach(el=>{
+      const r = el.getAttribute('data-route') || (el.getAttribute('href')||'').replace('#','');
+      if (!r) return;
+      el.classList.toggle('active', r === route);
+    });
+  }
+
+  function init(){ detect(); show(); }
+  return { init, show, detect };
+})();
+
+/* ---------- Hash handling ---------- */
 function onHashChange(){
+  Router.show(location.hash.slice(1));
   renderHUD(); renderParty();
-  const name=(location.hash||'#home').slice(1);
-  if(name==='home') wireTiles();
-  if(name==='tasks'){ if(!state.log.tasks.length) regenerateDailyQuests(); renderTasks(); }
+
+  const name = (location.hash || '#home').slice(1);
+  if(name==='home' || name==='dashboard') wireTiles();
+  if(name==='tasks' || name==='quests'){ if(!state.log.tasks.length) regenerateDailyQuests(); renderTasks(); }
   if(name==='shop') wireShop();
   if(name==='characters') wireCharacterPage();
   if(name==='companion') wireCompanionPage();
@@ -250,8 +308,17 @@ function onHashChange(){
 window.addEventListener('hashchange', onHashChange);
 
 /* ---------- Boot ---------- */
-function boot(){ wireTopNav(); renderHUD(); renderParty(); onHashChange();
-  document.addEventListener('change', e=>{ if(e.target.matches('input[type="checkbox"]') && e.target.closest('#questList')){ SFX.ding(); SFX.coin(); FX.confetti(80); } });
+function boot(){
+  Router.init();    // <-- ensures a view is visible on first load
+  wireTopNav();
+  renderHUD();
+  renderParty();
+  onHashChange();   // run once for the current hash
+  document.addEventListener('change', e=>{
+    if(e.target.matches('input[type="checkbox"]') && e.target.closest('#questList')){
+      SFX.ding(); SFX.coin(); FX.confetti(80);
+    }
+  });
 }
 boot();
 })(); // IIFE end
