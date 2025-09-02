@@ -5,7 +5,12 @@ import { petSVG, ALL_ACC } from './pet.js';
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
-  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null, level:1, xp:0, acc:[] } },
+codex/add-character-selection-and-party-banners
+  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true,
+    character:{ id:'ash', img:'assets/heroes/hero-ash.png' },
+    companion:{ id:'molly', img:'assets/heroes/comp-molly.png' } },
+
+main
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
@@ -151,8 +156,13 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
-codex/add-player-character-accessorizing-feature
+codex/add-character-selection-and-party-banners
   const av=$('#hudAvatars');
+  if(av){
+    av.innerHTML='';
+    [state.user.character, state.user.companion].forEach(m=>{
+      if(m) av.innerHTML += `<div class='avatar'><img src='${m.img}' alt='${m.id}'/></div>`;
+    });
   if(av){
     av.innerHTML='';
     const c=state.user.character;
@@ -231,6 +241,16 @@ function initDashboard(){
   const lvl=active.level||1, xp=active.xp||0, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
   const pct=Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#xpBig").style.width=pct+"%"; $("#xpBigLabel").textContent = `Lv ${lvl}`;
+  const banner=$("#partyBanner");
+  if(banner){
+    banner.innerHTML='';
+    [state.user.character, state.user.companion].forEach((m,i)=>{
+      if(!m) return;
+      const div=el('div',{className:'party-member '+(i%2?'anim-dance':'anim-wave')});
+      div.innerHTML=`<img src='${m.img}' alt='${m.id}'/>`;
+      banner.appendChild(div);
+    });
+  }
 }
 
 // ---- quests
@@ -581,9 +601,55 @@ function initSettings(){
 }
 
 // ---- Characters & Companion screens
-function characterCards(){ return [ {id:'witch', label:'Witch', svg:petSVG('sprout',1)}, {id:'knight', label:'Knight', svg:petSVG('blob',1)}, {id:'ranger', label:'Ranger', svg:petSVG('birb',1)} ]; }
-function initCharacters(){ const grid=$('#charGrid'); grid.replaceChildren(); characterCards().forEach(c=>{ const card=el('div',{className:'char-card'},[ el('div',{className:'char-portrait', innerHTML:c.svg}), el('div',{textContent:c.label}) ]); card.addEventListener('click',()=>{ state.user.character={id:c.id,img:null}; saveState(state); fxToast('Character selected'); renderHUD(); routeTo('companion'); renderRoute(); }); grid.appendChild(card); }); const up=$('#uploadChar'); const file=$('#charFile'); up.addEventListener('click',()=> file.click()); file.addEventListener('change', ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ state.user.character={id:'custom', img:rd.result}; saveState(state); renderHUD(); routeTo('companion'); renderRoute(); }; rd.readAsDataURL(f); }); }
-function initCompanion(){ const grid=$('#compGrid'); grid.replaceChildren(); const opts=[ {id:'solo', label:'Solo Week', desc:'Just you + companion'}, {id:'toddler', label:'Toddler Week', desc:'Two characters co-op'} ]; opts.forEach(o=>{ const card=el('div',{className:'comp-card'},[ el('div',{className:'char-portrait', innerHTML: petSVG('birb',1) }), el('div',{textContent:o.label}), el('div',{className:'sub', textContent:o.desc}) ]); card.addEventListener('click',()=>{ state.log.coop.toddlerWeek = (o.id==='toddler'); saveState(state); fxToast('Mode: '+o.label); routeTo('home'); renderRoute(); }); grid.appendChild(card); }); }
+codex/add-character-selection-and-party-banners
+const HEROES=[
+  {id:'ash', name:'Ash', img:'assets/heroes/hero-ash.png'},
+  {id:'bambi', name:'Bambi', img:'assets/heroes/hero-bambi.png'},
+  {id:'fox', name:'Fox', img:'assets/heroes/hero-fox.png'},
+  {id:'odin', name:'Odin', img:'assets/heroes/hero-odin.png'},
+  {id:'molly', name:'Molly', img:'assets/heroes/comp-molly.png'}
+];
+function initCharacters(){
+  const grid=$('#charGrid'); grid.replaceChildren();
+  HEROES.filter(h=>h.id!=='molly').forEach(h=>{
+    const card=el('div',{className:'char-card'},[
+      el('img',{src:h.img, alt:h.name}),
+      el('div',{textContent:h.name})
+    ]);
+    card.addEventListener('click',()=>{
+      state.user.character={id:h.id,img:h.img};
+      saveState(state); fxToast('Character selected');
+      renderHUD(); routeTo('companion'); renderRoute();
+    });
+    grid.appendChild(card);
+  });
+  const up=$('#uploadChar'); const file=$('#charFile');
+  up.addEventListener('click',()=> file.click());
+  file.addEventListener('change', ev=>{
+    const f=ev.target.files[0]; if(!f) return;
+    const rd=new FileReader(); rd.onload=()=>{
+      state.user.character={id:'custom', img:rd.result};
+      saveState(state); renderHUD(); routeTo('companion'); renderRoute();
+    }; rd.readAsDataURL(f);
+  });
+}
+function initCompanion(){
+  const grid=$('#compGrid'); grid.replaceChildren();
+  const opts=HEROES.filter(h=>h.id!==state.user.character.id);
+  opts.forEach(h=>{
+    const card=el('div',{className:'comp-card'},[
+      el('img',{src:h.img, alt:h.name}),
+      el('div',{textContent:h.name})
+    ]);
+    card.addEventListener('click',()=>{
+      state.user.companion={id:h.id,img:h.img};
+      saveState(state); fxToast('Companion selected');
+      renderHUD(); routeTo('home'); renderRoute();
+    });
+    grid.appendChild(card);
+  });
+}
+main
 
 // Unlocks
 function maybeUnlockAccessory(){ const POOL=ALL_ACC.map(a=>a.id); const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }

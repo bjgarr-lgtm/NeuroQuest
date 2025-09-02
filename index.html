@@ -57,17 +57,16 @@
   <!-- Character Select -->
   <template id="tpl-characters">
     <section class="cardish">
-      <h2 class="dash">Choose Your Character</h2>
-      <p class="sub">Upload art later; for now pick a style.</p>
+      <h2 class="dash">Choose Your Hero</h2>
       <div class="char-grid" id="charGrid"></div>
       <div class="row"><button id="uploadChar" class="secondary">Upload custom art</button><input id="charFile" type="file" accept="image/*" style="display:none"/></div>
     </section>
   </template>
 
-  <!-- Companion Mode -->
+  <!-- Companion Select -->
   <template id="tpl-companion">
     <section class="cardish">
-      <h2 class="dash">Choose Companion Mode</h2>
+      <h2 class="dash">Choose Your Companion</h2>
       <div class="comp-grid" id="compGrid"></div>
     </section>
   </template>
@@ -75,6 +74,7 @@
   <!-- Home -->
   <template id="tpl-home">
     <section class="dash-board">
+      <div class="party-banner" id="partyBanner"></div>
       <div class="xp-slab">
         <div class="xp-title">XP</div>
         <div class="xp-bar big"><div id="xpBig"></div></div>
