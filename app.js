@@ -383,12 +383,27 @@ function initCheckin(){
 }
 
 // ---- journal
-const PROMPTS = ["Name one tiny win from today.","What do you need less of right now?","Three things you’re grateful for:","What would kindness toward yourself look like today?","Finish this sentence: I feel most like me when…","A thought to let go:","A place that makes you breathe easier:","Something you’re proud of this week:"];
+let journalEditId=null;
+const PROMPTS=["Name one tiny win from today.","What do you need less of right now?","Three things you’re grateful for:","What would kindness toward yourself look like today?","Finish this sentence: I feel most like me when…","A thought to let go:","A place that makes you breathe easier:","Something you’re proud of this week:"];
 function initJournal(){
-  const sel=$("#journalPrompt"); sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
-  $("#newPrompt").addEventListener("click",()=>{ sel.value = PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; });
-  $("#saveJournal").addEventListener("click",()=>{ const prompt=sel.value; const text=$("#journalText").value.trim(); if(!text) return; state.log.journal.push({ id: crypto.randomUUID(), ts: Date.now(), prompt, text }); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); saveState(state); initJournal(); });
-  const list=$("#journalList"); list.replaceChildren(); state.log.journal.slice().reverse().forEach(j=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}), el("div",{textContent:j.text}) ])));
+  const sel=$("#journalPrompt"), txt=$("#journalText"), saveBtn=$("#saveJournal");
+  sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
+  $("#newPrompt").addEventListener("click",()=>{ sel.value=PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; });
+  saveBtn.textContent=journalEditId?"Update":"Save";
+  saveBtn.addEventListener("click",()=>{
+    const prompt=sel.value; const text=txt.value.trim(); if(!text) return;
+    if(journalEditId){ const j=state.log.journal.find(x=>x.id===journalEditId); if(j){ j.prompt=prompt; j.text=text; } journalEditId=null; }
+    else { state.log.journal.push({ id:crypto.randomUUID(), ts:Date.now(), prompt, text }); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); }
+    saveState(state); initJournal();
+  });
+  const list=$("#journalList"); list.replaceChildren();
+  state.log.journal.slice().reverse().forEach(j=>{
+    const row=el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}) ]);
+    const btn=el("button",{className:"secondary", textContent:"Open"});
+    btn.addEventListener("click",()=>{ journalEditId=j.id; sel.value=j.prompt; txt.value=j.text; saveBtn.textContent="Update"; });
+    row.appendChild(btn); list.appendChild(row);
+  });
+  $("#journalStorage").textContent="Entries are stored locally in your browser.";
 }
 
 // ---- minigames
