@@ -43,3 +43,13 @@ export const ALL_ACC = [
   { id:"cap", name:"Cap" }, { id:"bow", name:"Bow" }, { id:"glasses", name:"Glasses" },
   { id:"leaf", name:"Leaf" }, { id:"star", name:"Star" }
 ];
+
+// Pixel-art rendering for companions.
+// Currently this simply reuses the main SVG renderer but forces crisp edges
+// so the output has a retro, pixelated look. It acts as a drop-in replacement
+// for the previously undefined function referenced throughout the app.
+export function petPixelSVG(species, level, acc = []) {
+  // Use the existing vector renderer and tweak the SVG to prefer crisp edges
+  // which makes the art appear pixelated when scaled up.
+  return petSVG(species, level, acc).replace('<svg', '<svg shape-rendering="crispEdges"');
+}
