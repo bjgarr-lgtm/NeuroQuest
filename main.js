@@ -170,30 +170,31 @@ function initBreathe(){
   });
 }
 
+let journalEditId = null;
 function initJournal(){
-  const sel = $("#journalPrompt");
+  const sel=$("#journalPrompt"), txt=$("#journalText"), saveBtn=$("#saveJournal");
   sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
-  $("#newPrompt").addEventListener("click", ()=>{
-    const i = Math.floor(Math.random()*PROMPTS.length);
-    sel.value = PROMPTS[i];
-  });
-  $("#saveJournal").addEventListener("click", ()=>{
-    const prompt = sel.value; const text = $("#journalText").value.trim();
-    if(!text) return;
-    state.log.journal.push({ id: crypto.randomUUID(), ts: Date.now(), prompt, text });
-    touchStreak(state); addXP(state, 6);
+  $("#newPrompt").addEventListener("click",()=>{ const i=Math.floor(Math.random()*PROMPTS.length); sel.value=PROMPTS[i]; });
+  saveBtn.textContent=journalEditId?"Update":"Save";
+  saveBtn.addEventListener("click",()=>{
+    const prompt=sel.value; const text=txt.value.trim(); if(!text) return;
+    if(journalEditId){ const e=state.log.journal.find(x=>x.id===journalEditId); if(e){ e.prompt=prompt; e.text=text; } journalEditId=null; }
+    else { state.log.journal.push({ id:crypto.randomUUID(), ts:Date.now(), prompt, text }); touchStreak(state); addXP(state,6); }
     saveState(state); renderRoute();
   });
-  const list = $("#journalList");
+  const list=$("#journalList"); list.replaceChildren();
   state.log.journal.slice().reverse().forEach(j=>{
-    list.appendChild(el("div",{className:"card"},[
+    const row=el("div",{className:"card"},[
       el("div",{className:"row"},[
-        el("strong",{textContent: fmtDate(j.ts)}),
-        el("span",{textContent: " — "+j.prompt})
-      ]),
-      el("div",{textContent: j.text})
-    ]));
+        el("strong",{textContent:fmtDate(j.ts)}),
+        el("span",{textContent:" — "+j.prompt})
+      ])
+    ]);
+    const btn=el("button",{className:"secondary", textContent:"Open"});
+    btn.addEventListener("click",()=>{ journalEditId=j.id; sel.value=j.prompt; txt.value=j.text; saveBtn.textContent="Update"; });
+    row.appendChild(btn); list.appendChild(row);
   });
+  $("#journalStorage").textContent="Entries are stored locally in your browser.";
 }
 
 function initPet(){
