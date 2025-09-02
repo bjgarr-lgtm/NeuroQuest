@@ -1,0 +1,24 @@
+SootheBirb v2.5.0p Add-ons (safe for your reverted base)
+--------------------------------------------------------
+Replace ONLY:
+  - app.js  (drop in at web root)
+
+Add folders/files:
+  - assets/acc/crown.svg
+  - assets/acc/glasses.svg
+  - assets/acc/cape.svg
+  - assets/acc/torch.svg
+  - assets/sfx/ding.wav
+  - assets/sfx/coin.wav
+  - assets/sfx/level.wav
+  - assets/sfx/bgm.wav   (looping background track; optional)
+
+Keep your index.html and styles.css exactly as-is.
+
+After deploy:
+  - Purge Cloudflare Pages cache.
+  - Hard-refresh (Cmd/Ctrl-Shift-R).
+  - Toggle Toddler in HUD → Mini-Games tile appears; quests adapt.
+  - Companion Select: choose party → Regenerate Quests if needed.
+  - Shop: buy an item → Character: click an Equip button to overlay.
+  - Music note button (#musicBtn): toggles looping bgm.wav (if you have that button).
