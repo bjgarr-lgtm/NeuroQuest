@@ -78,9 +78,9 @@ codex/add-hud-tiles-for-companions-and-update-party-banner
 .party-member{ width:75px; height:75px; overflow:hidden }
 
 codex/resize-party-banner-to-2/3-size
+main
 .party-banner{ display:flex; gap:.67rem; justify-content:center; align-items:center; margin-bottom:.67rem }
 .party-member{ width:333px; height:333px; overflow:hidden }
-main
 .party-member img{ width:100%; height:100%; object-fit:contain }
 @keyframes wave{ 0%,100%{ transform:translateY(0)} 50%{ transform:translateY(-12px) } }
 @keyframes dance{ 0%,100%{ transform:rotate(-6deg)} 50%{ transform:rotate(6deg) } }
