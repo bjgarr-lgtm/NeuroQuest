@@ -156,27 +156,20 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
-codex/add-character-selection-and-party-banners
-  const av=$('#hudAvatars');
-  if(av){
-    av.innerHTML='';
-    [state.user.character, state.user.companion].forEach(m=>{
-      if(m) av.innerHTML += `<div class='avatar'><img src='${m.img}' alt='${m.id}'/></div>`;
+  const av = $('#hudAvatars');
+  if (av) {
+    av.innerHTML = '';
+    const active = state.settings.toddler ? state.pet : state.user.character;
+    const members = [active, state.user.companion].filter(Boolean);
+    members.forEach(m => {
+      let markup = m.img
+        ? `<img src='${m.img}' alt='${m.id}'/>`
+        : `<div class='char-portrait'>${petPixelSVG(characterSpecies(m.id), m.level || 1, m.acc || [])}</div>`;
+      av.innerHTML += `<div class='avatar'>${markup}</div>`;
     });
-  if(av){
-    av.innerHTML='';
-    const c=state.user.character;
-    const species=characterSpecies(c?.id);
-    const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG(species, c.level||1, c.acc)}</div>`;
-    av.innerHTML = `<div class='avatar'>${img}</div>`;
-    if(state.settings.toddler){
-      const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc);
-      av.innerHTML += `<div class='avatar'>${p}</div>`;
-    }
   }
-  const petNav=document.querySelector("button.nav-btn[data-route='pet']");
-  if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
-main
+  const petNav = document.querySelector("button.nav-btn[data-route='pet']");
+  if (petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
   document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
 }
 renderHUD();
