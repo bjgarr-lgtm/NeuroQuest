@@ -122,6 +122,9 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 @keyframes bob { 0%,100%{ transform: translateY(0)} 50%{ transform: translateY(-6px) } }
 .stats{ opacity:.9; display:flex; gap:1rem; flex-wrap:wrap }
 
+.toddler-actions{ display:flex; gap:1rem; justify-content:center; margin-top:1rem }
+.toddler-actions button{ font-size:1.4rem; padding:1rem 1.5rem; flex:1 }
+
 /* Ambient grid glow */
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none;
