@@ -494,79 +494,84 @@ function initBreathe(){
 }
 
 // ---- pet
-function initPet(){
-codex/add-player-character-accessorizing-feature
-  const stage=$("#petStage");
-  const petMarkup = petSVG(state.pet.species, state.pet.level, state.pet.acc);
-  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
-  const xp=state.pet.xp, lvl=state.pet.level, next=xpForLevel(lvl+1);
-  $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
+function initPet() {
+  const stage = $('#petStage');
+  const stats = $('#petStats');
+  const title = $('#petTitle');
+  const form = $('#petForm');
+  const nameInput = $('#petName');
+  const speciesInput = $('#petSpecies');
+  const saveBtn = $('#savePet');
+  const accList = $('#accList');
+  const accDetails = accList?.closest('details');
 
-  const nameInput=$("#petName"), speciesInput=$("#petSpecies"), saveBtn=$("#savePet"), accList=$("#accList");
-  const editRow=saveBtn?.closest('.row');
-main
-  const accDetails=accList?.closest('details');
   document.getElementById('toddlerActions')?.remove();
-  const toddler=state.settings?.toddler;
-  const target=toddler? state.pet : state.user.character;
-  const species=toddler? target.species : characterSpecies(target.id);
-  const petMarkup = (state.user.art==='pixel') ? petPixelSVG(species, target.level, target.acc) : petSVG(species, target.level, target.acc);
-  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
-  const xp=target.xp||0, lvl=target.level||1, next=xpForLevel(lvl+1);
-  stats.textContent = `Level ${lvl} — ${xp}/${next} XP`;
-  if(title) title.textContent = toddler? 'Your Companion' : 'Your Character';
+  const toddler = state.settings?.toddler;
+  const target = toddler ? state.pet : state.user.character;
+  const species = toddler ? target.species : characterSpecies(target.id);
 
-  if(toddler){
-    if(form) form.style.display='none';
-    if(accDetails) accDetails.style.display='none';
-    const actions=el('div',{id:'toddlerActions',className:'toddler-actions'},[
-      el('button',{className:'primary',textContent:'Feed'}),
-      el('button',{className:'primary',textContent:'Play'})
+  const markup = target.img
+    ? `<img src='${target.img}' alt='${target.id}'/>`
+    : (state.user.art === 'pixel'
+        ? petPixelSVG(species, target.level || 1, target.acc || [])
+        : petSVG(species, target.level || 1, target.acc || []));
+  stage.innerHTML = `<div class="pet">${markup}</div>`;
+
+  const xp = target.xp || 0, lvl = target.level || 1, next = xpForLevel(lvl + 1);
+  stats.textContent = `Level ${lvl} — ${xp}/${next} XP`;
+  if (title) title.textContent = toddler ? 'Your Companion' : 'Your Character';
+
+  if (toddler) {
+    form && (form.style.display = 'none');
+    accDetails && (accDetails.style.display = 'none');
+    const actions = el('div', { id: 'toddlerActions', className: 'toddler-actions' }, [
+      el('button', { className: 'primary', textContent: 'Feed' }),
+      el('button', { className: 'primary', textContent: 'Play' })
     ]);
-    accDetails?.insertAdjacentElement('afterend',actions);
-    const [feedBtn,playBtn]=actions.querySelectorAll('button');
-    feedBtn.addEventListener('click',()=>{ addXP(state,1); addGold(1); initPet(); renderHUD(); });
-    playBtn.addEventListener('click',()=>{ addXP(state,1); addGold(1); initPet(); renderHUD(); });
+    accDetails?.insertAdjacentElement('afterend', actions);
+    const [feedBtn, playBtn] = actions.querySelectorAll('button');
+    feedBtn.addEventListener('click', () => { addXP(state, 1); addGold(1); initPet(); renderHUD(); });
+    playBtn.addEventListener('click', () => { addXP(state, 1); addGold(1); initPet(); renderHUD(); });
   } else {
-    if(form) form.style.display='none';
-    if(accDetails) accDetails.style.display='';
-codex/add-player-character-accessorizing-feature
+    form && (form.style.display = 'none');
+    accDetails && (accDetails.style.display = '');
     accList.replaceChildren();
-    const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses']));
-    acc.forEach(a=>{
-      const btn=el('button',{className: target.acc.includes(a)? '':'secondary', textContent:a});
-      btn.addEventListener('click',()=>{
-        const arr=target.acc; const i=arr.indexOf(a); if(i>=0) arr.splice(i,1); else arr.push(a);
+    const acc = Array.from(new Set([...(state.economy.ownedAcc || []), 'cap', 'glasses']));
+    acc.forEach(a => {
+      const btn = el('button', { className: target.acc.includes(a) ? '' : 'secondary', textContent: a });
+      btn.addEventListener('click', () => {
+        const i = target.acc.indexOf(a);
+        i >= 0 ? target.acc.splice(i, 1) : target.acc.push(a);
         saveState(state); initPet(); renderHUD();
       });
       accList.appendChild(btn);
     });
+  }
 
-    document.getElementById('toddlerActions')?.remove();
-    saveBtn.onclick=()=>{ state.pet.name=nameInput.value.trim()||"Pebble"; state.pet.species=speciesInput.value; saveState(state); initPet(); renderHUD(); };
-    const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), ...ALL_ACC.map(a=>a.id)]));
-    accList.replaceChildren();
-    acc.forEach(a=>{ const btn=el('button',{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener('click',()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
-
-    const store=$('#accStore');
-    if(store){
-      store.replaceChildren();
-      const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
-      store.appendChild(el('h3',{textContent:'Accessories Store'}));
-      STORE.forEach(it=>{
-        const owned=(state.economy.ownedAcc||[]).includes(it.id);
-        const btn=el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'});
-        btn.addEventListener('click',()=>{
-          if(owned) return;
-          if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
-          state.economy.gold -= it.cost;
-          state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
-          saveState(state); renderHUD(); initPet();
-        });
-        store.appendChild(el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), btn]));
+  const store = $('#accStore');
+  if (store) {
+    store.replaceChildren();
+    const STORE = [
+      { id: 'cap', label: 'Cap', cost: 20 },
+      { id: 'bow', label: 'Bow', cost: 25 },
+      { id: 'glasses', label: 'Glasses', cost: 30 },
+      { id: 'scarf', label: 'Scarf', cost: 35 }
+    ];
+    store.appendChild(el('h3', { textContent: 'Accessories Store' }));
+    STORE.forEach(it => {
+      const owned = (state.economy.ownedAcc || []).includes(it.id);
+      const btn = el('button', { className: owned ? 'secondary' : 'primary', textContent: owned ? 'Owned' : 'Buy' });
+      btn.addEventListener('click', () => {
+        if (owned) return;
+        if ((state.economy.gold || 0) < it.cost) { alert('Not enough gold'); return; }
+        state.economy.gold -= it.cost;
+        state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc || []), it.id]));
+        saveState(state); renderHUD(); initPet();
       });
-    }
-main
+      store.appendChild(el('div', { className: 'quest-row' }, [
+        el('span', { textContent: `${it.label} — 🪙 ${it.cost}` }), btn
+      ]));
+    });
   }
 }
 
