@@ -9,9 +9,7 @@ const defaultState = () => ({
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
-  settings: { toddler:false },
   streak: { current: 0, best: 0, lastCheck: "" },
-  settings: { toddler:false },
   log: {
     moods: [], tasks: [], journal: [], breath: [],
     clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { month:"", week:0, done:false } },
