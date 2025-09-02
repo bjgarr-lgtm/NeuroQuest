@@ -1,6 +1,6 @@
 // ====== SootheBirb v2.5.0 — Characters + Economy ======
 
-import { petSVG, ALL_ACC } from './pet.js';
+import { petSVG, petPixelSVG, ALL_ACC } from './pet.js';
 
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
