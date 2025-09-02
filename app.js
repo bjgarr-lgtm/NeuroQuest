@@ -1,5 +1,7 @@
 // ====== SootheBirb v2.5.0 — Characters + Economy ======
 
+import { petSVG, ALL_ACC } from './pet.js';
+
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
@@ -7,12 +9,10 @@ const defaultState = () => ({
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
-  settings: { toddler:false },
   streak: { current: 0, best: 0, lastCheck: "" },
-  settings: { toddler:false },
   log: {
     moods: [], tasks: [], journal: [], breath: [],
-    clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { name:'Week 2', note:'Deep clean' } },
+    clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { month:"", week:0, done:false } },
     coop: { toddlerWeek:false, quests: [], collectibles: [] },
     budget: { goal: 500, txns: [] },
     meals: { data: Array.from({length:7},()=>({breakfast:'', lunch:'', dinner:''})) },
@@ -118,12 +118,23 @@ function toggleMusic(){ if(MUSIC_ON) stopMusic(); else startMusic(); }
 document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
 
 // economy
-const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5};
+const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5,raid:15};
 function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); SFX.gold(); saveState(state); renderHUD(); }
+
+const RAID_THEMES=["Declutter","Deep clean","Paperwork","Maintenance","Floors"];
+function getWeekOfMonth(d){ const date=new Date(d); const first=new Date(date.getFullYear(), date.getMonth(),1).getDay(); return Math.floor((date.getDate()+first-1)/7)+1; }
+function ensureRaid(){
+  const now=new Date();
+  const key=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,'0');
+  const wk=getWeekOfMonth(now);
+  const r=state.log.clean.raid||{};
+  if(r.month!==key || r.week!==wk){ state.log.clean.raid={month:key,week:wk,done:false}; saveState(state); }
+}
 
 // --- Theme + HUD
 let state; try{ state = loadState(); }catch(e){ console.error('init', e); state=defaultState(); }
 state.settings = state.settings || { toddler:false };
+ensureRaid();
 function applyTheme(){
   document.documentElement.className="";
   document.documentElement.classList.add("theme-"+(state.user.theme||"retro"));
@@ -140,6 +151,7 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
+codex/add-player-character-accessorizing-feature
   const av=$('#hudAvatars');
   if(av){
     av.innerHTML='';
@@ -154,6 +166,7 @@ function renderHUD(){
   }
   const petNav=document.querySelector("button.nav-btn[data-route='pet']");
   if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
+main
   document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
 }
 renderHUD();
@@ -252,6 +265,7 @@ function initTasks(){
 
 // ---- cleaning
 function initCleaning(){
+  ensureRaid();
   const small=$("#cleanSmall");
   function draw(){
     small.replaceChildren();
@@ -265,7 +279,14 @@ function initCleaning(){
     });
     $("#bossProg").style.width = Math.min(100, state.log.clean.boss.progress)+"%";
     $("#bossList").replaceChildren(el("div",{textContent:`Boss: ${state.log.clean.boss.name}`}));
-    $("#raidInfo").replaceChildren(el("div",{textContent:`${state.log.clean.raid.name} — ${state.log.clean.raid.note}`}));
+    const raid=state.log.clean.raid;
+    const theme=RAID_THEMES[raid.week-1]||"";
+    const rrow=el("div",{className:"quest-row"+(raid.done?" done":"")});
+    const rbox=el("div",{className:"checkbox"+(raid.done?" checked":"")}); rbox.innerHTML=raid.done?"✓":"";
+    if(!raid.done){ rbox.addEventListener("click",()=>{ raid.done=true; touchStreak(state); saveState(state); addXP(state,15); addGold(GOLD_REWARD.raid); maybeUnlockAccessory(); draw(); renderHUD(); }); }
+    const rtext=el("span",{textContent:`Week ${raid.week} — ${theme}`});
+    rrow.append(rbox,rtext);
+    $("#raidInfo").replaceChildren(rrow);
   }
   draw();
   $("#addCleanTask").addEventListener("click",()=>{ const t=$("#newCleanTask").value.trim(); if(!t) return; state.log.clean.small.push({title:t,done:false}); $("#newCleanTask").value=""; saveState(state); draw(); });
@@ -291,7 +312,13 @@ function initCoop(){
   }
   draw();
   $("#addSidekick").addEventListener("click",()=>{ const t=$("#newSidekick").value.trim(); if(!t) return; state.log.coop.quests.push({title:t,done:false}); $("#newSidekick").value=""; saveState(state); draw(); });
-  $("#toggleWeek").addEventListener("click",()=>{ state.log.coop.toddlerWeek=!state.log.coop.toddlerWeek; saveState(state); $("#coopWeek").textContent = state.log.coop.toddlerWeek? "Toddler Week" : "Solo Week"; });
+  $("#toggleWeek").addEventListener("click",()=>{
+    state.log.coop.toddlerWeek = !state.log.coop.toddlerWeek;
+    state.settings.toddler = state.log.coop.toddlerWeek;
+    renderHUD();
+    saveState(state);
+    $("#coopWeek").textContent = state.log.coop.toddlerWeek? "Toddler Week" : "Solo Week";
+  });
 }
 
 // ---- budget
@@ -342,7 +369,7 @@ function initCalendar(){
   $("#addCal").addEventListener("click",()=>{ const text=$("#calText").value.trim(); const day=Math.max(0, Math.min(6, parseInt($("#calDay").value||"0"))); if(!text) return; state.log.calendar.events[day].push(text); $("#calText").value=""; saveState(state); initCalendar(); });
 }
 
-// ---- shop (includes accessories store)
+// ---- shop
 function initShop(){
   const list=$("#shopList");
   function draw(){
@@ -358,24 +385,6 @@ function initShop(){
   }
   draw();
   $("#addShop").addEventListener("click",()=>{ const t=$("#shopItem").value.trim(); if(!t) return; state.log.shop.items.push({title:t, done:false}); $("#shopItem").value=""; saveState(state); draw(); });
-
-  // Accessories store
-  const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
-  const storeEl=el('div',{className:'panel-list'});
-  storeEl.appendChild(el('h3',{textContent:'Accessories Store'}));
-  STORE.forEach(it=>{
-    const owned=(state.economy.ownedAcc||[]).includes(it.id);
-    const row=el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'})]);
-    row.querySelector('button').addEventListener('click',()=>{
-      if(owned) return;
-      if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
-      state.economy.gold -= it.cost;
-      state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
-      saveState(state); renderHUD(); initShop();
-    });
-    storeEl.appendChild(row);
-  });
-  list.parentElement.appendChild(storeEl);
 }
 
 // ---- rewards
@@ -399,16 +408,41 @@ function initRewards(){
 function initCheckin(){
   let chosen=null;
   $$(".mood").forEach(b=> b.addEventListener("click",()=>{ $$(".mood").forEach(x=> x.classList.remove("active")); b.classList.add("active"); chosen=b.dataset.mood; }));
-  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); alert("Logged!"); });
+  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); renderRoute(); alert("Logged!"); });
+  const list=$("#moodList");
+  list.replaceChildren();
+  state.log.moods.slice(-10).reverse().forEach(m=>{
+    const summary=`${fmtDate(m.ts)} — ${m.mood.toUpperCase()}${m.tags? " — "+m.tags:""}`;
+    const det=el("details",{className:"mood-entry"},[
+      el("summary",{textContent:summary}),
+      el("div",{textContent:m.notes||"(no notes)"})
+    ]);
+    list.appendChild(det);
+  });
 }
 
 // ---- journal
-const PROMPTS = ["Name one tiny win from today.","What do you need less of right now?","Three things you’re grateful for:","What would kindness toward yourself look like today?","Finish this sentence: I feel most like me when…","A thought to let go:","A place that makes you breathe easier:","Something you’re proud of this week:"];
+let journalEditId=null;
+const PROMPTS=["Name one tiny win from today.","What do you need less of right now?","Three things you’re grateful for:","What would kindness toward yourself look like today?","Finish this sentence: I feel most like me when…","A thought to let go:","A place that makes you breathe easier:","Something you’re proud of this week:"];
 function initJournal(){
-  const sel=$("#journalPrompt"); sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
-  $("#newPrompt").addEventListener("click",()=>{ sel.value = PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; });
-  $("#saveJournal").addEventListener("click",()=>{ const prompt=sel.value; const text=$("#journalText").value.trim(); if(!text) return; state.log.journal.push({ id: crypto.randomUUID(), ts: Date.now(), prompt, text }); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); saveState(state); initJournal(); });
-  const list=$("#journalList"); list.replaceChildren(); state.log.journal.slice().reverse().forEach(j=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}), el("div",{textContent:j.text}) ])));
+  const sel=$("#journalPrompt"), txt=$("#journalText"), saveBtn=$("#saveJournal");
+  sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
+  $("#newPrompt").addEventListener("click",()=>{ sel.value=PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; });
+  saveBtn.textContent=journalEditId?"Update":"Save";
+  saveBtn.addEventListener("click",()=>{
+    const prompt=sel.value; const text=txt.value.trim(); if(!text) return;
+    if(journalEditId){ const j=state.log.journal.find(x=>x.id===journalEditId); if(j){ j.prompt=prompt; j.text=text; } journalEditId=null; }
+    else { state.log.journal.push({ id:crypto.randomUUID(), ts:Date.now(), prompt, text }); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); }
+    saveState(state); initJournal();
+  });
+  const list=$("#journalList"); list.replaceChildren();
+  state.log.journal.slice().reverse().forEach(j=>{
+    const row=el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}) ]);
+    const btn=el("button",{className:"secondary", textContent:"Open"});
+    btn.addEventListener("click",()=>{ journalEditId=j.id; sel.value=j.prompt; txt.value=j.text; saveBtn.textContent="Update"; });
+    row.appendChild(btn); list.appendChild(row);
+  });
+  $("#journalStorage").textContent="Entries are stored locally in your browser.";
 }
 
 // ---- minigames
@@ -436,33 +470,21 @@ function startBreathing(circleEl, phaseEl, onFinish){
 function animateCircle(el, phase){ if(phase==="Inhale"){ el.style.transform="scale(1.2)"; el.style.borderColor="var(--accent)"; } else if(phase==="Exhale"){ el.style.transform="scale(0.85)"; el.style.borderColor="var(--accent-2)"; } else { el.style.transform="scale(1)"; el.style.borderColor="var(--muted)"; } }
 function initBreathe(){
   const circle=$("#breathCircle"), phase=$("#breathPhase"); let stop=null;
-  $("#startBreath").addEventListener("click",()=>{ if(stop) stop(); stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert("Nice breathing session ✨"); renderHUD(); }); });
-  $("#stopBreath").addEventListener("click",()=>{ if(stop){ stop(); stop=null; } });
+  circle.addEventListener("click",()=>{ if(stop){ stop(); stop=null; return; } stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert("Nice breathing session ✨"); renderHUD(); stop=null; }); });
 }
 
 // ---- pet
-function accessories(list){ const set=new Set(list); let s=""; if(set.has("cap")) s+=`<path d="M42 40 q18 -16 36 0 v8 h-36z" fill="#1f2937"/>`; if(set.has("bow")) s+=`<path d="M52 78 q-12 -4 0 -8 q12 4 0 8z" fill="#e11d48"/><path d="M68 78 q12 -4 0 -8 q-12 4 0 8z" fill="#e11d48"/><circle cx="60" cy="76" r="6" fill="#be123c"/>`; if(set.has("glasses")) s+=`<circle cx="50" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><circle cx="70" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><line x1="57" y1="48" x2="63" y2="48" stroke="#111" stroke-width="2"/>`; return s; }
-function petSVG(species, level, acc=[]){
-  const core = { birb:`<ellipse cx="60" cy="70" rx="40" ry="35" fill="url(#g)"/><circle cx="60" cy="52" r="18" fill="url(#g)"/><circle cx="52" cy="48" r="4" fill="#111"/><circle cx="68" cy="48" r="4" fill="#111"/><polygon points="60,55 56,60 64,60" fill="#ffc66d"/>`,
-                 sprout:`<rect x="30" y="45" width="60" height="55" rx="16" fill="url(#g)"/><circle cx="60" cy="40" r="8" fill="#64d66a"/><ellipse cx="54" cy="38" rx="6" ry="3" fill="#64d66a"/><ellipse cx="66" cy="38" rx="6" ry="3" fill="#64d66a"/>`,
-                 blob:`<circle cx="60" cy="70" r="38" fill="url(#g)"/><circle cx="48" cy="64" r="5" fill="#111"/><circle cx="72" cy="64" r="5" fill="#111"/>` }[species] || "";
-  const defs = `<defs><radialGradient id="g" cx=".5" cy=".35"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent-2)"/></radialGradient></defs>`;
-  const levelBadge = `<text x="10" y="18" font-size="12" fill="rgba(255,255,255,.65)">Lv.</text><rect x="28" y="6" rx="6" ry="6" width="26" height="16" fill="rgba(0,0,0,.35)"/><text x="41" y="18" text-anchor="middle" font-weight="700" fill="#fff">${level}</text>`;
-  return `<svg viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Companion"><rect x="0" y="0" width="120" height="120" rx="22" fill="rgba(0,0,0,.15)"/>${defs}${core}${accessories(acc)}${levelBadge}</svg>`;
-}
-function petPixelSVG(species, level, acc=[]){
-  const px=(x,y,c)=>`<rect x='${x}' y='${y}' width='1' height='1' fill='${c}'/>`;
-  const C1=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#00eaff';
-  const C2=getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim()||'#ff3ea5';
-  const sprites={ birb:[ "................","......11........",".....1111.......","....111111......","...11111111.....","...11122111.....","...11222111.....","...11122111.....","...11111111.....","....111111......",".....1..1.......",".....1..1.......","................","................","................","................" ],
-                  sprout:[ "................","......22........",".....2222.......",".......22.......","....111111......","...11111111.....","...11111111.....","...11111111.....","...11111111.....","...11111111.....","....111111......","................","................","................","................","................" ],
-                  blob:[ "................","................","....111111......","..1111111111....","..1111111111....",".111111111111...",".111111111111...",".111111111111...",".111111111111...","..1111111111....","..1111111111....","....111111......","................","................","................","................" ] };
-  const grid=sprites[species]||sprites.blob; let pixels=""; for(let y=0;y<16;y++){ for(let x=0;x<16;x++){ const ch=grid[y][x]; if(ch==='1') pixels+=px(x,y,C1); if(ch==='2') pixels+=px(x,y,C2);} }
-  const levelBadge=`<text x="2" y="8" font-size="4" fill="rgba(255,255,255,.8)">Lv.${level}</text>`;
-  return `<svg viewBox="0 0 16 16" width="140" height="140" class="pixelize" role="img"><rect x="0" y="0" width="16" height="16" fill="rgba(255,255,255,.04)" rx="2"/>${pixels}${levelBadge}</svg>`;
-}
 function initPet(){
-  const stage=$("#petStage"), stats=$("#petStats"), title=$("#petTitle"), form=$("#petForm"), accList=$("#accList");
+codex/add-player-character-accessorizing-feature
+  const stage=$("#petStage");
+  const petMarkup = petSVG(state.pet.species, state.pet.level, state.pet.acc);
+  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
+  const xp=state.pet.xp, lvl=state.pet.level, next=xpForLevel(lvl+1);
+  $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
+
+  const nameInput=$("#petName"), speciesInput=$("#petSpecies"), saveBtn=$("#savePet"), accList=$("#accList");
+  const editRow=saveBtn?.closest('.row');
+main
   const accDetails=accList?.closest('details');
   document.getElementById('toddlerActions')?.remove();
   const toddler=state.settings?.toddler;
@@ -488,6 +510,7 @@ function initPet(){
   } else {
     if(form) form.style.display='none';
     if(accDetails) accDetails.style.display='';
+codex/add-player-character-accessorizing-feature
     accList.replaceChildren();
     const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses']));
     acc.forEach(a=>{
@@ -498,6 +521,32 @@ function initPet(){
       });
       accList.appendChild(btn);
     });
+
+    document.getElementById('toddlerActions')?.remove();
+    saveBtn.onclick=()=>{ state.pet.name=nameInput.value.trim()||"Pebble"; state.pet.species=speciesInput.value; saveState(state); initPet(); renderHUD(); };
+    const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), ...ALL_ACC.map(a=>a.id)]));
+    accList.replaceChildren();
+    acc.forEach(a=>{ const btn=el('button',{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener('click',()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
+
+    const store=$('#accStore');
+    if(store){
+      store.replaceChildren();
+      const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
+      store.appendChild(el('h3',{textContent:'Accessories Store'}));
+      STORE.forEach(it=>{
+        const owned=(state.economy.ownedAcc||[]).includes(it.id);
+        const btn=el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'});
+        btn.addEventListener('click',()=>{
+          if(owned) return;
+          if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
+          state.economy.gold -= it.cost;
+          state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
+          saveState(state); renderHUD(); initPet();
+        });
+        store.appendChild(el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), btn]));
+      });
+    }
+main
   }
 }
 
@@ -532,12 +581,12 @@ function initSettings(){
 }
 
 // ---- Characters & Companion screens
-function characterCards(){ return [ {id:'witch', label:'Witch', svg:petPixelSVG('sprout',1)}, {id:'knight', label:'Knight', svg:petPixelSVG('blob',1)}, {id:'ranger', label:'Ranger', svg:petPixelSVG('birb',1)} ]; }
+function characterCards(){ return [ {id:'witch', label:'Witch', svg:petSVG('sprout',1)}, {id:'knight', label:'Knight', svg:petSVG('blob',1)}, {id:'ranger', label:'Ranger', svg:petSVG('birb',1)} ]; }
 function initCharacters(){ const grid=$('#charGrid'); grid.replaceChildren(); characterCards().forEach(c=>{ const card=el('div',{className:'char-card'},[ el('div',{className:'char-portrait', innerHTML:c.svg}), el('div',{textContent:c.label}) ]); card.addEventListener('click',()=>{ state.user.character={id:c.id,img:null}; saveState(state); fxToast('Character selected'); renderHUD(); routeTo('companion'); renderRoute(); }); grid.appendChild(card); }); const up=$('#uploadChar'); const file=$('#charFile'); up.addEventListener('click',()=> file.click()); file.addEventListener('change', ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ state.user.character={id:'custom', img:rd.result}; saveState(state); renderHUD(); routeTo('companion'); renderRoute(); }; rd.readAsDataURL(f); }); }
-function initCompanion(){ const grid=$('#compGrid'); grid.replaceChildren(); const opts=[ {id:'solo', label:'Solo Week', desc:'Just you + companion'}, {id:'toddler', label:'Toddler Week', desc:'Two characters co-op'} ]; opts.forEach(o=>{ const card=el('div',{className:'comp-card'},[ el('div',{className:'char-portrait', innerHTML: petPixelSVG('birb',1) }), el('div',{textContent:o.label}), el('div',{className:'sub', textContent:o.desc}) ]); card.addEventListener('click',()=>{ state.log.coop.toddlerWeek = (o.id==='toddler'); saveState(state); fxToast('Mode: '+o.label); routeTo('home'); renderRoute(); }); grid.appendChild(card); }); }
+function initCompanion(){ const grid=$('#compGrid'); grid.replaceChildren(); const opts=[ {id:'solo', label:'Solo Week', desc:'Just you + companion'}, {id:'toddler', label:'Toddler Week', desc:'Two characters co-op'} ]; opts.forEach(o=>{ const card=el('div',{className:'comp-card'},[ el('div',{className:'char-portrait', innerHTML: petSVG('birb',1) }), el('div',{textContent:o.label}), el('div',{className:'sub', textContent:o.desc}) ]); card.addEventListener('click',()=>{ state.log.coop.toddlerWeek = (o.id==='toddler'); saveState(state); fxToast('Mode: '+o.label); routeTo('home'); renderRoute(); }); grid.appendChild(card); }); }
 
 // Unlocks
-function maybeUnlockAccessory(){ const POOL=['cap','bow','glasses']; const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
+function maybeUnlockAccessory(){ const POOL=ALL_ACC.map(a=>a.id); const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
 
 // --- export/import
 $("#exportBtn").addEventListener("click", ()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="soothebirb-data.json"; a.click(); URL.revokeObjectURL(url); });
