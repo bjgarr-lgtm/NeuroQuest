@@ -6,7 +6,7 @@ import { petSVG, petPixelSVG, ALL_ACC } from './pet.js';
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
   user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true,
-    character:{ id:'ash', img:'assets/heroes/hero-ash.png' },
+    character:{ id:'ash', img:'assets/heroes/hero-ash.png', level:1, xp:0, acc:[] },
     companion:{ id:'molly', img:'assets/heroes/comp-molly.png' } },
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
@@ -153,6 +153,7 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
+codex/add-hero-definitions-and-character-selection
     const av=$('#hudAvatars');
     if(av){
       av.innerHTML='';
@@ -164,6 +165,7 @@ function renderHUD(){
       const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc);
       av.innerHTML += `<div class='avatar'>${p}</div>`;
     }
+main
   }
   const petNav=document.querySelector("button.nav-btn[data-route='pet']");
   if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
@@ -484,9 +486,17 @@ function initBreathe(){
 }
 
 // ---- pet
-codex/replace-initpet-function-implementation
-function initPet() {
-  const stage = $('#petStage');
+codex/add-hero-definitions-and-character-selection
+function initPet(){
+  const stage=$("#petStage");
+  const petMarkup = petSVG(state.pet.species, state.pet.level, state.pet.acc);
+  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
+  const xp=state.pet.xp, lvl=state.pet.level, next=xpForLevel(lvl+1);
+  $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
+
+  const nameInput=$("#petName"), speciesInput=$("#petSpecies"), saveBtn=$("#savePet"), accList=$("#accList");
+  const editRow=saveBtn?.closest('.row');
+  const accDetails=accList?.closest('details');
   const stats = $('#petStats');
   const title = $('#petTitle');
   const form = $('#petForm');
@@ -524,9 +534,10 @@ main
     feedBtn.addEventListener('click', () => { addXP(state, 1); addGold(1); initPet(); renderHUD(); });
     playBtn.addEventListener('click', () => { addXP(state, 1); addGold(1); initPet(); renderHUD(); });
   } else {
-codex/replace-initpet-function-implementation
-    form && (form.style.display = 'none');
-    accDetails && (accDetails.style.display = '');
+codex/add-hero-definitions-and-character-selection
+    if(form) form.style.display='none';
+    if(accDetails) accDetails.style.display='';
+main
     accList.replaceChildren();
     const acc = Array.from(new Set([...(state.economy.ownedAcc || []), 'cap', 'glasses']));
     acc.forEach(a => {
@@ -566,7 +577,6 @@ codex/replace-initpet-function-implementation
         el('span', { textContent: `${it.label} — 🪙 ${it.cost}` }), btn
       ]));
     });
-main
   }
 }
 
@@ -601,47 +611,50 @@ function initSettings(){
 }
 
 // ---- Characters & Companion screens
+codex/add-hero-definitions-and-character-selection
 const HEROES=[
   {id:'ash', name:'Ash', img:'assets/heroes/hero-ash.png'},
   {id:'bambi', name:'Bambi', img:'assets/heroes/hero-bambi.png'},
   {id:'fox', name:'Fox', img:'assets/heroes/hero-fox.png'},
   {id:'odin', name:'Odin', img:'assets/heroes/hero-odin.png'},
   {id:'molly', name:'Molly', img:'assets/heroes/comp-molly.png'}
+main
 ];
-function initCharacters(){
-  const grid=$('#charGrid'); grid.replaceChildren();
-  HEROES.filter(h=>h.id!=='molly').forEach(h=>{
-    const card=el('div',{className:'char-card'},[
-      el('img',{src:h.img, alt:h.name}),
-      el('div',{textContent:h.name})
+function initCharacters() {
+  const grid = $('#charGrid'); grid.replaceChildren();
+  HEROES.filter(h => h.id !== 'molly').forEach(h => {
+    const card = el('div', { className: 'char-card' }, [
+      el('img', { src: h.img, alt: h.name }),
+      el('div', { textContent: h.name })
     ]);
-    card.addEventListener('click',()=>{
-      state.user.character={id:h.id,img:h.img};
+    card.addEventListener('click', () => {
+      state.user.character = { id: h.id, img: h.img, level: 1, xp: 0, acc: [] };
       saveState(state); fxToast('Character selected');
       renderHUD(); routeTo('companion'); renderRoute();
     });
     grid.appendChild(card);
   });
-  const up=$('#uploadChar'); const file=$('#charFile');
-  up.addEventListener('click',()=> file.click());
-  file.addEventListener('change', ev=>{
-    const f=ev.target.files[0]; if(!f) return;
-    const rd=new FileReader(); rd.onload=()=>{
-      state.user.character={id:'custom', img:rd.result};
+  const up = $('#uploadChar'); const file = $('#charFile');
+  up.addEventListener('click', () => file.click());
+  file.addEventListener('change', ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      state.user.character = { id: 'custom', img: rd.result, level: 1, xp: 0, acc: [] };
       saveState(state); renderHUD(); routeTo('companion'); renderRoute();
-    }; rd.readAsDataURL(f);
+    };
+    rd.readAsDataURL(f);
   });
 }
-function initCompanion(){
-  const grid=$('#compGrid'); grid.replaceChildren();
-  const opts=HEROES.filter(h=>h.id!==state.user.character.id);
-  opts.forEach(h=>{
-    const card=el('div',{className:'comp-card'},[
-      el('img',{src:h.img, alt:h.name}),
-      el('div',{textContent:h.name})
+function initCompanion() {
+  const grid = $('#compGrid'); grid.replaceChildren();
+  HEROES.filter(h => h.id !== state.user.character.id).forEach(h => {
+    const card = el('div', { className: 'comp-card' }, [
+      el('img', { src: h.img, alt: h.name }),
+      el('div', { textContent: h.name })
     ]);
-    card.addEventListener('click',()=>{
-      state.user.companion={id:h.id,img:h.img};
+    card.addEventListener('click', () => {
+      state.user.companion = { id: h.id, img: h.img };
       saveState(state); fxToast('Companion selected');
       renderHUD(); routeTo('home'); renderRoute();
     });
