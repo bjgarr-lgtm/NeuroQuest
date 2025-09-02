@@ -435,10 +435,37 @@ function initPet(){
   stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
   const xp=state.pet.xp, lvl=state.pet.level, next=xpForLevel(lvl+1);
   $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
-  $("#petName").value = state.pet.name; $("#petSpecies").value = state.pet.species;
-  $("#savePet").addEventListener("click",()=>{ state.pet.name=$("#petName").value.trim()||"Pebble"; state.pet.species=$("#petSpecies").value; saveState(state); initPet(); renderHUD(); });
-  const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses'])); const accList=$("#accList"); accList.replaceChildren();
-  acc.forEach(a=>{ const btn=el("button",{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener("click",()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
+
+  const nameInput=$("#petName"), speciesInput=$("#petSpecies"), saveBtn=$("#savePet"), accList=$("#accList");
+  const editRow=saveBtn?.closest('.row');
+  const accDetails=accList?.closest('details');
+  const toddler=state.settings?.toddler;
+
+  nameInput.value=state.pet.name;
+  speciesInput.value=state.pet.species;
+
+  if(toddler){
+    if(editRow) editRow.style.display='none';
+    if(accDetails) accDetails.style.display='none';
+    accList?.replaceChildren();
+    document.getElementById('toddlerActions')?.remove();
+    const actions=el('div',{id:'toddlerActions',className:'toddler-actions'},[
+      el('button',{className:'primary',textContent:'Feed'}),
+      el('button',{className:'primary',textContent:'Play'})
+    ]);
+    if(accDetails) accDetails.insertAdjacentElement('afterend',actions); else stage.insertAdjacentElement('afterend',actions);
+    const [feedBtn,playBtn]=actions.querySelectorAll('button');
+    feedBtn.addEventListener('click',()=>{ addXP(state,1); addGold(1); initPet(); renderHUD(); });
+    playBtn.addEventListener('click',()=>{ addXP(state,1); addGold(1); initPet(); renderHUD(); });
+  } else {
+    if(editRow) editRow.style.display='';
+    if(accDetails) accDetails.style.display='';
+    document.getElementById('toddlerActions')?.remove();
+    saveBtn.onclick=()=>{ state.pet.name=nameInput.value.trim()||"Pebble"; state.pet.species=speciesInput.value; saveState(state); initPet(); renderHUD(); };
+    const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses']));
+    accList.replaceChildren();
+    acc.forEach(a=>{ const btn=el('button',{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener('click',()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
+  }
 }
 
 // ---- settings
