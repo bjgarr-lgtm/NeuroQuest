@@ -12,7 +12,7 @@ const defaultState = () => ({
   settings: { toddler:false },
   log: {
     moods: [], tasks: [], journal: [], breath: [],
-    clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { name:'Week 2', note:'Deep clean' } },
+    clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { month:"", week:0, done:false } },
     coop: { toddlerWeek:false, quests: [], collectibles: [] },
     budget: { goal: 500, txns: [] },
     meals: { data: Array.from({length:7},()=>({breakfast:'', lunch:'', dinner:''})) },
@@ -113,12 +113,23 @@ function toggleMusic(){ if(MUSIC_ON) stopMusic(); else startMusic(); }
 document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
 
 // economy
-const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5};
+const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5,raid:15};
 function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); SFX.gold(); saveState(state); renderHUD(); }
+
+const RAID_THEMES=["Declutter","Deep clean","Paperwork","Maintenance","Floors"];
+function getWeekOfMonth(d){ const date=new Date(d); const first=new Date(date.getFullYear(), date.getMonth(),1).getDay(); return Math.floor((date.getDate()+first-1)/7)+1; }
+function ensureRaid(){
+  const now=new Date();
+  const key=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,'0');
+  const wk=getWeekOfMonth(now);
+  const r=state.log.clean.raid||{};
+  if(r.month!==key || r.week!==wk){ state.log.clean.raid={month:key,week:wk,done:false}; saveState(state); }
+}
 
 // --- Theme + HUD
 let state; try{ state = loadState(); }catch(e){ console.error('init', e); state=defaultState(); }
 state.settings = state.settings || { toddler:false };
+ensureRaid();
 function applyTheme(){
   document.documentElement.className="";
   document.documentElement.classList.add("theme-"+(state.user.theme||"retro"));
@@ -232,6 +243,7 @@ function initTasks(){
 
 // ---- cleaning
 function initCleaning(){
+  ensureRaid();
   const small=$("#cleanSmall");
   function draw(){
     small.replaceChildren();
@@ -245,7 +257,14 @@ function initCleaning(){
     });
     $("#bossProg").style.width = Math.min(100, state.log.clean.boss.progress)+"%";
     $("#bossList").replaceChildren(el("div",{textContent:`Boss: ${state.log.clean.boss.name}`}));
-    $("#raidInfo").replaceChildren(el("div",{textContent:`${state.log.clean.raid.name} — ${state.log.clean.raid.note}`}));
+    const raid=state.log.clean.raid;
+    const theme=RAID_THEMES[raid.week-1]||"";
+    const rrow=el("div",{className:"quest-row"+(raid.done?" done":"")});
+    const rbox=el("div",{className:"checkbox"+(raid.done?" checked":"")}); rbox.innerHTML=raid.done?"✓":"";
+    if(!raid.done){ rbox.addEventListener("click",()=>{ raid.done=true; touchStreak(state); saveState(state); addXP(state,15); addGold(GOLD_REWARD.raid); maybeUnlockAccessory(); draw(); renderHUD(); }); }
+    const rtext=el("span",{textContent:`Week ${raid.week} — ${theme}`});
+    rrow.append(rbox,rtext);
+    $("#raidInfo").replaceChildren(rrow);
   }
   draw();
   $("#addCleanTask").addEventListener("click",()=>{ const t=$("#newCleanTask").value.trim(); if(!t) return; state.log.clean.small.push({title:t,done:false}); $("#newCleanTask").value=""; saveState(state); draw(); });
