@@ -1,195 +1,440 @@
-// v2.5.1 — stable base (v2.5 look/feel) + characters/companions/uploads + de‑pixel pet + full dopamine FX
-const KEY="soothebirb.v251";
-const defaultState=()=>({ user:{ name:"", theme:"retro", font:"press2p", scanlines:true, character:{id:'witch',img:null}, companion:{id:null,img:null} },
-  economy:{ gold:0, ownedAcc:['cap','glasses'] },
-  pet:{ name:"Pebble", species:"birb", level:1, xp:0, acc:['cap','glasses'] },
-  streak:{ current:0, best:0, lastCheck:"" },
-  log:{ moods:[], tasks:[], journal:[], breath:[], clean:{ small:[], boss:{name:'Bathroom',progress:0}, raid:{name:'Week 2',note:'Deep clean'} },
-        coop:{ toddlerWeek:false, quests:[], collectibles:[] }, budget:{ goal:500, txns:[] },
-        meals:{ data:Array.from({length:7},()=>({breakfast:'',lunch:'',dinner:''})) },
-        calendar:{ events:Array.from({length:7},()=>[]) }, shop:{ items:[] }, rewards:{ badges:[] } } });
-function loadState(){ try{ return JSON.parse(localStorage.getItem(KEY)) || defaultState(); }catch(e){ return defaultState(); } }
+// ====== SootheBirb v2.5.0 — Characters + Economy ======
+
+// ------ store (localStorage)
+const KEY = "soothebirb.v25";
+const defaultState = () => ({
+  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null } },
+  economy: { gold: 0, ownedAcc: ['cap','glasses'] },
+  pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
+  streak: { current: 0, best: 0, lastCheck: "" },
+  log: {
+    moods: [], tasks: [], journal: [], breath: [],
+    clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { name:'Week 2', note:'Deep clean' } },
+    coop: { toddlerWeek:false, quests: [], collectibles: [] },
+    budget: { goal: 500, txns: [] },
+    meals: { data: Array.from({length:7},()=>({breakfast:'', lunch:'', dinner:''})) },
+    calendar: { events: Array.from({length:7},()=>[]) },
+    shop: { items: [] },
+    rewards: { badges: [] }
+  }
+});
+function loadState(){ try{ return JSON.parse(localStorage.getItem(KEY)) || defaultState(); } catch(e){ return defaultState(); } }
 function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
 function resetState(){ localStorage.removeItem(KEY); }
 function dayKey(ts=new Date()){ const d=new Date(ts); d.setHours(0,0,0,0); return d.toISOString(); }
-function touchStreak(state){ const today=dayKey(); if(state.streak.lastCheck!==today){ const y=new Date(today); y.setDate(y.getDate()-1); const yKey=dayKey(y); state.streak.current=(state.streak.lastCheck===yKey)?(state.streak.current||0)+1:1; state.streak.best=Math.max(state.streak.best||0,state.streak.current); state.streak.lastCheck=today; } }
-function xpForLevel(l){ return l*l*10; }
-const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
-function routeTo(name){ location.hash=name; }
-function setActiveNav(name){
-  const nav=$('.top-nav'); const btn=[...nav.querySelectorAll('.nav-btn')].find(b=>b.dataset.route===name);
-  nav.querySelectorAll('.nav-btn').forEach(b=> b.classList.toggle('active', b===btn));
-  const hi=$('#navHi'); if(btn){ const r=btn.getBoundingClientRect(), nr=nav.getBoundingClientRect(); hi.style.transform=`translateX(${r.left-nr.left}px)`; hi.style.width=r.width+'px'; }
+function touchStreak(state){
+  const today = dayKey();
+  if(state.streak.lastCheck !== today){
+    const y = new Date(today); y.setDate(y.getDate()-1);
+    const yKey = dayKey(y);
+    state.streak.current = (state.streak.lastCheck === yKey) ? (state.streak.current||0)+1 : 1;
+    state.streak.best = Math.max(state.streak.best||0, state.streak.current);
+    state.streak.lastCheck = today;
+  }
 }
-function el(t,opts={},kids=[]){ const e=document.createElement(t); Object.assign(e,opts); if(opts.attrs){ for(const [k,v] of Object.entries(opts.attrs)) e.setAttribute(k,v); } if(typeof kids==='string') e.innerHTML=kids; else kids.forEach(k=>e.appendChild(k)); return e; }
-function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
+function xpForLevel(l){ return l*l*10; }
+function addXP_base(state, amount){
+  state.pet.xp += amount;
+  while(state.pet.xp >= xpForLevel(state.pet.level+1)){
+    state.pet.level += 1; fxToast('Level Up!'); fxBlast(); fxBeep(1320, 0.08);
+  }
+  fxReward('+'+amount+' XP'); registerXPEvent();
+}
 
-// ===== dopamine FX from v2.5 =====
-function fxToast(text){ const t=el('div',{className:'toast',textContent:text, style:'position:fixed;left:50%;top:12%;transform:translate(-50%,0);background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#0d0d0d;padding:.4rem .7rem;border-radius:10px;font-weight:900;z-index:50'}); document.body.appendChild(t); setTimeout(()=>t.remove(),1400); }
-function fxReward(t){ fxToast(t); }
-function fxConfetti(x=innerWidth/2,y=innerHeight*.18,n=40){ const layer=$('#fxLayer'); for(let i=0;i<n;i++){ const s=document.createElement('span'); s.style.position='fixed'; s.style.left=x+'px'; s.style.top=y+'px'; s.style.width='8px'; s.style.height='8px'; s.style.background=i%2?'var(--accent-2)':'var(--accent)'; s.style.borderRadius='2px'; s.style.transform='translate(-50%,-50%)'; s.style.zIndex=44; const dx=(Math.random()*2-1)*180, dy=(Math.random()*-1)*220-40, rot=Math.random()*360; s.animate([{transform:'translate(-50%,-50%)',opacity:1},{transform:`translate(${dx}px,${dy}px) rotate(${rot}deg)`,opacity:0}],{duration:900+Math.random()*500,easing:'cubic-bezier(.2,.9,.2,1)'}); layer.appendChild(s); setTimeout(()=>s.remove(),1500);} }
-function fxBeep(freq=880,dur=.05){ try{ window._ac=window._ac||new (window.AudioContext||window.webkitAudioContext)(); const o=_ac.createOscillator(), g=_ac.createGain(); o.frequency.value=freq; o.type='square'; o.connect(g); g.connect(_ac.destination); g.gain.value=.02; o.start(); o.stop(_ac.currentTime+dur);}catch(e){} }
-function fxBlast(){ fxConfetti(innerWidth/2, innerHeight*.4, 320); fxBeep(1240,.08); fxBeep(1320,.08); }
-// coins
-let COIN_MODE=false; function spawnCoin(x=innerWidth/2,y=innerHeight*.35){ const c=el('div',{className:'coin'}); c.style.position='fixed'; c.style.left=x+'px'; c.style.top=y+'px'; c.style.width='16px'; c.style.height='16px'; c.style.borderRadius='50%'; c.style.background='radial-gradient(circle,#ffd86b,#eaa326 60%,#9c6a00)'; c.style.boxShadow='0 0 12px rgba(255,216,107,.8)'; c.style.transform='translate(-50%,-50%)'; c.style.zIndex='60'; c.addEventListener('click',()=>{ COIN_MODE=true; addXP_base(state,1); COIN_MODE=false; fxToast('Bonus +1 XP'); c.remove(); }); document.body.appendChild(c); c.animate([{transform:'translate(-50%,-50%) scale(1)'},{transform:'translate(-50%,-140%) scale(1.4)'}],{duration:900,easing:'cubic-bezier(.2,.9,.2,1)'}); setTimeout(()=>c.remove(),950); }
+// ------ helpers
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+function routeTo(name){ window.location.hash = name; }
+function setActiveNav(name){ $$(".nav-btn").forEach(b=> b.classList.toggle("active", b.dataset.route===name)); }
+function el(tag, opts={}, children=[]){ const e=document.createElement(tag); Object.assign(e, opts); if(opts.attrs){ for(const [k,v] of Object.entries(opts.attrs)) e.setAttribute(k,v); } if(typeof children==="string"){ e.innerHTML=children; } else children.forEach(c=> e.appendChild(c)); return e; }
+function fmtDate(ts){ const d=new Date(ts); return d.toLocaleDateString(undefined, {month:"short", day:"numeric"}); }
 
-// chiptune loop + click dings
-let MUSIC_ON=false,_seqTimer=null; function ensureAudio(){ try{ window._ac=window._ac||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return window._ac; }
-function midi(n){ return 440*Math.pow(2,(n-69)/12); } function tone(freq=440,dur=.25,type='square',vol=.02){ const ctx=ensureAudio(); if(!ctx) return; const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type; o.frequency.value=freq; o.connect(g); g.connect(ctx.destination); const t=ctx.currentTime; g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.start(t); o.stop(t+dur+.02); }
-const SONG={ bpm:112, lead:[74,74,77,74,79,79,77,74, 74,74,77,74,81,81,79,77], bass:[50,50,55,55,48,48,43,43,50,50,55,55,48,48,43,43] };
-function startMusic(){ const ctx=ensureAudio(); if(!ctx||_seqTimer) return; MUSIC_ON=true; $('#musicBtn')?.classList.add('on'); const spb=60/SONG.bpm, step=spb/2; let i=0; _seqTimer=setInterval(()=>{ tone(midi(SONG.lead[i%SONG.lead.length]), step*.9, 'square', .02); tone(midi(SONG.bass[i%SONG.bass.length]), step*.9, 'sawtooth', .01); i++; }, step*1000); }
-function stopMusic(){ MUSIC_ON=false; $('#musicBtn')?.classList.remove('on'); if(_seqTimer){ clearInterval(_seqTimer); _seqTimer=null; } }
-document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
-$('#musicBtn')?.addEventListener('click', ()=> MUSIC_ON?stopMusic():startMusic());
-
-// click sound on almost everything
-document.addEventListener('click', e=>{ if(e.target.closest('button, .tile, .checkbox')) fxBeep(880,.03); }, true);
-
-// cursor trail
-document.addEventListener('mousemove', (e)=>{ const d=el('div',{className:'cursor-dot'}); d.style.left=e.pageX+'px'; d.style.top=e.pageY+'px'; document.body.appendChild(d); setTimeout(()=>d.remove(),400); });
-
-// ===== Economy & state =====
-let state=loadState();
-function addXP_base(state, amount){ state.pet.xp+=amount; while(state.pet.xp>=xpForLevel(state.pet.level+1)){ state.pet.level++; fxToast('Level Up!'); fxBlast(); } fxReward('+'+amount+' XP'); registerXPEvent(); saveState(state); renderHUD(); }
-function addXP(s, n){ addXP_base(s,n); }
-const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5};
-function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); saveState(state); renderHUD(); fxBeep(720,.05); if(!COIN_MODE) spawnCoin(); }
+// --- FX core
+function fxToast(text){ const t=document.createElement('div'); t.className='toast'; t.textContent=text; document.body.appendChild(t); setTimeout(()=>t.remove(), 1400); }
+function fxReward(text){ fxToast(text); }
+function fxConfetti(x=window.innerWidth/2, y=window.innerHeight*0.18, n=20){
+  const layer = document.getElementById('fxLayer'); if(!layer) return;
+  for(let i=0;i<n;i++){
+    const s=document.createElement('span'); s.className='confetti'+(i%2?' alt':''); s.style.left=x+'px'; s.style.top=y+'px';
+    const dx=(Math.random()*2-1)*140, dy=(Math.random()*-1)*180-40, rot=(Math.random()*360);
+    s.style.position='absolute'; s.style.width='8px'; s.style.height='8px'; s.style.background=(i%2?'var(--accent-2)':'var(--accent)'); s.style.transform='translate(-50%,-50%)';
+    s.animate([ { transform:`translate(-50%,-50%)`, opacity:1 }, { transform:`translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity:0 } ], { duration: 900+Math.random()*500, easing:'cubic-bezier(.2,.9,.2,1)' });
+    layer.appendChild(s); setTimeout(()=>s.remove(), 1500);
+  }
+}
+function fxBeep(freq=880, dur=0.05){ try{ window._ac = window._ac || new (window.AudioContext||window.webkitAudioContext)(); const o=_ac.createOscillator(), g=_ac.createGain(); o.frequency.value=freq; o.type='square'; o.connect(g); g.connect(_ac.destination); g.gain.setValueAtTime(0.02, _ac.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, _ac.currentTime + dur); o.start(); o.stop(_ac.currentTime + dur);}catch(e){} }
+function fxBlast(){ fxConfetti(window.innerWidth/2, window.innerHeight*0.4, 320); const bloom=document.createElement('div'); bloom.className='bloom'; document.body.appendChild(bloom); setTimeout(()=>bloom.remove(), 700); const shock=document.createElement('div'); shock.className='shock'; document.body.appendChild(shock); setTimeout(()=>shock.remove(), 820); }
 const _xpTimes=[]; function registerXPEvent(){ const now=Date.now(); _xpTimes.push(now); while(_xpTimes.length && now-_xpTimes[0]>15000) _xpTimes.shift(); if(_xpTimes.length>=3){ fxToast('COMBO!'); fxBlast(); } }
+let _trailLast = 0; function trailAt(x,y){ const now=performance.now(); if(now-_trailLast<18) return; _trailLast=now; const fx = document.getElementById('fxLayer'); if(!fx) return; const s = document.createElement('span'); s.className='trail'+(Math.random()<.5?' alt':''); s.style.left=x+'px'; s.style.top=y+'px'; fx.appendChild(s); setTimeout(()=>s.remove(), 400); }
+window.addEventListener('mousemove', e=> trailAt(e.clientX, e.clientY), {passive:true});
+window.addEventListener('touchmove', e=>{ const t=e.touches[0]; if(t) trailAt(t.clientX, t.clientY); }, {passive:true});
+let COIN_MODE=false; function spawnCoin(x=window.innerWidth/2, y=window.innerHeight*.35){ const c=document.createElement('div'); c.className='coin'; c.style.left=x+'px'; c.style.top=y+'px'; c.addEventListener('click', ()=>{ COIN_MODE=true; addXP_base(state,1); COIN_MODE=false; fxToast('Bonus +1 XP'); c.remove(); }); document.body.appendChild(c); setTimeout(()=> c.remove(), 1800); }
+function fxJackpot(){ document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 420); fxBlast(); const j=document.createElement('div'); j.className='jackpot'; j.textContent='JACKPOT!'; document.body.appendChild(j); setTimeout(()=>j.remove(), 1200); for(let i=0;i<8;i++){ setTimeout(()=> spawnCoin(window.innerWidth*(.15+.7*Math.random()), window.innerHeight*.3), i*60); } fxBeep(1660, .08); setTimeout(()=>fxBeep(1320,.08),80); setTimeout(()=>fxBeep(990,.08),160); }
+function addXP(state, amt){ addXP_base(state, amt); if(!COIN_MODE){ if(Math.random()<0.6) spawnCoin(); if(Math.random()<0.02) fxJackpot(); } }
 
-// HUD/theme
-function applyTheme(){ document.body.classList.add('smooth'); }
+// ---- SFX helpers
+const SFX={ click:()=>fxBeep(660,.03), check:()=>fxBeep(990,.04), gold:()=>fxBeep(770,.06) };
+document.addEventListener('click',e=>{ if(e.target.closest('button')) SFX.click(); }, {passive:true});
+
+// --- Music (asset-free)
+let MUSIC_ON=false, _seqTimer=null;
+function ensureAudio(){ try{ window._ac = window._ac || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return window._ac; }
+function tone(freq=440, dur=0.25, type='square', vol=0.02){
+  const ctx = ensureAudio(); if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type; o.frequency.value=freq; o.connect(g); g.connect(ctx.destination);
+  const t=ctx.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.start(t); o.stop(t+dur+0.02);
+}
+function midi(n){ return 440 * Math.pow(2, (n-69)/12); }
+const SONG={ bpm:112, lead:[74,74,77,74,79,79,77,74, 74,74,77,74,81,81,79,77], bass:[50,50,55,55,48,48,43,43,50,50,55,55,48,48,43,43] };
+function startMusic(){ const ctx=ensureAudio(); if(!ctx || _seqTimer) return; MUSIC_ON=true; $('#musicBtn')?.classList.add('on'); const spb=60/SONG.bpm, step=spb/2; let i=0; _seqTimer=setInterval(()=>{ tone(midi(SONG.lead[i%SONG.lead.length]), step*.9, 'square', .02); tone(midi(SONG.bass[i%SONG.bass.length]), step*.9, 'sawtooth', .01); i++; }, step*1000); }
+function stopMusic(){ MUSIC_ON=false; $('#musicBtn')?.classList.remove('on'); if(_seqTimer){ clearInterval(_seqTimer); _seqTimer=null; } }
+function toggleMusic(){ if(MUSIC_ON) stopMusic(); else startMusic(); }
+document.addEventListener('click', function unlock(){ ensureAudio(); document.removeEventListener('click', unlock); }, {once:true});
+
+// economy
+const GOLD_REWARD={main:10,side:6,bonus:4,clean:5,coop:5,budget_inc:6,budget_exp:2,journal:5,breathe:4,checkin:5};
+function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); SFX.gold(); saveState(state); renderHUD(); }
+
+// --- Theme + HUD
+let state; try{ state = loadState(); }catch(e){ console.error('init', e); state=defaultState(); }
+function applyTheme(){
+  document.documentElement.className="";
+  document.documentElement.classList.add("theme-"+(state.user.theme||"retro"));
+  const fontMap={ press2p: "'Press Start 2P', monospace", "system-ui":"system-ui", serif:"serif", mono:"monospace" };
+  document.body.style.fontFamily = fontMap[state.user.font||"press2p"];
+  document.body.classList.toggle('crt', !!state.user.scanlines);
+}
 applyTheme();
-function renderHUD(){ const cur=2; $('#hudHearts').innerHTML=Array.from({length:3},(_,i)=>`<span class="heart ${i<cur?'':'off'}"></span>`).join(''); const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl); const pct=Math.max(0,Math.min(100,Math.round(((xp-prev)/(next-prev))*100))); $('#hudLevel').textContent=`Lv ${lvl}`; $('#hudXp').style.width=pct+'%'; $('#hudGold').textContent=`🪙 ${state.economy.gold}`; const av=$('#hudAvatars'); if(av){ av.innerHTML=''; const char=state.user.character; const comp=state.user.companion; const pet=petSVG(state.pet.species,state.pet.level,state.pet.acc); av.innerHTML = (char?.img?`<div class='avatar'><img src='${char.img}' alt='char'/></div>`:'') + (comp?.img?`<div class='avatar'><img src='${comp.img}' alt='comp'/></div>`:'') + `<div class='avatar'>${pet}</div>`; } }
+function renderHUD(){
+  const cur=2; $("#hudHearts").innerHTML = Array.from({length:3},(_,i)=>`<span class="heart ${i<cur?'':'off'}"></span>`).join("");
+  const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
+  const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
+  $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
+  $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
+  const av=$('#hudAvatars'); if(av){ av.innerHTML=''; const c=state.user.character; const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG('sprout',1)}</div>`; const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc); av.innerHTML = `<div class='avatar'>${img}</div><div class='avatar'>${p}</div>`; }
+}
 renderHUD();
 
-// routing
-function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','pet','settings','characters','companion']; return ok.includes(name)?name:'home'; }
-document.querySelector('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('.nav-btn'); if(!b) return; routeTo(b.dataset.route); renderRoute(); });
+// --- Routing (robust)
+function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','pet','settings','characters','companion']; return ok.includes(name)? name : 'home'; }
+document.querySelector('.top-nav')?.addEventListener('click', (e)=>{ const b = e.target.closest('.nav-btn'); if(!b) return; e.preventDefault(); routeTo(b.dataset.route); renderRoute(); });
+function clearFx(){ document.querySelectorAll('.bloom,.shock,.toast,.coin,.jackpot').forEach(n=>n.remove()); }
 window.addEventListener('hashchange', renderRoute);
-function wireTiles(){ document.querySelectorAll('.tile[data-route]').forEach(t=> t.addEventListener('click', ()=>{ routeTo(t.dataset.route); renderRoute(); })); }
-function renderRoute(){ const name=safeRouteName(location.hash||'#home'); setActiveNav(name); const v=$('#view'); v.innerHTML=''; const tpl=$('#tpl-'+name); if(!tpl){ v.textContent='Not found'; return;} v.appendChild(tpl.content.cloneNode(true)); wireTiles(); if(name==='home') initDashboard(); if(name==='tasks') initTasks(); if(name==='clean') initCleaning(); if(name==='coop') initCoop(); if(name==='budget') initBudget(); if(name==='meals') initMeals(); if(name==='calendar') initCalendar(); if(name==='shop') initShop(); if(name==='rewards') initRewards(); if(name==='checkin') initCheckin(); if(name==='journal') initJournal(); if(name==='breathe') initBreathe(); if(name==='pet') initPet(); if(name==='settings') initSettings(); if(name==='characters') initCharacters(); if(name==='companion') initCompanion(); updateFooter(); }
-function updateFooter(){ $('#streakLabel').textContent=`Streak: ${state.streak.current} 🔥 | Best: ${state.streak.best}`; }
 
-// dashboard
-function initDashboard(){ const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl); const pct=Math.max(0,Math.min(100,Math.round(((xp-prev)/(next-prev))*100))); $('#xpBig').style.width=pct+'%'; $('#xpBigLabel').textContent=`Lv ${lvl}`; }
+function moveNavHi(){
+  const active = document.querySelector('.top-nav .nav-btn.active');
+  const hi = document.getElementById('navHighlighter'); if(!active||!hi) return;
+  const r = active.getBoundingClientRect(); const pr = active.parentElement.getBoundingClientRect();
+  const w = Math.max(40, r.width*0.7);
+  const x = (r.left - pr.left) + (r.width - w)/2;
+  hi.style.width = w+'px';
+  hi.style.transform = `translateX(${x}px)`;
+}
+window.addEventListener('resize', ()=> setTimeout(moveNavHi, 50));
 
-// tasks
-const DEFAULT_TASKS=[{title:'Pay a bill',tier:'main'},{title:'Pick up prescription',tier:'main'},{title:'Clean bathroom',tier:'side'},{title:'Journal',tier:'side'},{title:'Organize drawer',tier:'bonus'}];
-function initTasks(){ if(state.log.tasks.length===0){ DEFAULT_TASKS.forEach(t=> state.log.tasks.push({id:crypto.randomUUID(),title:t.title,tier:t.tier,done:false,ts:0})); saveState(state);} const elM=$('#panelMain'), elS=$('#panelSide'), elB=$('#panelBonus'); function render(){ elM.replaceChildren(); elS.replaceChildren(); elB.replaceChildren(); const tiers={main:elM, side:elS, bonus:elB}; state.log.tasks.forEach(task=>{ const row=el('div',{className:'quest-row'+(task.done?' done':'')}); const box=el('div',{className:'checkbox'+(task.done?' checked':'')}); box.innerHTML=task.done?'✓':''; box.addEventListener('click',()=>{ task.done=!task.done; box.classList.toggle('checked',task.done); row.classList.toggle('done',task.done); if(task.done){ touchStreak(state); addXP(state,3); addGold(GOLD_REWARD[task.tier]||3); maybeUnlockAccessory(); } saveState(state); updateFooter(); renderHUD(); }); const title=el('span',{textContent:task.title}); const del=el('button',{className:'secondary',textContent:'Delete'}); del.addEventListener('click',()=>{ state.log.tasks=state.log.tasks.filter(x=>x.id!==task.id); saveState(state); render(); }); row.append(box,title,del); (tiers[task.tier]||elS).appendChild(row); }); } render(); $('#addTaskBtn').addEventListener('click',()=>{ const t=$('#newTaskTitle').value.trim(); if(!t) return; const tier=$('#newTaskTier').value||'side'; state.log.tasks.push({id:crypto.randomUUID(),title:t,tier,done:false,ts:0}); $('#newTaskTitle').value=''; saveState(state); render(); }); }
+function wireTiles(){ document.querySelectorAll('.tile[data-route]').forEach(t => { t.addEventListener('click', ()=>{ routeTo(t.dataset.route); renderRoute(); }); }); }
 
-// cleaning
-function initCleaning(){ const small=$('#cleanSmall'); function draw(){ small.replaceChildren(); state.log.clean.small.forEach((q,i)=>{ const row=el('div',{className:'quest-row'+(q.done?' done':'')}); const box=el('div',{className:'checkbox'+(q.done?' checked':'')}); box.innerHTML=q.done?'✓':''; box.addEventListener('click',()=>{ q.done=!q.done; box.classList.toggle('checked',q.done); row.classList.toggle('done',q.done); if(q.done){ addXP(state,2); addGold(GOLD_REWARD.clean); maybeUnlockAccessory(); } saveState(state); renderHUD(); }); const t=el('span',{textContent:q.title}); const del=el('button',{className:'secondary',textContent:'Delete'}); del.addEventListener('click',()=>{ state.log.clean.small.splice(i,1); saveState(state); draw(); }); row.append(box,t,del); small.appendChild(row); }); $('#bossProg').style.width=Math.min(100,state.log.clean.boss.progress)+'%'; $('#bossList').replaceChildren(el('div',{textContent:`Boss: ${state.log.clean.boss.name}`})); $('#raidInfo').replaceChildren(el('div',{textContent:`${state.log.clean.raid.name} — ${state.log.clean.raid.note}`})); } draw(); $('#addCleanTask').addEventListener('click',()=>{ const t=$('#newCleanTask').value.trim(); if(!t) return; state.log.clean.small.push({title:t,done:false}); $('#newCleanTask').value=''; saveState(state); draw(); }); $('#bossNew').addEventListener('click',()=>{ const name=$('#bossName').value.trim(); if(!name) return; state.log.clean.boss.name=name; state.log.clean.boss.progress=0; saveState(state); draw(); }); $('#bossTick').addEventListener('click',()=>{ state.log.clean.boss.progress=Math.min(100,state.log.clean.boss.progress+10); if(state.log.clean.boss.progress===100) addXP(state,10); saveState(state); draw(); renderHUD(); }); }
-
-// coop
-function initCoop(){ $('#coopWeek').textContent = state.log.coop.toddlerWeek? 'Toddler Week':'Solo Week'; const list=$('#sidekickList'), coll=$('#coopCollect'); function draw(){ list.replaceChildren(); coll.replaceChildren(); state.log.coop.quests.forEach((q,i)=>{ const row=el('div',{className:'quest-row'+(q.done?' done':'')}); const box=el('div',{className:'checkbox'+(q.done?' checked':'')}); box.innerHTML=q.done?'✓':''; box.addEventListener('click',()=>{ q.done=!q.done; box.classList.toggle('checked',q.done); row.classList.toggle('done',q.done); if(q.done){ addXP(state,2); addGold(GOLD_REWARD.coop); maybeUnlockAccessory(); } saveState(state); renderHUD(); }); const t=el('span',{textContent:q.title}); const del=el('button',{className:'secondary',textContent:'Delete'}); del.addEventListener('click',()=>{ state.log.coop.quests.splice(i,1); saveState(state); draw(); }); row.append(box,t,del); list.appendChild(row); }); (state.log.rewards.badges||[]).forEach(b=> coll.appendChild(el('div',{className:'quest-row'},[el('span',{textContent:b.name+' ⭐'})]))); } draw(); $('#addSidekick').addEventListener('click',()=>{ const t=$('#newSidekick').value.trim(); if(!t) return; state.log.coop.quests.push({title:t,done:false}); $('#newSidekick').value=''; saveState(state); draw(); }); $('#toggleWeek').addEventListener('click',()=>{ state.log.coop.toddlerWeek=!state.log.coop.toddlerWeek; saveState(state); $('#coopWeek').textContent=state.log.coop.toddlerWeek?'Toddler Week':'Solo Week'; }); }
-
-// budget, meals, calendar
-function initBudget(){ const list=$('#txnList'); function money(n){ return (n<0?'-':'')+'$'+Math.abs(n).toLocaleString(); } function draw(){ list.replaceChildren(); const tx=state.log.budget.txns.slice().reverse(); let balance=0,spend=0; state.log.budget.txns.forEach(t=>{ balance+=t.amount; if(t.amount<0) spend+=-t.amount; }); $('#goldPouch').textContent='$'+balance.toLocaleString(); $('#thisSpend').textContent='$'+spend.toLocaleString(); const goal=state.log.budget.goal||500; const pct=Math.max(0,Math.min(100,Math.round(((Math.max(0,goal-spend))/goal)*100))); $('#budgetBar').style.width=pct+'%'; tx.forEach(t=> list.appendChild(el('div',{className:'quest-row'},[el('strong',{textContent:(t.amount>=0?'+ ':'- ')+money(Math.abs(t.amount))}), el('span',{textContent:' — '+t.label})]))); } draw(); $('#addIncome').addEventListener('click',()=>{ const label=$('#incLabel').value.trim(); const amt=parseFloat($('#incAmt').value||'0'); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:Math.abs(amt)}); addGold(GOLD_REWARD.budget_inc); $('#incLabel').value=''; $('#incAmt').value=''; addXP(state,4); saveState(state); draw(); renderHUD(); }); $('#addExpense').addEventListener('click',()=>{ const label=$('#expLabel').value.trim(); const amt=parseFloat($('#expAmt').value||'0'); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:-Math.abs(amt)}); addGold(GOLD_REWARD.budget_exp); $('#expLabel').value=''; $('#expAmt').value=''; addXP(state,2); saveState(state); draw(); renderHUD(); }); }
-function initMeals(){ const grid=$('#mealGrid'); grid.replaceChildren(); const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; days.forEach(d=> grid.appendChild(el('div',{className:'cell hdr',textContent:d}))); ['breakfast','lunch','dinner'].forEach(row=>{ for(let d=0;d<7;d++){ const cell=el('div',{className:'cell'}); const ta=el('textarea',{value:state.log.meals.data[d][row]||'',placeholder:row}); ta.addEventListener('input',()=>{ state.log.meals.data[d][row]=ta.value; saveState(state); }); cell.appendChild(ta); grid.appendChild(cell);} }); }
-function initCalendar(){ const grid=$('#weekGrid'); grid.replaceChildren(); const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; for(let d=0;d<7;d++){ const col=el('div',{className:'day'}); col.appendChild(el('div',{className:'ttl',textContent:days[d]})); (state.log.calendar.events[d]||[]).forEach(ev=> col.appendChild(el('div',{className:'event',textContent:ev}))); grid.appendChild(col); } $('#addCal').addEventListener('click',()=>{ const text=$('#calText').value.trim(); const day=Math.max(0,Math.min(6,parseInt($('#calDay').value||'0'))); if(!text) return; state.log.calendar.events[day].push(text); $('#calText').value=''; saveState(state); initCalendar(); }); }
-
-// Shop & accessories (instant update)
-const ACCESSORIES=[
- {id:'cap', label:'Cap', cost:20, desc:'Simple street cap'},{id:'bow', label:'Bow', cost:25, desc:'Cute ribbon bow'},{id:'glasses', label:'Glasses', cost:30, desc:'Scholarly frames'},
- {id:'scarf', label:'Scarf', cost:35, desc:'Cozy wrap'},{id:'crown', label:'Crown', cost:60, desc:'Royal drip'},{id:'cape', label:'Cape', cost:55, desc:'Heroic swoosh'},
- {id:'collar', label:'Gem Collar', cost:40, desc:'Shiny medallion'},{id:'armor', label:'Light Armor', cost:70, desc:'+style, +clang'},{id:'halo', label:'Halo', cost:80, desc:'Ethereal vibes'},
- {id:'monocle', label:'Monocle', cost:45, desc:'Distinguished'},{id:'backpack', label:'Backpack', cost:50, desc:'Adventure ready'},{id:'headphones', label:'Headphones', cost:45, desc:'8‑bit bops'},
- {id:'flower', label:'Flower', cost:28, desc:'Fresh pick'},{id:'witchhat', label:'Witch Hat', cost:65, desc:'Arcane couture'},{id:'sunglasses', label:'Shades', cost:35, desc:'Too cool'},
- {id:'bandana', label:'Bandana', cost:25, desc:'Rogue chic'},{id:'bowtie', label:'Bow Tie', cost:30, desc:'Formal birb'},{id:'boots', label:'Boots', cost:50, desc:'Stomp stomp'}
-];
-function initShop(){ const list=$('#shopList'); function drawList(){ list.replaceChildren(); state.log.shop.items.forEach((it,i)=>{ const row=el('div',{className:'quest-row'+(it.done?' done':'')}); const box=el('div',{className:'checkbox'+(it.done?' checked':'')}); box.innerHTML=it.done?'✓':''; box.addEventListener('click',()=>{ it.done=!it.done; saveState(state); drawList(); }); const t=el('span',{textContent:it.title}); const del=el('button',{className:'secondary',textContent:'Delete'}); del.addEventListener('click',()=>{ state.log.shop.items.splice(i,1); saveState(state); drawList(); }); row.append(box,t,del); list.appendChild(row); }); } drawList(); $('#addShop').addEventListener('click',()=>{ const t=$('#shopItem').value.trim(); if(!t) return; state.log.shop.items.push({title:t,done:false}); $('#shopItem').value=''; saveState(state); drawList(); });
-  const grid=$('#storeGrid'); grid.replaceChildren(); ACCESSORIES.forEach(it=>{ const owned=(state.economy.ownedAcc||[]).includes(it.id); const card=el('div',{className:'card'},[ el('div',{className:'meta'},[el('strong',{textContent:it.label}), el('span',{textContent:`🪙 ${it.cost}`})]), el('div',{className:'sub',textContent:it.desc}), el('button',{className: owned?'secondary':'primary', textContent: owned?'Owned':'Buy'}) ]); card.querySelector('button').addEventListener('click',()=>{ if(owned) return; if((state.economy.gold||0)<it.cost) return alert('Not enough gold'); state.economy.gold-=it.cost; state.economy.ownedAcc=Array.from(new Set([...(state.economy.ownedAcc||[]), it.id])); saveState(state); renderHUD(); initShop(); initPet(); }); grid.appendChild(card); }); }
-
-// Rewards
-function initRewards(){ const grid=$('#badgeGrid'); grid.replaceChildren(); const defs=[ {id:'first-checkin',name:'First Check‑In',test:s=>s.log.moods.length>0,ico:'💠'}, {id:'week-streak-3',name:'3‑Day Streak',test:s=>s.streak.best>=3,ico:'🔥'}, {id:'ten-quests',name:'10 Quests',test:s=>s.log.tasks.filter(t=>t.done).length>=10,ico:'🏅'}, {id:'budget-boss',name:'Budget Keeper',test:s=>s.log.budget.txns.length>=5,ico:'💰'} ]; defs.forEach(b=>{ if(!state.log.rewards.badges.find(x=>x.id===b.id) && b.test(state)){ state.log.rewards.badges.push({id:b.id,name:b.name,ts:Date.now()}); } }); saveState(state); defs.forEach(b=>{ const unlocked=!!state.log.rewards.badges.find(x=>x.id===b.id); grid.appendChild(el('div',{className:'badge '+(unlocked?'':'locked')},[ el('div',{className:'b-ico',textContent:b.ico}), el('div',{className:'b-txt',textContent:b.name}) ])); }); }
-
-// Check-in
-const PROMPTS=['Name one tiny win from today.','What do you need less of right now?','Three things you’re grateful for:','What would kindness toward yourself look like today?','Finish this sentence: I feel most like me when…','A thought to let go:','A place that makes you breathe easier:','Something you’re proud of this week:'];
-function initCheckin(){ let chosen=null; $$('.mood').forEach(b=> b.addEventListener('click',()=>{ $$('.mood').forEach(x=>x.classList.remove('active')); b.classList.add('active'); chosen=b.dataset.mood; })); $('#saveCheckin').addEventListener('click',()=>{ if(!chosen) return alert('Pick a mood'); const tags=$('#checkinTags').value.trim(); const notes=$('#checkinNotes').value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(),mood:chosen,tags,notes,score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); alert('Logged!'); }); }
-
-// Journal
-function initJournal(){ const sel=$('#journalPrompt'); sel.replaceChildren(...PROMPTS.map(p=> el('option',{value:p,textContent:p}))); $('#newPrompt').addEventListener('click',()=>{ sel.value=PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; }); $('#saveJournal').addEventListener('click',()=>{ const prompt=sel.value; const text=$('#journalText').value.trim(); if(!text) return; state.log.journal.push({id:crypto.randomUUID(),ts:Date.now(),prompt,text}); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); saveState(state); initJournal(); }); const list=$('#journalList'); list.replaceChildren(); state.log.journal.slice().reverse().forEach(j=> list.appendChild(el('div',{className:'quest-row'},[ el('strong',{textContent:fmtDate(j.ts)}), el('span',{textContent:' — '+j.prompt}), el('div',{textContent:j.text}) ]))); }
-
-// Breathe
-function startBreathing(circle,phase,onFinish){ const phases=[{name:'Inhale',secs:4},{name:'Hold',secs:4},{name:'Exhale',secs:6},{name:'Hold',secs:2}]; let active=true,i=0,total=0; function step(){ if(!active) return; const p=phases[i%phases.length]; phase.textContent=p.name; animateCircle(circle,p.name); setTimeout(()=>{ total+=p.secs; i++; if(total>=60){ active=false; onFinish(60); return;} step(); }, p.secs*1000);} step(); return ()=>{ active=false; phase.textContent='Ready'; circle.style.transform='scale(1)'; }; }
-function animateCircle(el,phase){ if(phase==='Inhale'){ el.style.transform='scale(1.2)'; el.style.borderColor='var(--accent)'; } else if(phase==='Exhale'){ el.style.transform='scale(0.85)'; el.style.borderColor='var(--accent-2)'; } else { el.style.transform='scale(1)'; el.style.borderColor='var(--muted)'; } }
-function initBreathe(){ const c=$('#breathCircle'), p=$('#breathPhase'); let stop=null; $('#startBreath').addEventListener('click',()=>{ if(stop) stop(); stop=startBreathing(c,p, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert('Nice breathing session ✨'); renderHUD(); }); }); $('#stopBreath').addEventListener('click',()=>{ if(stop){ stop(); stop=null; } }); }
-
-// Pet — smooth SVG main (no pixelation) + instant accessory overlays
-function accessoriesOverlay(list){ const set=new Set(list); let s=''; if(set.has('cap')) s+=`<path d="M42 40 q18 -16 36 0 v8 h-36z" fill="#1f2937"/>`; if(set.has('bow')) s+=`<path d="M52 78 q-12 -4 0 -8 q12 4 0 8z" fill="#e11d48"/><path d="M68 78 q12 -4 0 -8 q-12 4 0 8z" fill="#e11d48"/><circle cx="60" cy="76" r="6" fill="#be123c"/>`; if(set.has('glasses')) s+=`<circle cx="50" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><circle cx="70" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><line x1="57" y1="48" x2="63" y2="48" stroke="#111" stroke-width="2"/>`; if(set.has('scarf')) s+=`<path d="M30 90 h60 v10 q-30 10 -60 0z" fill="#a855f7"/>`; if(set.has('crown')) s+=`<path d="M40 30 l6 10 l8 -12 l8 12 l6 -10 v8 h-28z" fill="#ffd86b" stroke="#9c6a00" stroke-width="2"/>`; if(set.has('cape')) s+=`<path d="M25 55 q10 10 0 40 h70 q-10 -30 0 -40 z" fill="#0ea5e9" opacity=".7"/>`; if(set.has('collar')) s+=`<circle cx="60" cy="86" r="8" fill="#67e8f9" stroke="#155e75" stroke-width="3"/>`; if(set.has('armor')) s+=`<rect x="38" y="58" width="44" height="30" rx="8" fill="#334155" stroke="#1f2937" stroke-width="3"/>`; if(set.has('halo')) s+=`<ellipse cx="60" cy="22" rx="18" ry="6" fill="none" stroke="#fef08a" stroke-width="4"/>`; if(set.has('monocle')) s+=`<circle cx="70" cy="48" r="8" stroke="#fbbf24" stroke-width="3" fill="none"/><line x1="70" y1="56" x2="70" y2="72" stroke="#fbbf24" stroke-width="3"/>`; if(set.has('backpack')) s+=`<rect x="20" y="58" width="18" height="28" rx="6" fill="#0ea5e9"/><circle cx="28" cy="72" r="4" fill="#fff"/>`; if(set.has('headphones')) s+=`<path d="M44 32 q16 -16 32 0" stroke="#111" stroke-width="6" fill="none"/><circle cx="44" cy="42" r="8" fill="#111"/><circle cx="76" cy="42" r="8" fill="#111"/>`; if(set.has('flower')) s+=`<circle cx="86" cy="36" r="4" fill="#f472b6"/><circle cx="90" cy="36" r="4" fill="#fb7185"/><circle cx="88" cy="32" r="4" fill="#facc15"/><circle cx="88" cy="40" r="4" fill="#22d3ee"/><circle cx="84" cy="36" r="4" fill="#34d399"/>`; if(set.has('witchhat')) s+=`<path d="M30 58 q30 -40 40 0 l-40 0z" fill="#1f2937"/><rect x="28" y="58" width="48" height="6" fill="#111827"/>`; if(set.has('sunglasses')) s+=`<rect x="44" y="44" width="12" height="8" rx="2" fill="#0ea5e9"/><rect x="64" y="44" width="12" height="8" rx="2" fill="#0ea5e9"/><rect x="56" y="46" width="8" height="2" fill="#0ea5e9"/>`; if(set.has('bandana')) s+=`<path d="M36 62 h48 v14 h-48 z" fill="#ef4444"/>`; if(set.has('bowtie')) s+=`<path d="M52 80 q-10 -6 0 -12 q10 6 0 12z" fill="#22d3ee"/><path d="M68 80 q10 -6 0 -12 q-10 6 0 12z" fill="#22d3ee"/><circle cx="60" cy="74" r="4" fill="#0891b2"/>`; if(set.has('boots')) s+=`<rect x="40" y="94" width="16" height="10" rx="2" fill="#78350f"/><rect x="64" y="94" width="16" height="10" rx="2" fill="#78350f"/>`; return s; }
-function petSVG(species,level,acc=[]){ const core={ birb:`<ellipse cx="60" cy="70" rx="40" ry="35" fill="url(#g)"/><circle cx="60" cy="52" r="18" fill="url(#g)"/><circle cx="52" cy="48" r="4" fill="#111"/><circle cx="68" cy="48" r="4" fill="#111"/><polygon points="60,55 56,60 64,60" fill="#ffc66d"/>`, sprout:`<rect x="30" y="45" width="60" height="55" rx="16" fill="url(#g)"/><circle cx="60" cy="40" r="8" fill="#64d66a"/><ellipse cx="54" cy="38" rx="6" ry="3" fill="#64d66a"/><ellipse cx="66" cy="38" rx="6" ry="3" fill="#64d66a"/>`, blob:`<circle cx="60" cy="70" r="38" fill="url(#g)"/><circle cx="48" cy="64" r="5" fill="#111"/><circle cx="72" cy="64" r="5" fill="#111"/>` }[species]||''; const defs=`<defs><radialGradient id="g" cx=".5" cy=".35"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent-2)"/></radialGradient></defs>`; const levelBadge=`<text x="10" y="18" font-size="12" fill="rgba(255,255,255,.65)">Lv.</text><rect x="28" y="6" rx="6" ry="6" width="26" height="16" fill="rgba(0,0,0,.35)"/><text x="41" y="18" text-anchor="middle" font-weight="700" fill="#fff">${level}</text>`; return `<svg viewBox="0 0 120 120" width="120" height="120" role="img"><rect x="0" y="0" width="120" height="120" rx="22" fill="rgba(0,0,0,.15)"/>${defs}${core}${accessoriesOverlay(acc)}${levelBadge}</svg>`; }
-function initPet(){ const stage=$('#petStage'); const pet=petSVG(state.pet.species,state.pet.level,state.pet.acc); stage.innerHTML=`<div class="pet">${pet}</div>`; const xp=state.pet.xp,lvl=state.pet.level,next=xpForLevel(lvl+1); $('#petStats').textContent=`Level ${lvl} — ${xp}/${next} XP`; $('#petName').value=state.pet.name; $('#petSpecies').value=state.pet.species; $('#savePet').addEventListener('click',()=>{ state.pet.name=$('#petName').value.trim()||'Pebble'; state.pet.species=$('#petSpecies').value; saveState(state); initPet(); renderHUD(); }); const acc=Array.from(new Set([...(state.economy.ownedAcc||[])])); const list=$('#accList'); list.replaceChildren(); ACCESSORIES.forEach(a=>{ const owned=acc.includes(a.id); const btn=el('button',{className: state.pet.acc.includes(a.id)? '':'secondary', textContent:(owned?'':'🔒 ')+a.label}); btn.addEventListener('click',()=>{ if(!owned){ alert('Buy this in the shop first'); return; } const i=state.pet.acc.indexOf(a.id); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a.id); saveState(state); initPet(); renderHUD(); }); list.appendChild(btn); }); }
-
-// settings
-function initSettings(){ $('#userName').value=state.user.name||''; $('#themeSelect').value=state.user.theme||'retro'; $('#fontSelect').value=state.user.font||'press2p'; $('#scanlinesToggle').checked=!!state.user.scanlines; $('#saveSettings').addEventListener('click',()=>{ state.user.name=$('#userName').value.trim(); state.user.theme=$('#themeSelect').value; state.user.font=$('#fontSelect').value; state.user.scanlines=$('#scanlinesToggle').checked; saveState(state); alert('Saved!'); }); $('#resetApp').addEventListener('click',()=>{ if(confirm('Reset all data?')){ resetState(); state=loadState(); renderRoute(); } }); }
-
-// Characters & Companion (with upload)
-function characterCards(){ return [ {id:'witch',label:'Witch',img:'assets/heroes/hero-bambi.png'}, {id:'ranger',label:'Ranger',img:'assets/heroes/hero-fox.png'}, {id:'bard',label:'Bard',img:'assets/heroes/hero-ash.png'} ]; }
-function initCharacters(){ const grid=$('#charGrid'); grid.replaceChildren(); characterCards().forEach(c=>{ const card=el('div',{className:'hero'},[ el('img',{src:c.img,alt:c.label}), el('div',{className:'name', textContent:c.label}) ]); card.addEventListener('click',()=>{ state.user.character={id:c.id,img:c.img}; saveState(state); fxToast('Character selected'); renderHUD(); routeTo('companion'); renderRoute(); }); grid.appendChild(card); }); $('#uploadChar').addEventListener('click',()=> $('#charFile').click()); $('#charFile').addEventListener('change',ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ state.user.character={id:'custom',img:rd.result}; saveState(state); renderHUD(); routeTo('companion'); renderRoute(); }; rd.readAsDataURL(f); }); }
-function companionCards(){ return [ {id:'odin',label:'Odin',img:'assets/heroes/hero-odin.png'}, {id:'molly',label:'Molly (dog)',img:'assets/heroes/comp-molly.png'}, {id:'fox',label:'Fox',img:'assets/heroes/hero-fox.png'} ]; }
-function initCompanion(){ $('#modeSolo').addEventListener('click',()=>{ state.log.coop.toddlerWeek=false; saveState(state); fxToast('Solo Week'); }); $('#modeToddler').addEventListener('click',()=>{ state.log.coop.toddlerWeek=true; saveState(state); fxToast('Toddler Week'); }); const grid=$('#compGrid'); grid.replaceChildren(); companionCards().forEach(c=>{ const card=el('div',{className:'hero'},[ el('img',{src:c.img,alt:c.label}), el('div',{className:'name',textContent:c.label}) ]); card.addEventListener('click',()=>{ state.user.companion={id:c.id,img:c.img}; saveState(state); renderHUD(); fxToast('Companion selected'); }); grid.appendChild(card); }); $('#uploadComp').addEventListener('click',()=> $('#compFile').click()); $('#compFile').addEventListener('change',ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ state.user.companion={id:'custom',img:rd.result}; saveState(state); renderHUD(); fxToast('Custom companion added'); }; rd.readAsDataURL(f); }); }
-
-// unlock chance
-function maybeUnlockAccessory(){ const owned=new Set(state.economy.ownedAcc||[]); const pool=ACCESSORIES.map(x=>x.id).filter(id=>!owned.has(id)); if(pool.length && Math.random()<0.15){ const item=pool[Math.floor(Math.random()*pool.length)]; state.economy.ownedAcc=Array.from(new Set([...(state.economy.ownedAcc||[]),item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
-
-// export/import + boot
-$('#exportBtn').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='soothebirb-data.json'; a.click(); URL.revokeObjectURL(url); });
-$('#importBtn').addEventListener('click',()=> $('#importFile').click());
-$('#importFile').addEventListener('change',ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ try{ state=JSON.parse(rd.result); saveState(state); renderRoute(); alert('Imported!'); }catch(e){ alert('Invalid file'); } }; rd.readAsText(f); });
-
-touchStreak(state); saveState(state);
-if(!location.hash || !['#home','#tasks','#clean','#coop','#budget','#meals','#calendar','#shop','#rewards','#checkin','#journal','#breathe','#pet','#settings','#characters','#companion'].includes(location.hash)){ location.hash='#home'; }
-renderRoute();
-
-
-// --- v2.5.2 additions ---
-function renderPartyBanner(){
-  const wrap = document.querySelector('#partyBanner'); if(!wrap) return;
-  const char = state.user.character?.img, comp = state.user.companion?.img;
-  const pet = petSVG(state.pet.species,state.pet.level,state.pet.acc);
-  const card = (src,label)=> {
-    const img = document.createElement('img'); img.src = src; img.alt = label||'portrait';
-    img.onerror = ()=>{ img.src = 'assets/heroes/hero-fox.png'; };
-    const c = document.createElement('div'); c.className='card'; c.appendChild(img);
-    const t = document.createElement('div'); t.className='name'; t.textContent = label||''; t.style.fontSize='.7rem'; t.style.opacity='.8'; c.appendChild(t);
-    return c;
-  };
-  wrap.replaceChildren();
-  if(char) wrap.appendChild(card(char,'You'));
-  const p = document.createElement('div'); p.className='card pet-wrap'; p.innerHTML = pet; wrap.appendChild(p);
-  if(comp) wrap.appendChild(card(comp,'Companion'));
+function renderRoute(){
+  try{
+    clearFx();
+    const name = safeRouteName(location.hash || '#home');
+    setActiveNav(name); moveNavHi();
+    const view = document.querySelector('#view'); view.innerHTML='';
+    const tpl = document.querySelector('#tpl-'+name);
+    if(!tpl){ view.textContent='Not found'; return; }
+    view.appendChild(tpl.content.cloneNode(true));
+    wireTiles();
+    if(name==='home') initDashboard();
+    if(name==='tasks') initTasks();
+    if(name==='clean') initCleaning();
+    if(name==='coop') initCoop();
+    if(name==='budget') initBudget();
+    if(name==='meals') initMeals();
+    if(name==='calendar') initCalendar();
+    if(name==='shop') initShop();
+    if(name==='rewards') initRewards();
+    if(name==='checkin') initCheckin();
+    if(name==='journal') initJournal();
+    if(name==='breathe') initBreathe();
+    if(name==='pet') initPet();
+    if(name==='settings') initSettings();
+    if(name==='characters') initCharacters();
+    if(name==='companion') initCompanion();
+    updateFooter();
+  }catch(err){ console.error('renderRoute', err); const v=document.querySelector('#view'); v.innerHTML='<div class="cardish">Render error — reloading…</div>'; setTimeout(()=>location.reload(), 50); }
 }
 
-function screenShake(ms=500){ document.body.classList.add('shake'); setTimeout(()=> document.body.classList.remove('shake'), ms); }
-function dropCrown(){
-  const c = document.createElement('div'); c.className='drop-crown'; document.body.appendChild(c);
-  setTimeout(()=> c.remove(), 900);
+// ---- footer
+function updateFooter(){ $("#streakLabel").textContent = `Streak: ${state.streak.current} 🔥 | Best: ${state.streak.best}`; }
+
+// ---- dashboard
+function initDashboard(){
+  const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
+  const pct=Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
+  $("#xpBig").style.width=pct+"%"; $("#xpBigLabel").textContent = `Lv ${lvl}`;
 }
 
-function sfxChord(){ tone(midi(84),.14,'square',.03); setTimeout(()=>tone(midi(79),.14,'square',.03),60); setTimeout(()=>tone(midi(88),.2,'square',.03),120); }
-function sfxCheck(){ tone(880,.05,'square',.03); setTimeout(()=>tone(1320,.05,'square',.02),40); }
-function sfxWhoosh(){ tone(220,.08,'sawtooth',.02); setTimeout(()=>tone(440,.12,'sawtooth',.02),60); }
-
-// Hook into renders
-const _oldInitDashboard = initDashboard;
-initDashboard = function(){ _oldInitDashboard(); renderPartyBanner(); };
-
-// Route transitions — little whoosh
-const _oldRenderRoute = renderRoute;
-renderRoute = function(){ sfxWhoosh(); _oldRenderRoute(); };
-
-// Quest checkbox sfx
-const _oldInitTasks = initTasks;
-initTasks = function(){ _oldInitTasks(); document.querySelectorAll('.quest-row .checkbox').forEach(b=> b.addEventListener('click', ()=> sfxCheck(), {once:false})); };
-
-// Crown drop & shake on level-up
-const _oldAddXPBase = addXP_base;
-addXP_base = function(state, amount){
-  const before = state.pet.level;
-  _oldAddXPBase(state, amount);
-  if(state.pet.level > before){
-    dropCrown(); screenShake(600); sfxChord();
+// ---- quests
+const DEFAULT_TASKS = [{title:"Pay a bill", tier:"main"}, {title:"Pick up prescription", tier:"main"}, {title:"Clean bathroom", tier:"side"}, {title:"Journal", tier:"side"}, {title:"Organize drawer", tier:"bonus"}];
+function initTasks(){
+  if(state.log.tasks.length===0){ DEFAULT_TASKS.forEach(t=> state.log.tasks.push({id:crypto.randomUUID(), title:t.title, tier:t.tier, done:false, ts:0})); saveState(state); }
+  const panelMain=$("#panelMain"), panelSide=$("#panelSide"), panelBonus=$("#panelBonus");
+  function render(){
+    panelMain.replaceChildren(); panelSide.replaceChildren(); panelBonus.replaceChildren();
+    const tiers={main:panelMain, side:panelSide, bonus:panelBonus};
+    state.log.tasks.forEach(task=>{
+      const row=el("div",{className:"quest-row"+(task.done?" done":"")});
+      const box=el("div",{className:"checkbox"+(task.done?" checked":"")}); box.innerHTML=task.done?"✓":"";
+      box.addEventListener("click", ()=>{ task.done=!task.done; task.ts=task.done?Date.now():0; box.classList.toggle('checked', task.done); row.classList.toggle('done', task.done); SFX.check(); if(task.done){ touchStreak(state); addXP(state,3); addGold(GOLD_REWARD[task.tier]||3); maybeUnlockAccessory(); } saveState(state); updateFooter(); renderHUD(); });
+      const title=el("span",{textContent:task.title});
+      const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click", ()=>{ state.log.tasks=state.log.tasks.filter(x=>x.id!==task.id); saveState(state); render(); });
+      row.append(box,title,del); (tiers[task.tier||"side"]||panelSide).appendChild(row);
+    });
   }
-};
+  render();
+  $("#addTaskBtn").addEventListener("click", ()=>{ const t=$("#newTaskTitle").value.trim(); if(!t) return; const tier=$("#newTaskTier").value||"side"; state.log.tasks.push({id:crypto.randomUUID(), title:t, tier, done:false, ts:0}); $("#newTaskTitle").value=""; saveState(state); render(); });
+}
 
-// Ensure avatars always show in header (already handled in base renderHUD)
+// ---- cleaning
+function initCleaning(){
+  const small=$("#cleanSmall");
+  function draw(){
+    small.replaceChildren();
+    state.log.clean.small.forEach((q,i)=>{
+      const row=el("div",{className:"quest-row"+(q.done?" done":"")});
+      const box=el("div",{className:"checkbox"+(q.done?" checked":"")}); box.innerHTML=q.done?"✓":"";
+      box.addEventListener("click",()=>{ q.done=!q.done; box.classList.toggle('checked', q.done); row.classList.toggle('done', q.done); if(q.done){ addXP(state,2); addGold(GOLD_REWARD.clean); maybeUnlockAccessory(); } saveState(state); renderHUD(); });
+      const t=el("span",{textContent:q.title});
+      const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click",()=>{ state.log.clean.small.splice(i,1); saveState(state); draw(); });
+      row.append(box,t,del); small.appendChild(row);
+    });
+    $("#bossProg").style.width = Math.min(100, state.log.clean.boss.progress)+"%";
+    $("#bossList").replaceChildren(el("div",{textContent:`Boss: ${state.log.clean.boss.name}`}));
+    $("#raidInfo").replaceChildren(el("div",{textContent:`${state.log.clean.raid.name} — ${state.log.clean.raid.note}`}));
+  }
+  draw();
+  $("#addCleanTask").addEventListener("click",()=>{ const t=$("#newCleanTask").value.trim(); if(!t) return; state.log.clean.small.push({title:t,done:false}); $("#newCleanTask").value=""; saveState(state); draw(); });
+  $("#bossNew").addEventListener("click",()=>{ const name=$("#bossName").value.trim(); if(!name) return; state.log.clean.boss.name=name; state.log.clean.boss.progress=0; saveState(state); draw(); });
+  $("#bossTick").addEventListener("click",()=>{ state.log.clean.boss.progress = Math.min(100, state.log.clean.boss.progress+10); if(state.log.clean.boss.progress===100) addXP(state,10); saveState(state); draw(); renderHUD(); });
+}
+
+// ---- coop
+function initCoop(){
+  $("#coopWeek").textContent = state.log.coop.toddlerWeek? "Toddler Week" : "Solo Week";
+  const list=$("#sidekickList"), coll=$("#coopCollect");
+  function draw(){
+    list.replaceChildren(); coll.replaceChildren();
+    state.log.coop.quests.forEach((q,i)=>{
+      const row=el("div",{className:"quest-row"+(q.done?" done":"")});
+      const box=el("div",{className:"checkbox"+(q.done?" checked":"")}); box.innerHTML=q.done?"✓":"";
+      box.addEventListener("click",()=>{ q.done=!q.done; box.classList.toggle('checked', q.done); row.classList.toggle('done', q.done); if(q.done) { addXP(state,2); addGold(GOLD_REWARD.coop); maybeUnlockAccessory(); } saveState(state); renderHUD(); });
+      const t=el("span",{textContent:q.title});
+      const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click",()=>{ state.log.coop.quests.splice(i,1); saveState(state); draw(); });
+      row.append(box,t,del); list.appendChild(row);
+    });
+    (state.log.rewards.badges||[]).forEach(b=> coll.appendChild(el("div",{className:"quest-row"},[el("span",{textContent:b.name+' ⭐'})])));
+  }
+  draw();
+  $("#addSidekick").addEventListener("click",()=>{ const t=$("#newSidekick").value.trim(); if(!t) return; state.log.coop.quests.push({title:t,done:false}); $("#newSidekick").value=""; saveState(state); draw(); });
+  $("#toggleWeek").addEventListener("click",()=>{ state.log.coop.toddlerWeek=!state.log.coop.toddlerWeek; saveState(state); $("#coopWeek").textContent = state.log.coop.toddlerWeek? "Toddler Week" : "Solo Week"; });
+}
+
+// ---- budget
+function initBudget(){
+  const list=$("#txnList");
+  function money(n){ return (n<0?"-":"") + "$" + Math.abs(n).toLocaleString(); }
+  function draw(){
+    list.replaceChildren();
+    const tx=state.log.budget.txns.slice().reverse();
+    let balance=0, spend=0; state.log.budget.txns.forEach(t=>{ balance+=t.amount; if(t.amount<0) spend+=-t.amount; });
+    $("#goldPouch").textContent = "$"+balance.toLocaleString();
+    $("#thisSpend").textContent = "$"+spend.toLocaleString();
+    const goal = state.log.budget.goal || 500;
+    const pct = Math.max(0, Math.min(100, Math.round(((Math.max(0, goal-spend))/goal)*100)));
+    $("#budgetBar").style.width = pct+"%";
+    tx.forEach(t=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:(t.amount>=0?"+ ":"- ")+money(Math.abs(t.amount)) }), el("span",{textContent:" — "+t.label}) ])));
+  }
+  draw();
+  $("#addIncome").addEventListener("click",()=>{ const label=$("#incLabel").value.trim(); const amt=parseFloat($("#incAmt").value||"0"); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:Math.abs(amt)}); addGold(GOLD_REWARD.budget_inc); $("#incLabel").value=""; $("#incAmt").value=""; addXP(state,4); saveState(state); draw(); renderHUD(); });
+  $("#addExpense").addEventListener("click",()=>{ const label=$("#expLabel").value.trim(); const amt=parseFloat($("#expAmt").value||"0"); if(!label||!amt) return; state.log.budget.txns.push({ts:Date.now(),label,amount:-Math.abs(amt)}); addGold(GOLD_REWARD.budget_exp); $("#expLabel").value=""; $("#expAmt").value=""; addXP(state,2); saveState(state); draw(); renderHUD(); });
+}
+
+// ---- meals
+function initMeals(){
+  const grid=$("#mealGrid"); grid.replaceChildren();
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  days.forEach(d=> grid.appendChild(el("div",{className:"cell hdr", textContent:d})));
+  ["breakfast","lunch","dinner"].forEach(mealRow =>{
+    for(let d=0; d<7; d++){
+      const cell=el("div",{className:"cell"});
+      const ta=el("textarea",{value: state.log.meals.data[d][mealRow]||"", placeholder: mealRow });
+      ta.addEventListener("input",()=>{ state.log.meals.data[d][mealRow]=ta.value; saveState(state); });
+      cell.appendChild(ta); grid.appendChild(cell);
+    }
+  });
+}
+
+// ---- calendar
+function initCalendar(){
+  const grid=$("#weekGrid"); grid.replaceChildren();
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  for(let d=0; d<7; d++){
+    const col=el("div",{className:"day"});
+    col.appendChild(el("div",{className:"ttl", textContent:days[d]}));
+    (state.log.calendar.events[d]||[]).forEach(ev => col.appendChild(el("div",{className:"event", textContent:ev})));
+    grid.appendChild(col);
+  }
+  $("#addCal").addEventListener("click",()=>{ const text=$("#calText").value.trim(); const day=Math.max(0, Math.min(6, parseInt($("#calDay").value||"0"))); if(!text) return; state.log.calendar.events[day].push(text); $("#calText").value=""; saveState(state); initCalendar(); });
+}
+
+// ---- shop (includes accessories store)
+function initShop(){
+  const list=$("#shopList");
+  function draw(){
+    list.replaceChildren();
+    state.log.shop.items.forEach((it,i)=>{
+      const row=el("div",{className:"quest-row"+(it.done?" done":"")});
+      const box=el("div",{className:"checkbox"+(it.done?" checked":"")}); box.innerHTML=it.done?"✓":"";
+      box.addEventListener("click",()=>{ it.done=!it.done; saveState(state); draw(); });
+      const t=el("span",{textContent:it.title});
+      const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click",()=>{ state.log.shop.items.splice(i,1); saveState(state); draw(); });
+      row.append(box,t,del); list.appendChild(row);
+    });
+  }
+  draw();
+  $("#addShop").addEventListener("click",()=>{ const t=$("#shopItem").value.trim(); if(!t) return; state.log.shop.items.push({title:t, done:false}); $("#shopItem").value=""; saveState(state); draw(); });
+
+  // Accessories store
+  const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
+  const storeEl=el('div',{className:'panel-list'});
+  storeEl.appendChild(el('h3',{textContent:'Accessories Store'}));
+  STORE.forEach(it=>{
+    const owned=(state.economy.ownedAcc||[]).includes(it.id);
+    const row=el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'})]);
+    row.querySelector('button').addEventListener('click',()=>{
+      if(owned) return;
+      if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
+      state.economy.gold -= it.cost;
+      state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
+      saveState(state); renderHUD(); initShop();
+    });
+    storeEl.appendChild(row);
+  });
+  list.parentElement.appendChild(storeEl);
+}
+
+// ---- rewards
+function initRewards(){
+  const grid=$("#badgeGrid"); grid.replaceChildren();
+  const defs=[
+    {id:"first-checkin", name:"First Check‑In", test:s=>s.log.moods.length>0, ico:"💠"},
+    {id:"week-streak-3", name:"3‑Day Streak", test:s=>s.streak.best>=3, ico:"🔥"},
+    {id:"ten-quests", name:"10 Quests", test:s=>s.log.tasks.filter(t=>t.done).length>=10, ico:"🏅"},
+    {id:"budget-boss", name:"Budget Keeper", test:s=>s.log.budget.txns.length>=5, ico:"💰"}
+  ];
+  defs.forEach(b=>{ if(!state.log.rewards.badges.find(x=>x.id===b.id) && b.test(state)){ state.log.rewards.badges.push({id:b.id, name:b.name, ts:Date.now()}); } });
+  saveState(state);
+  defs.forEach(b=>{
+    const unlocked=!!state.log.rewards.badges.find(x=>x.id===b.id);
+    grid.appendChild(el("div",{className:"badge "+(unlocked?"":"locked")},[ el("div",{className:"b-ico", textContent:b.ico}), el("div",{className:"b-txt", textContent:b.name}) ]));
+  });
+}
+
+// ---- checkin
+function initCheckin(){
+  let chosen=null;
+  $$(".mood").forEach(b=> b.addEventListener("click",()=>{ $$(".mood").forEach(x=> x.classList.remove("active")); b.classList.add("active"); chosen=b.dataset.mood; }));
+  $("#saveCheckin").addEventListener("click",()=>{ if(!chosen){ alert("Pick a mood"); return; } const tags=$("#checkinTags").value.trim(); const notes=$("#checkinNotes").value.trim(); const score={awful:1,bad:2,ok:3,good:4,great:5}[chosen]; state.log.moods.push({ts:Date.now(), mood:chosen, tags, notes, score}); touchStreak(state); addXP(state,5); addGold(GOLD_REWARD.checkin); saveState(state); renderHUD(); alert("Logged!"); });
+}
+
+// ---- journal
+const PROMPTS = ["Name one tiny win from today.","What do you need less of right now?","Three things you’re grateful for:","What would kindness toward yourself look like today?","Finish this sentence: I feel most like me when…","A thought to let go:","A place that makes you breathe easier:","Something you’re proud of this week:"];
+function initJournal(){
+  const sel=$("#journalPrompt"); sel.replaceChildren(...PROMPTS.map(p=> el("option",{value:p, textContent:p})));
+  $("#newPrompt").addEventListener("click",()=>{ sel.value = PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; });
+  $("#saveJournal").addEventListener("click",()=>{ const prompt=sel.value; const text=$("#journalText").value.trim(); if(!text) return; state.log.journal.push({ id: crypto.randomUUID(), ts: Date.now(), prompt, text }); touchStreak(state); addXP(state,6); addGold(GOLD_REWARD.journal); saveState(state); initJournal(); });
+  const list=$("#journalList"); list.replaceChildren(); state.log.journal.slice().reverse().forEach(j=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}), el("div",{textContent:j.text}) ])));
+}
+
+// ---- breathe
+function startBreathing(circleEl, phaseEl, onFinish){
+  const phases=[{name:"Inhale",secs:4},{name:"Hold",secs:4},{name:"Exhale",secs:6},{name:"Hold",secs:2}];
+  let active=true,i=0,total=0; function step(){ if(!active) return; const p=phases[i%phases.length]; phaseEl.textContent=p.name; animateCircle(circleEl,p.name); setTimeout(()=>{ total+=p.secs; i++; if(total>=60){ active=false; onFinish(60); return;} step(); }, p.secs*1000);} step(); return ()=>{ active=false; phaseEl.textContent="Ready"; circleEl.style.transform="scale(1)"; }; }
+function animateCircle(el, phase){ if(phase==="Inhale"){ el.style.transform="scale(1.2)"; el.style.borderColor="var(--accent)"; } else if(phase==="Exhale"){ el.style.transform="scale(0.85)"; el.style.borderColor="var(--accent-2)"; } else { el.style.transform="scale(1)"; el.style.borderColor="var(--muted)"; } }
+function initBreathe(){
+  const circle=$("#breathCircle"), phase=$("#breathPhase"); let stop=null;
+  $("#startBreath").addEventListener("click",()=>{ if(stop) stop(); stop=startBreathing(circle,phase, secs=>{ state.log.breath.push({ts:Date.now(),secs}); touchStreak(state); addXP(state,4); addGold(GOLD_REWARD.breathe); saveState(state); alert("Nice breathing session ✨"); renderHUD(); }); });
+  $("#stopBreath").addEventListener("click",()=>{ if(stop){ stop(); stop=null; } });
+}
+
+// ---- pet
+function accessories(list){ const set=new Set(list); let s=""; if(set.has("cap")) s+=`<path d="M42 40 q18 -16 36 0 v8 h-36z" fill="#1f2937"/>`; if(set.has("bow")) s+=`<path d="M52 78 q-12 -4 0 -8 q12 4 0 8z" fill="#e11d48"/><path d="M68 78 q12 -4 0 -8 q-12 4 0 8z" fill="#e11d48"/><circle cx="60" cy="76" r="6" fill="#be123c"/>`; if(set.has("glasses")) s+=`<circle cx="50" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><circle cx="70" cy="48" r="7" stroke="#111" stroke-width="2" fill="none"/><line x1="57" y1="48" x2="63" y2="48" stroke="#111" stroke-width="2"/>`; return s; }
+function petSVG(species, level, acc=[]){
+  const core = { birb:`<ellipse cx="60" cy="70" rx="40" ry="35" fill="url(#g)"/><circle cx="60" cy="52" r="18" fill="url(#g)"/><circle cx="52" cy="48" r="4" fill="#111"/><circle cx="68" cy="48" r="4" fill="#111"/><polygon points="60,55 56,60 64,60" fill="#ffc66d"/>`,
+                 sprout:`<rect x="30" y="45" width="60" height="55" rx="16" fill="url(#g)"/><circle cx="60" cy="40" r="8" fill="#64d66a"/><ellipse cx="54" cy="38" rx="6" ry="3" fill="#64d66a"/><ellipse cx="66" cy="38" rx="6" ry="3" fill="#64d66a"/>`,
+                 blob:`<circle cx="60" cy="70" r="38" fill="url(#g)"/><circle cx="48" cy="64" r="5" fill="#111"/><circle cx="72" cy="64" r="5" fill="#111"/>` }[species] || "";
+  const defs = `<defs><radialGradient id="g" cx=".5" cy=".35"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent-2)"/></radialGradient></defs>`;
+  const levelBadge = `<text x="10" y="18" font-size="12" fill="rgba(255,255,255,.65)">Lv.</text><rect x="28" y="6" rx="6" ry="6" width="26" height="16" fill="rgba(0,0,0,.35)"/><text x="41" y="18" text-anchor="middle" font-weight="700" fill="#fff">${level}</text>`;
+  return `<svg viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Companion"><rect x="0" y="0" width="120" height="120" rx="22" fill="rgba(0,0,0,.15)"/>${defs}${core}${accessories(acc)}${levelBadge}</svg>`;
+}
+function petPixelSVG(species, level, acc=[]){
+  const px=(x,y,c)=>`<rect x='${x}' y='${y}' width='1' height='1' fill='${c}'/>`;
+  const C1=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#00eaff';
+  const C2=getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim()||'#ff3ea5';
+  const sprites={ birb:[ "................","......11........",".....1111.......","....111111......","...11111111.....","...11122111.....","...11222111.....","...11122111.....","...11111111.....","....111111......",".....1..1.......",".....1..1.......","................","................","................","................" ],
+                  sprout:[ "................","......22........",".....2222.......",".......22.......","....111111......","...11111111.....","...11111111.....","...11111111.....","...11111111.....","...11111111.....","....111111......","................","................","................","................","................" ],
+                  blob:[ "................","................","....111111......","..1111111111....","..1111111111....",".111111111111...",".111111111111...",".111111111111...",".111111111111...","..1111111111....","..1111111111....","....111111......","................","................","................","................" ] };
+  const grid=sprites[species]||sprites.blob; let pixels=""; for(let y=0;y<16;y++){ for(let x=0;x<16;x++){ const ch=grid[y][x]; if(ch==='1') pixels+=px(x,y,C1); if(ch==='2') pixels+=px(x,y,C2);} }
+  const levelBadge=`<text x="2" y="8" font-size="4" fill="rgba(255,255,255,.8)">Lv.${level}</text>`;
+  return `<svg viewBox="0 0 16 16" width="140" height="140" class="pixelize" role="img"><rect x="0" y="0" width="16" height="16" fill="rgba(255,255,255,.04)" rx="2"/>${pixels}${levelBadge}</svg>`;
+}
+function initPet(){
+  const stage=$("#petStage");
+  const petMarkup = (state.user.art==='pixel') ? petPixelSVG(state.pet.species, state.pet.level, state.pet.acc) : petSVG(state.pet.species, state.pet.level, state.pet.acc);
+  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
+  const xp=state.pet.xp, lvl=state.pet.level, next=xpForLevel(lvl+1);
+  $("#petStats").textContent = `Level ${lvl} — ${xp}/${next} XP`;
+  $("#petName").value = state.pet.name; $("#petSpecies").value = state.pet.species;
+  $("#savePet").addEventListener("click",()=>{ state.pet.name=$("#petName").value.trim()||"Pebble"; state.pet.species=$("#petSpecies").value; saveState(state); initPet(); renderHUD(); });
+  const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses'])); const accList=$("#accList"); accList.replaceChildren();
+  acc.forEach(a=>{ const btn=el("button",{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener("click",()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
+}
+
+// ---- settings
+function initSettings(){
+  $("#userName").value = state.user.name || "";
+  $("#themeSelect").value = state.user.theme || "retro";
+  $("#fontSelect").value = state.user.font || "press2p";
+  $("#artSelect").value = state.user.art || "pixel";
+  $("#scanlinesToggle").checked = !!state.user.scanlines;
+  $("#saveSettings").addEventListener("click",()=>{
+    state.user.name = $("#userName").value.trim();
+    state.user.theme = $("#themeSelect").value;
+    state.user.font = $("#fontSelect").value;
+    state.user.art = $("#artSelect").value;
+    state.user.scanlines = $("#scanlinesToggle").checked;
+    applyTheme(); saveState(state); alert("Saved!");
+  });
+  $("#resetApp").addEventListener("click",()=>{ if(confirm("Reset all data?")){ resetState(); state=loadState(); applyTheme(); renderRoute(); } });
+}
+
+// ---- Characters & Companion screens
+function characterCards(){ return [ {id:'witch', label:'Witch', svg:petPixelSVG('sprout',1)}, {id:'knight', label:'Knight', svg:petPixelSVG('blob',1)}, {id:'ranger', label:'Ranger', svg:petPixelSVG('birb',1)} ]; }
+function initCharacters(){ const grid=$('#charGrid'); grid.replaceChildren(); characterCards().forEach(c=>{ const card=el('div',{className:'char-card'},[ el('div',{className:'char-portrait', innerHTML:c.svg}), el('div',{textContent:c.label}) ]); card.addEventListener('click',()=>{ state.user.character={id:c.id,img:null}; saveState(state); fxToast('Character selected'); renderHUD(); routeTo('companion'); renderRoute(); }); grid.appendChild(card); }); const up=$('#uploadChar'); const file=$('#charFile'); up.addEventListener('click',()=> file.click()); file.addEventListener('change', ev=>{ const f=ev.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ state.user.character={id:'custom', img:rd.result}; saveState(state); renderHUD(); routeTo('companion'); renderRoute(); }; rd.readAsDataURL(f); }); }
+function initCompanion(){ const grid=$('#compGrid'); grid.replaceChildren(); const opts=[ {id:'solo', label:'Solo Week', desc:'Just you + companion'}, {id:'toddler', label:'Toddler Week', desc:'Two characters co-op'} ]; opts.forEach(o=>{ const card=el('div',{className:'comp-card'},[ el('div',{className:'char-portrait', innerHTML: petPixelSVG('birb',1) }), el('div',{textContent:o.label}), el('div',{className:'sub', textContent:o.desc}) ]); card.addEventListener('click',()=>{ state.log.coop.toddlerWeek = (o.id==='toddler'); saveState(state); fxToast('Mode: '+o.label); routeTo('home'); renderRoute(); }); grid.appendChild(card); }); }
+
+// Unlocks
+function maybeUnlockAccessory(){ const POOL=['cap','bow','glasses']; const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
+
+// --- export/import
+$("#exportBtn").addEventListener("click", ()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="soothebirb-data.json"; a.click(); URL.revokeObjectURL(url); });
+$("#importBtn").addEventListener("click", ()=> $("#importFile").click());
+$("#importFile").addEventListener("change", ev=>{ const file=ev.target.files[0]; if(!file) return; const rdr=new FileReader(); rdr.onload=()=>{ try{ state=JSON.parse(rdr.result); saveState(state); renderRoute(); alert("Imported!"); }catch(e){ alert("Invalid file."); } }; rdr.readAsText(file); });
+
+// --- boot
+touchStreak(state); saveState(state);
+const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); }
+if(!location.hash || !['#home','#tasks','#clean','#coop','#budget','#meals','#calendar','#shop','#rewards','#checkin','#journal','#breathe','#pet','#settings','#characters','#companion'].includes(location.hash)){ location.hash = '#home'; }
+renderRoute();
