@@ -5,7 +5,7 @@ import { petSVG, ALL_ACC } from './pet.js';
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
-  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null } },
+  user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null, level:1, xp:0, acc:[] } },
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
@@ -30,6 +30,8 @@ function loadState(){
         : (s.log && s.log.coop && s.log.coop.toddlerWeek) || false;
       s.settings = { toddler: t };
       if(s.log && s.log.coop) s.log.coop.toddlerWeek = t;
+      s.user = s.user || {};
+      s.user.character = Object.assign({id:'witch', img:null, level:1, xp:0, acc:[]}, s.user.character||{});
       return s;
     }
   }catch(e){}
@@ -53,12 +55,15 @@ function touchStreak(state){
 }
 function xpForLevel(l){ return l*l*10; }
 function addXP_base(state, amount){
-  state.pet.xp += amount;
-  while(state.pet.xp >= xpForLevel(state.pet.level+1)){
-    state.pet.level += 1; fxToast('Level Up!'); fxBlast(); fxBeep(1320, 0.08);
+  const target = state.settings?.toddler ? state.pet : (state.user.character||state.pet);
+  target.xp = (target.xp||0) + amount;
+  while(target.xp >= xpForLevel((target.level||1)+1)){
+    target.level = (target.level||1) + 1; fxToast('Level Up!'); fxBlast(); fxBeep(1320, 0.08);
   }
   fxReward('+'+amount+' XP'); registerXPEvent();
 }
+
+function characterSpecies(id){ return {witch:'sprout', knight:'blob', ranger:'birb', custom:'sprout'}[id] || 'sprout'; }
 
 // ------ helpers
 const $ = sel => document.querySelector(sel);
@@ -141,17 +146,27 @@ applyTheme();
 function renderHUD(){
   document.body.classList.toggle('toddler-on', state.settings.toddler);
   const cur=2; $("#hudHearts").innerHTML = Array.from({length:3},(_,i)=>`<span class="heart ${i<cur?'':'off'}"></span>`).join("");
-  const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
+  const active = state.settings.toddler ? state.pet : state.user.character;
+  const lvl=active.level||1, xp=active.xp||0, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
-  const av=$('#hudAvatars'); if(av){
+codex/add-player-character-accessorizing-feature
+  const av=$('#hudAvatars');
+  if(av){
     av.innerHTML='';
     const c=state.user.character;
-    const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petSVG('sprout',1)}</div>`;
-    const p=petSVG(state.pet.species, state.pet.level, state.pet.acc);
-    av.innerHTML = `<div class='avatar'>${img}</div><div class='avatar'>${p}</div>`;
+    const species=characterSpecies(c?.id);
+    const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG(species, c.level||1, c.acc)}</div>`;
+    av.innerHTML = `<div class='avatar'>${img}</div>`;
+    if(state.settings.toddler){
+      const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc);
+      av.innerHTML += `<div class='avatar'>${p}</div>`;
+    }
   }
+  const petNav=document.querySelector("button.nav-btn[data-route='pet']");
+  if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
+main
   document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
 }
 renderHUD();
@@ -212,7 +227,8 @@ function updateFooter(){ $("#streakLabel").textContent = `Streak: ${state.streak
 
 // ---- dashboard
 function initDashboard(){
-  const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
+  const active = state.settings.toddler ? state.pet : state.user.character;
+  const lvl=active.level||1, xp=active.xp||0, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
   const pct=Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#xpBig").style.width=pct+"%"; $("#xpBigLabel").textContent = `Lv ${lvl}`;
 }
@@ -459,6 +475,7 @@ function initBreathe(){
 
 // ---- pet
 function initPet(){
+codex/add-player-character-accessorizing-feature
   const stage=$("#petStage");
   const petMarkup = petSVG(state.pet.species, state.pet.level, state.pet.acc);
   stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
@@ -467,28 +484,44 @@ function initPet(){
 
   const nameInput=$("#petName"), speciesInput=$("#petSpecies"), saveBtn=$("#savePet"), accList=$("#accList");
   const editRow=saveBtn?.closest('.row');
+main
   const accDetails=accList?.closest('details');
+  document.getElementById('toddlerActions')?.remove();
   const toddler=state.settings?.toddler;
-
-  nameInput.value=state.pet.name;
-  speciesInput.value=state.pet.species;
+  const target=toddler? state.pet : state.user.character;
+  const species=toddler? target.species : characterSpecies(target.id);
+  const petMarkup = (state.user.art==='pixel') ? petPixelSVG(species, target.level, target.acc) : petSVG(species, target.level, target.acc);
+  stage.innerHTML = `<div class="pet">${petMarkup}</div>`;
+  const xp=target.xp||0, lvl=target.level||1, next=xpForLevel(lvl+1);
+  stats.textContent = `Level ${lvl} — ${xp}/${next} XP`;
+  if(title) title.textContent = toddler? 'Your Companion' : 'Your Character';
 
   if(toddler){
-    if(editRow) editRow.style.display='none';
+    if(form) form.style.display='none';
     if(accDetails) accDetails.style.display='none';
-    accList?.replaceChildren();
-    document.getElementById('toddlerActions')?.remove();
     const actions=el('div',{id:'toddlerActions',className:'toddler-actions'},[
       el('button',{className:'primary',textContent:'Feed'}),
       el('button',{className:'primary',textContent:'Play'})
     ]);
-    if(accDetails) accDetails.insertAdjacentElement('afterend',actions); else stage.insertAdjacentElement('afterend',actions);
+    accDetails?.insertAdjacentElement('afterend',actions);
     const [feedBtn,playBtn]=actions.querySelectorAll('button');
     feedBtn.addEventListener('click',()=>{ addXP(state,1); addGold(1); initPet(); renderHUD(); });
     playBtn.addEventListener('click',()=>{ addXP(state,1); addGold(1); initPet(); renderHUD(); });
   } else {
-    if(editRow) editRow.style.display='';
+    if(form) form.style.display='none';
     if(accDetails) accDetails.style.display='';
+codex/add-player-character-accessorizing-feature
+    accList.replaceChildren();
+    const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses']));
+    acc.forEach(a=>{
+      const btn=el('button',{className: target.acc.includes(a)? '':'secondary', textContent:a});
+      btn.addEventListener('click',()=>{
+        const arr=target.acc; const i=arr.indexOf(a); if(i>=0) arr.splice(i,1); else arr.push(a);
+        saveState(state); initPet(); renderHUD();
+      });
+      accList.appendChild(btn);
+    });
+
     document.getElementById('toddlerActions')?.remove();
     saveBtn.onclick=()=>{ state.pet.name=nameInput.value.trim()||"Pebble"; state.pet.species=speciesInput.value; saveState(state); initPet(); renderHUD(); };
     const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), ...ALL_ACC.map(a=>a.id)]));
@@ -513,6 +546,7 @@ function initPet(){
         store.appendChild(el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), btn]));
       });
     }
+main
   }
 }
 

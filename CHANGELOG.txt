@@ -13,3 +13,4 @@ Notes:
 - If your project already uses a different key, you can rename KEY at top of app.js.
 - Pet rendering is now crisp SVG; accessories update instantly.
 - Character/Companion upload works out of the box.
+- Character XP and accessories now apply to the player's avatar by default; pets appear only in toddler mode.
