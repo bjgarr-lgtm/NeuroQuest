@@ -108,6 +108,7 @@ function applyTheme(){
 }
 applyTheme();
 function renderHUD(){
+  document.body.classList.toggle('toddler-on', state.settings.toddler);
   const cur=2; $("#hudHearts").innerHTML = Array.from({length:3},(_,i)=>`<span class="heart ${i<cur?'':'off'}"></span>`).join("");
   const lvl=state.pet.level, xp=state.pet.xp, next=xpForLevel(lvl+1), prev=xpForLevel(lvl);
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
