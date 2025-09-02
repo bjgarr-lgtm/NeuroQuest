@@ -25,6 +25,7 @@
       <button data-route="shop" class="nav-btn">Shopping</button>
       <button data-route="pet" class="nav-btn">Companion</button>
       <button data-route="breathe" class="nav-btn">Breathe</button>
+      <button data-route="minigames" class="nav-btn toddler-only">Minigames</button>
       <button data-route="journal" class="nav-btn">Journal</button>
       <button data-route="checkin" class="nav-btn">Check‑In</button>
       <button data-route="rewards" class="nav-btn">Rewards</button>
@@ -90,6 +91,7 @@
         <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
         <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Character</div></a>
         <a class="tile" data-route="companion"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Companion</div></a>
+        <a class="tile toddler-only" data-route="minigames"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Minigames</div></a>
       </div>
     </section>
   </template>
@@ -307,6 +309,9 @@
       <div class="row"><button id="startBreath" class="primary">Start</button><button id="stopBreath" class="secondary">Stop</button></div>
     </section>
   </template>
+
+  <!-- Minigames -->
+  <template id="tpl-minigames"><canvas id="popGame" class="game" width="300" height="180"></canvas></template>
 
   <!-- Settings -->
   <template id="tpl-settings">
