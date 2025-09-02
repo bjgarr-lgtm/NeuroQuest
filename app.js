@@ -5,12 +5,9 @@ import { petSVG, ALL_ACC } from './pet.js';
 // ------ store (localStorage)
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
-codex/add-character-selection-and-party-banners
   user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true,
     character:{ id:'ash', img:'assets/heroes/hero-ash.png' },
     companion:{ id:'molly', img:'assets/heroes/comp-molly.png' } },
-
-main
   settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
@@ -156,17 +153,11 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
-codex/add-character-selection-and-party-banners
-  const av=$('#hudAvatars');
-  if(av){
-    av.innerHTML='';
-    [state.user.character, state.user.companion].forEach(m=>{
-      if(m) av.innerHTML += `<div class='avatar'><img src='${m.img}' alt='${m.id}'/></div>`;
-    });
-  if(av){
-    av.innerHTML='';
-    const c=state.user.character;
-    const species=characterSpecies(c?.id);
+    const av=$('#hudAvatars');
+    if(av){
+      av.innerHTML='';
+      const c=state.user.character;
+      const species=characterSpecies(c?.id);
     const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG(species, c.level||1, c.acc)}</div>`;
     av.innerHTML = `<div class='avatar'>${img}</div>`;
     if(state.settings.toddler){
@@ -176,7 +167,6 @@ codex/add-character-selection-and-party-banners
   }
   const petNav=document.querySelector("button.nav-btn[data-route='pet']");
   if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
-main
   document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
 }
 renderHUD();
@@ -494,6 +484,7 @@ function initBreathe(){
 }
 
 // ---- pet
+codex/replace-initpet-function-implementation
 function initPet() {
   const stage = $('#petStage');
   const stats = $('#petStats');
@@ -504,7 +495,7 @@ function initPet() {
   const saveBtn = $('#savePet');
   const accList = $('#accList');
   const accDetails = accList?.closest('details');
-
+main
   document.getElementById('toddlerActions')?.remove();
   const toddler = state.settings?.toddler;
   const target = toddler ? state.pet : state.user.character;
@@ -533,6 +524,7 @@ function initPet() {
     feedBtn.addEventListener('click', () => { addXP(state, 1); addGold(1); initPet(); renderHUD(); });
     playBtn.addEventListener('click', () => { addXP(state, 1); addGold(1); initPet(); renderHUD(); });
   } else {
+codex/replace-initpet-function-implementation
     form && (form.style.display = 'none');
     accDetails && (accDetails.style.display = '');
     accList.replaceChildren();
@@ -547,6 +539,7 @@ function initPet() {
       accList.appendChild(btn);
     });
   }
+main
 
   const store = $('#accStore');
   if (store) {
@@ -568,10 +561,12 @@ function initPet() {
         state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc || []), it.id]));
         saveState(state); renderHUD(); initPet();
       });
+codex/replace-initpet-function-implementation
       store.appendChild(el('div', { className: 'quest-row' }, [
         el('span', { textContent: `${it.label} — 🪙 ${it.cost}` }), btn
       ]));
     });
+main
   }
 }
 
@@ -606,7 +601,6 @@ function initSettings(){
 }
 
 // ---- Characters & Companion screens
-codex/add-character-selection-and-party-banners
 const HEROES=[
   {id:'ash', name:'Ash', img:'assets/heroes/hero-ash.png'},
   {id:'bambi', name:'Bambi', img:'assets/heroes/hero-bambi.png'},
@@ -654,7 +648,6 @@ function initCompanion(){
     grid.appendChild(card);
   });
 }
-main
 
 // Unlocks
 function maybeUnlockAccessory(){ const POOL=ALL_ACC.map(a=>a.id); const owned=new Set(state.economy.ownedAcc||[]); const cand = POOL.filter(x=>!owned.has(x)); if(cand.length && Math.random()<0.15){ const item=cand[Math.floor(Math.random()*cand.length)]; state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), item])); fxToast('Unlocked: '+item+'!'); saveState(state);} }
