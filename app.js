@@ -6,6 +6,7 @@ const defaultState = () => ({
   user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null } },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
+  settings: { toddler:false },
   streak: { current: 0, best: 0, lastCheck: "" },
   log: {
     moods: [], tasks: [], journal: [], breath: [],
@@ -99,6 +100,7 @@ function addGold(n){ state.economy.gold=Math.max(0,(state.economy.gold||0)+n); S
 
 // --- Theme + HUD
 let state; try{ state = loadState(); }catch(e){ console.error('init', e); state=defaultState(); }
+state.settings = state.settings || { toddler:false };
 function applyTheme(){
   document.documentElement.className="";
   document.documentElement.classList.add("theme-"+(state.user.theme||"retro"));
@@ -178,8 +180,17 @@ function initDashboard(){
 
 // ---- quests
 const DEFAULT_TASKS = [{title:"Pay a bill", tier:"main"}, {title:"Pick up prescription", tier:"main"}, {title:"Clean bathroom", tier:"side"}, {title:"Journal", tier:"side"}, {title:"Organize drawer", tier:"bonus"}];
+const TODDLER_TASKS = [
+  {title:"Read picture book", tier:"side", xp:1, gold:1},
+  {title:"Outside play 10m", tier:"side", xp:1, gold:1}
+];
+function regenTasks(){
+  const arr = (state.settings && state.settings.toddler) ? TODDLER_TASKS : DEFAULT_TASKS;
+  state.log.tasks = arr.map(t=>({id:crypto.randomUUID(), title:t.title, tier:t.tier, xp:t.xp, gold:t.gold, done:false, ts:0, toddler:state.settings?.toddler}));
+  saveState(state);
+}
 function initTasks(){
-  if(state.log.tasks.length===0){ DEFAULT_TASKS.forEach(t=> state.log.tasks.push({id:crypto.randomUUID(), title:t.title, tier:t.tier, done:false, ts:0})); saveState(state); }
+  if(state.log.tasks.length===0 || (!!state.settings?.toddler !== !!state.log.tasks[0]?.toddler)){ regenTasks(); }
   const panelMain=$("#panelMain"), panelSide=$("#panelSide"), panelBonus=$("#panelBonus");
   function render(){
     panelMain.replaceChildren(); panelSide.replaceChildren(); panelBonus.replaceChildren();
@@ -187,7 +198,7 @@ function initTasks(){
     state.log.tasks.forEach(task=>{
       const row=el("div",{className:"quest-row"+(task.done?" done":"")});
       const box=el("div",{className:"checkbox"+(task.done?" checked":"")}); box.innerHTML=task.done?"✓":"";
-      box.addEventListener("click", ()=>{ task.done=!task.done; task.ts=task.done?Date.now():0; box.classList.toggle('checked', task.done); row.classList.toggle('done', task.done); SFX.check(); if(task.done){ touchStreak(state); addXP(state,3); addGold(GOLD_REWARD[task.tier]||3); maybeUnlockAccessory(); } saveState(state); updateFooter(); renderHUD(); });
+      box.addEventListener("click", ()=>{ task.done=!task.done; task.ts=task.done?Date.now():0; box.classList.toggle('checked', task.done); row.classList.toggle('done', task.done); SFX.check(); if(task.done){ touchStreak(state); addXP(state, task.xp||3); addGold(task.gold||GOLD_REWARD[task.tier]||3); maybeUnlockAccessory(); } saveState(state); updateFooter(); renderHUD(); });
       const title=el("span",{textContent:task.title});
       const del=el("button",{className:"secondary", textContent:"Delete"}); del.addEventListener("click", ()=>{ state.log.tasks=state.log.tasks.filter(x=>x.id!==task.id); saveState(state); render(); });
       row.append(box,title,del); (tiers[task.tier||"side"]||panelSide).appendChild(row);
@@ -409,6 +420,7 @@ function initSettings(){
   $("#fontSelect").value = state.user.font || "press2p";
   $("#artSelect").value = state.user.art || "pixel";
   $("#scanlinesToggle").checked = !!state.user.scanlines;
+  const toddler=$("#toddlerToggle"); if(toddler){ toddler.checked=!!state.settings.toddler; toddler.addEventListener("change",()=>{ state.settings.toddler=toddler.checked; regenTasks(); renderHUD(); if(location.hash==='#tasks') renderRoute(); }); }
   $("#saveSettings").addEventListener("click",()=>{
     state.user.name = $("#userName").value.trim();
     state.user.theme = $("#themeSelect").value;
