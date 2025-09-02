@@ -7,6 +7,7 @@ const defaultState = () => ({
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
   streak: { current: 0, best: 0, lastCheck: "" },
+  settings: { toddler:false },
   log: {
     moods: [], tasks: [], journal: [], breath: [],
     clean: { small: [], boss: { name: 'Bathroom', progress: 0 }, raid: { name:'Week 2', note:'Deep clean' } },
@@ -18,8 +19,24 @@ const defaultState = () => ({
     rewards: { badges: [] }
   }
 });
-function loadState(){ try{ return JSON.parse(localStorage.getItem(KEY)) || defaultState(); } catch(e){ return defaultState(); } }
-function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+function loadState(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s){
+      const t = s.settings && typeof s.settings.toddler !== 'undefined'
+        ? s.settings.toddler
+        : (s.log && s.log.coop && s.log.coop.toddlerWeek) || false;
+      s.settings = { toddler: t };
+      if(s.log && s.log.coop) s.log.coop.toddlerWeek = t;
+      return s;
+    }
+  }catch(e){}
+  return defaultState();
+}
+function saveState(s){
+  s.settings = s.settings || { toddler:false };
+  localStorage.setItem(KEY, JSON.stringify(s));
+}
 function resetState(){ localStorage.removeItem(KEY); }
 function dayKey(ts=new Date()){ const d=new Date(ts); d.setHours(0,0,0,0); return d.toISOString(); }
 function touchStreak(state){
@@ -409,6 +426,18 @@ function initSettings(){
   $("#fontSelect").value = state.user.font || "press2p";
   $("#artSelect").value = state.user.art || "pixel";
   $("#scanlinesToggle").checked = !!state.user.scanlines;
+  const tt = $("#toddlerToggle");
+  if(tt){
+    tt.checked = !!(state.settings && state.settings.toddler);
+    tt.addEventListener("change",()=>{
+      state.settings.toddler = tt.checked;
+      state.log.coop.toddlerWeek = tt.checked;
+      state.log.tasks = [];
+      saveState(state);
+      renderHUD();
+      if(document.querySelector('#panelMain')) initTasks();
+    });
+  }
   $("#saveSettings").addEventListener("click",()=>{
     state.user.name = $("#userName").value.trim();
     state.user.theme = $("#themeSelect").value;
