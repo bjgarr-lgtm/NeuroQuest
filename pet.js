@@ -28,6 +28,17 @@ export function petSVG(species, level, acc=[]){
   </svg>`;
 }
 
+// Pixel-art variant used by certain UI views. This keeps the rendering simple
+// and leverages the existing vector pet while forcing pixelated rendering so
+// it matches the app's retro aesthetic. Having this helper prevents runtime
+// reference errors when toddler mode is enabled.
+export function petPixelSVG(species, level, acc = []) {
+  return petSVG(species, level, acc).replace(
+    '<svg',
+    '<svg style="image-rendering:pixelated"'
+  );
+}
+
 function accessories(list){
   const set = new Set(list);
   let s = "";
