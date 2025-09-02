@@ -65,6 +65,7 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .char-card, .comp-card{ width:150px; text-align:center; cursor:pointer }
 .char-card img, .comp-card img{ width:100%; height:auto; border-radius:12px }
 
+codex/add-hud-tiles-for-companions-and-update-party-banner
 .party-banner{ display:flex; align-items:center; gap:1rem; justify-content:center; margin-bottom:1rem;
   padding:.5rem 1rem; background:linear-gradient(#f5e6c4,#e8d7a3); border:4px solid #d3c097; border-radius:12px;
   position:relative; box-shadow:0 2px 4px rgba(0,0,0,.25) inset }
@@ -75,6 +76,11 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .party-label{ font-weight:900; margin-right:.5rem }
 .party-members{ display:flex; gap:1rem; align-items:center }
 .party-member{ width:75px; height:75px; overflow:hidden }
+
+codex/resize-party-banner-to-2/3-size
+.party-banner{ display:flex; gap:.67rem; justify-content:center; align-items:center; margin-bottom:.67rem }
+.party-member{ width:333px; height:333px; overflow:hidden }
+main
 .party-member img{ width:100%; height:100%; object-fit:contain }
 @keyframes wave{ 0%,100%{ transform:translateY(0)} 50%{ transform:translateY(-12px) } }
 @keyframes dance{ 0%,100%{ transform:rotate(-6deg)} 50%{ transform:rotate(6deg) } }
@@ -130,6 +136,11 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .badge .b-ico{ font-size:1.6rem }
 .badge .b-txt{ font-size:.9rem; text-align:center }
 
+/* Rewards exchange */
+.rewards .exchange{ margin-top:1rem; text-align:center }
+.rewards .exchange .row{ display:flex; gap:.6rem; justify-content:center; margin-top:.4rem }
+
+
 /* Check-In */
 .mood-row{ display:flex; gap:.4rem; justify-content:space-between; margin-bottom:.6rem }
 .mood-row .mood{ background:none; border:none; font-size:2rem; cursor:pointer; opacity:.4; transition:transform .1s ease, opacity .1s ease }
@@ -137,6 +148,7 @@ input, textarea, select{ width:100%; background:var(--surface); color:var(--text
 .mood-entry{ border:2px solid rgba(255,255,255,.08); border-radius:.6rem; background:rgba(255,255,255,.02); padding:.45rem .5rem }
 .mood-entry summary{ cursor:pointer }
 .mood-entry div{ margin-top:.4rem; opacity:.85 }
+
 
 /* Breathe */
 .phase{ margin-top:.6rem; opacity:.9 }
