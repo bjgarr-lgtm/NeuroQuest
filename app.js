@@ -322,7 +322,7 @@ function initCalendar(){
   $("#addCal").addEventListener("click",()=>{ const text=$("#calText").value.trim(); const day=Math.max(0, Math.min(6, parseInt($("#calDay").value||"0"))); if(!text) return; state.log.calendar.events[day].push(text); $("#calText").value=""; saveState(state); initCalendar(); });
 }
 
-// ---- shop (includes accessories store)
+// ---- shop
 function initShop(){
   const list=$("#shopList");
   function draw(){
@@ -338,24 +338,6 @@ function initShop(){
   }
   draw();
   $("#addShop").addEventListener("click",()=>{ const t=$("#shopItem").value.trim(); if(!t) return; state.log.shop.items.push({title:t, done:false}); $("#shopItem").value=""; saveState(state); draw(); });
-
-  // Accessories store
-  const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
-  const storeEl=el('div',{className:'panel-list'});
-  storeEl.appendChild(el('h3',{textContent:'Accessories Store'}));
-  STORE.forEach(it=>{
-    const owned=(state.economy.ownedAcc||[]).includes(it.id);
-    const row=el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'})]);
-    row.querySelector('button').addEventListener('click',()=>{
-      if(owned) return;
-      if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
-      state.economy.gold -= it.cost;
-      state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
-      saveState(state); renderHUD(); initShop();
-    });
-    storeEl.appendChild(row);
-  });
-  list.parentElement.appendChild(storeEl);
 }
 
 // ---- rewards
@@ -477,6 +459,25 @@ function initPet(){
     const acc=Array.from(new Set([...(state.economy.ownedAcc||[]), 'cap','glasses']));
     accList.replaceChildren();
     acc.forEach(a=>{ const btn=el('button',{className: state.pet.acc.includes(a)? "":"secondary", textContent:a}); btn.addEventListener('click',()=>{ const i=state.pet.acc.indexOf(a); if(i>=0) state.pet.acc.splice(i,1); else state.pet.acc.push(a); saveState(state); initPet(); }); accList.appendChild(btn); });
+
+    const store=$('#accStore');
+    if(store){
+      store.replaceChildren();
+      const STORE=[{id:'cap',label:'Cap',cost:20},{id:'bow',label:'Bow',cost:25},{id:'glasses',label:'Glasses',cost:30},{id:'scarf',label:'Scarf',cost:35}];
+      store.appendChild(el('h3',{textContent:'Accessories Store'}));
+      STORE.forEach(it=>{
+        const owned=(state.economy.ownedAcc||[]).includes(it.id);
+        const btn=el('button',{className: owned?'secondary':'primary', textContent: owned? 'Owned' : 'Buy'});
+        btn.addEventListener('click',()=>{
+          if(owned) return;
+          if((state.economy.gold||0) < it.cost){ alert('Not enough gold'); return; }
+          state.economy.gold -= it.cost;
+          state.economy.ownedAcc = Array.from(new Set([...(state.economy.ownedAcc||[]), it.id]));
+          saveState(state); renderHUD(); initPet();
+        });
+        store.appendChild(el('div',{className:'quest-row'},[el('span',{textContent:`${it.label} — 🪙 ${it.cost}`}), btn]));
+      });
+    }
   }
 }
 
