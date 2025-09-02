@@ -164,14 +164,20 @@ codex/add-hero-definitions-and-character-selection
       av.innerHTML='';
       const c=state.user.character;
       const species=characterSpecies(c?.id);
-    const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG(species, c.level||1, c.acc)}</div>`;
-    av.innerHTML = `<div class='avatar'>${img}</div>`;
-    if(state.settings.toddler){
-      const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc);
-      av.innerHTML += `<div class='avatar'>${p}</div>`;
+      const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG(species, c.level||1, c.acc)}</div>`;
+      av.innerHTML = `<div class='avatar'>${img}</div>`;
+      const comps = Array.isArray(state.user.companions)
+        ? state.user.companions
+        : (state.user.companion ? [state.user.companion] : []);
+      comps.forEach(comp=>{
+        av.innerHTML += `<div class='avatar'><img src='${comp.img}' alt='${comp.id}'/></div>`;
+      });
+      if(state.settings.toddler){
+        const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc);
+        av.innerHTML += `<div class='avatar'>${p}</div>`;
+      }
     }
 main
-  }
   const petNav=document.querySelector("button.nav-btn[data-route='pet']");
   if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
   document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
@@ -241,7 +247,10 @@ function initDashboard(){
   const banner=$("#partyBanner");
   if(banner){
     banner.innerHTML='';
-    [state.user.character, state.user.companion].forEach((m,i)=>{
+    const comps = Array.isArray(state.user.companions)
+      ? state.user.companions
+      : (state.user.companion ? [state.user.companion] : []);
+    [state.user.character, ...comps].forEach((m,i)=>{
       if(!m) return;
       const div=el('div',{className:'party-member '+(i%2?'anim-dance':'anim-wave')});
       div.innerHTML=`<img src='${m.img}' alt='${m.id}'/>`;
