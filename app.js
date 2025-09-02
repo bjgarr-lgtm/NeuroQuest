@@ -158,6 +158,7 @@ function renderHUD(){
   const pct = Math.max(0, Math.min(100, Math.round(((xp-prev)/(next-prev))*100)));
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
+codex/fix-redeclaration-of-nameinput
   const av=$('#hudAvatars');
   if(av){
     av.innerHTML='';
@@ -170,11 +171,9 @@ function renderHUD(){
       av.innerHTML += `<div class='avatar'>${p}</div>`;
     }
   }
+main
   const petNav=document.querySelector("button.nav-btn[data-route='pet']");
   if(petNav) petNav.textContent = state.settings.toddler ? 'Companion' : 'Character';
-  document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
-}
-renderHUD();
 
 // --- Routing (robust)
 function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','minigames','pet','settings','characters','companion']; return ok.includes(name)? name : 'home'; }
@@ -239,7 +238,10 @@ function initDashboard(){
   const banner=$("#partyBanner");
   if(banner){
     banner.innerHTML='';
-    [state.user.character, state.user.companion].forEach((m,i)=>{
+    const comps = Array.isArray(state.user.companions)
+      ? state.user.companions
+      : (state.user.companion ? [state.user.companion] : []);
+    [state.user.character, ...comps].forEach((m,i)=>{
       if(!m) return;
       const div=el('div',{className:'party-member '+(i%2?'anim-dance':'anim-wave')});
       div.innerHTML=`<img src='${m.img}' alt='${m.id}'/>`;
