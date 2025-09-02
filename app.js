@@ -4,6 +4,7 @@
 const KEY = "soothebirb.v25";
 const defaultState = () => ({
   user: { name: "", theme: "retro", font: "press2p", art:"pixel", scanlines:true, character:{ id:'witch', img:null } },
+  settings: { toddler:false },
   economy: { gold: 0, ownedAcc: ['cap','glasses'] },
   pet: { name: "Pebble", species: "birb", level: 1, xp: 0, acc: ["cap","glasses"] },
   streak: { current: 0, best: 0, lastCheck: "" },
@@ -131,11 +132,12 @@ function renderHUD(){
   $("#hudLevel").textContent = `Lv ${lvl}`; $("#hudXp").style.width = pct+"%";
   $("#hudGold").textContent = `🪙 ${state.economy.gold}`;
   const av=$('#hudAvatars'); if(av){ av.innerHTML=''; const c=state.user.character; const img=c?.img? `<img src='${c.img}' alt='char'/>` : `<div class='char-portrait'>${petPixelSVG('sprout',1)}</div>`; const p=petPixelSVG(state.pet.species, state.pet.level, state.pet.acc); av.innerHTML = `<div class='avatar'>${img}</div><div class='avatar'>${p}</div>`; }
+  document.querySelectorAll('.toddler-only').forEach(el=>{ el.style.display = state.settings?.toddler ? '' : 'none'; });
 }
 renderHUD();
 
 // --- Routing (robust)
-function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','pet','settings','characters','companion']; return ok.includes(name)? name : 'home'; }
+function safeRouteName(hash){ const name=(hash||'#home').replace('#',''); const ok=['home','tasks','clean','coop','budget','meals','calendar','shop','rewards','checkin','journal','breathe','minigames','pet','settings','characters','companion']; return ok.includes(name)? name : 'home'; }
 document.querySelector('.top-nav')?.addEventListener('click', (e)=>{ const b = e.target.closest('.nav-btn'); if(!b) return; e.preventDefault(); routeTo(b.dataset.route); renderRoute(); });
 function clearFx(){ document.querySelectorAll('.bloom,.shock,.toast,.coin,.jackpot').forEach(n=>n.remove()); }
 window.addEventListener('hashchange', renderRoute);
@@ -163,6 +165,7 @@ function renderRoute(){
     if(!tpl){ view.textContent='Not found'; return; }
     view.appendChild(tpl.content.cloneNode(true));
     wireTiles();
+    renderHUD();
     if(name==='home') initDashboard();
     if(name==='tasks') initTasks();
     if(name==='clean') initCleaning();
@@ -175,6 +178,7 @@ function renderRoute(){
     if(name==='checkin') initCheckin();
     if(name==='journal') initJournal();
     if(name==='breathe') initBreathe();
+    if(name==='minigames') initMinigame();
     if(name==='pet') initPet();
     if(name==='settings') initSettings();
     if(name==='characters') initCharacters();
@@ -375,6 +379,24 @@ function initJournal(){
   const list=$("#journalList"); list.replaceChildren(); state.log.journal.slice().reverse().forEach(j=> list.appendChild(el("div",{className:"quest-row"},[ el("strong",{textContent:fmtDate(j.ts)}), el("span",{textContent:" — "+j.prompt}), el("div",{textContent:j.text}) ])));
 }
 
+// ---- minigames
+function initMinigame(){
+  const c=document.getElementById('popGame');
+  if(!c) return;
+  if(!state.settings?.toddler){ routeTo('home'); renderRoute(); return; }
+  const ctx=c.getContext('2d'), W=c.width, H=c.height;
+  const bs=[]; const spawn=()=> bs.push({x:Math.random()*W,y:H+20,r:12+Math.random()*18,v:40+Math.random()*50,pop:false});
+  for(let i=0;i<8;i++) spawn();
+  let score=0,last=0,done=false;
+  c.addEventListener('click',e=>{ const r=c.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; for(const b of bs){ if(Math.hypot(b.x-x,b.y-y)<b.r){ b.pop=true; score++; addGold(1); break; } } });
+  (function loop(t){ if(done) return; const dt=(t-last)||16; last=t; ctx.clearRect(0,0,W,H);
+    for(const b of bs){ b.y-=b.v*dt/1000; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fillStyle='rgba(135,206,250,0.6)'; ctx.fill(); if(b.pop||b.y+b.r<-10){ Object.assign(b,{x:Math.random()*W,y:H+20,r:12+Math.random()*18,v:40+Math.random()*50,pop:false}); } }
+    ctx.fillStyle='#fff'; ctx.fillText('Popped: '+score,12,20);
+    if(score>=20){ done=true; addXP(state,20); addGold(5); fxConfetti(); fxToast('Great job! +XP +Gold'); return; }
+    requestAnimationFrame(loop);
+  })(0);
+}
+
 // ---- breathe
 function startBreathing(circleEl, phaseEl, onFinish){
   const phases=[{name:"Inhale",secs:4},{name:"Hold",secs:4},{name:"Exhale",secs:6},{name:"Hold",secs:2}];
@@ -465,5 +487,5 @@ $("#importFile").addEventListener("change", ev=>{ const file=ev.target.files[0];
 // --- boot
 touchStreak(state); saveState(state);
 const _mb=document.getElementById('musicBtn'); if(_mb){ _mb.addEventListener('click', ()=> toggleMusic()); }
-if(!location.hash || !['#home','#tasks','#clean','#coop','#budget','#meals','#calendar','#shop','#rewards','#checkin','#journal','#breathe','#pet','#settings','#characters','#companion'].includes(location.hash)){ location.hash = '#home'; }
+if(!location.hash || !['#home','#tasks','#clean','#coop','#budget','#meals','#calendar','#shop','#rewards','#checkin','#journal','#breathe','#minigames','#pet','#settings','#characters','#companion'].includes(location.hash)){ location.hash = '#home'; }
 renderRoute();
