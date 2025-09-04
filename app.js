@@ -1,8 +1,12 @@
 'use strict';
-// SootheBirb merged app with HUD/party + Meals grid content
+// SootheBirb merged app with HUD/party + Meals grid + Cleaning interactions
 
 const KEY='sb.v2.5.0.stable';
-const defaults=()=>({settings:{toddler:false,music:false},party:{companions:[]},economy:{gold:0,ownedAcc:[]},equip:{head:null,face:null,back:null,hand:null},user:{character:null},pet:{level:1,xp:0},log:{tasks:[]},meals:Array.from({length:7},()=>({breakfast:'',lunch:'',dinner:''}))});
+const defaults=()=>({settings:{toddler:false,music:false},party:{companions:[]},economy:{gold:0,ownedAcc:[]},equip:{head:null,face:null,back:null,hand:null},user:{character:null},pet:{level:1,xp:0},
+  log:{tasks:[]},
+  meals:Array.from({length:7},()=>({breakfast:'',lunch:'',dinner:''})),
+  cleaning:{weeklyBoss:{name:'Bathroom',progress:0},monthly:{title:'Deep clean',week:2,progress:0}}
+});
 function deep(a,b){ if(Array.isArray(a)) return Array.isArray(b)?b.slice():a.slice(); if(a&&typeof a==='object'){const o={...a}; for(const k of Object.keys(b||{})) o[k]=deep(a[k],b[k]); return o;} return b===undefined?a:b; }
 let S; try{S=deep(defaults(), JSON.parse(localStorage.getItem(KEY)||'{}'))}catch{S=defaults()}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch{} }
@@ -17,7 +21,26 @@ function play(a){ if(a&&a.play){ try{a.currentTime=0;a.play();}catch{} } }
 function xpFor(l){ return l*l*10 }
 function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pet.level++; play(audio.level); save(); hud(); } }
 
-// CSS overrides for sprite sizing + HUD avatars + meal grid minimal layout support
+// Confetti burst
+function confettiBurst(x,y,count=120){
+  const fx=$('#fxLayer'); if(!fx) return;
+  const colors=['#00e5ff','#7cfb9a','#ffd166','#ff77e9','#9aa4ff'];
+  for(let i=0;i<count;i++){
+    const p=document.createElement('div'); p.className='confetti';
+    p.style.position='fixed';
+    p.style.left=x+'px'; p.style.top=y+'px';
+    const size=4+Math.random()*6; p.style.width=p.style.height=size+'px';
+    p.style.background=colors[(Math.random()*colors.length)|0];
+    p.style.borderRadius='2px';
+    const ang=Math.random()*2*Math.PI, speed=2+Math.random()*8, dur=600+Math.random()*600;
+    const dx=Math.cos(ang)*speed, dy=Math.sin(ang)*speed;
+    p.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${dx*30}px,${dy*30}px)`,opacity:0}],{duration:dur,easing:'ease-out'});
+    setTimeout(()=>p.remove(), dur+50);
+    fx.appendChild(p);
+  }
+}
+
+// CSS overrides / fallbacks
 (function(){ const st=document.createElement('style'); st.textContent=`
   .char-grid, .comp-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) !important; gap:16px !important; }
   .char-card, .party-card { display:grid; place-items:center; padding:8px; }
@@ -30,12 +53,17 @@ function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pe
   .party-card.selected::after{content:"✓";position:absolute;right:6px;top:6px;background:#0f0;color:#000;font-weight:700;border-radius:50%;width:18px;height:18px;display:grid;place-items:center;box-shadow:0 0 6px #0f0}
   .party-card{position:relative;cursor:pointer}
   .party-banner,.party-banner .party-label,.party-members .name{color:#111 !important;text-shadow:none !important}
-  /* meals grid fallbacks if theme CSS is missing */
+  /* meals grid */
   .meal-grid{display:grid;grid-template-columns:repeat(7,minmax(160px,1fr));gap:16px}
   .meal-day{display:grid;grid-template-rows:auto 1fr 1fr 1fr;gap:10px}
   .meal-head{font-weight:800;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:12px;background:rgba(255,255,255,.05)}
   .meal-slot{border-radius:12px;padding:0;overflow:hidden}
   .meal-slot textarea{width:100%;min-height:90px;background:transparent;border:none;color:inherit;padding:14px;resize:vertical}
+  /* cleaning buttons layout */
+  .boss .row{display:flex;gap:8px;align-items:center}
+  .boss .row .xp-bar{flex:1}
+  .boss .k{opacity:.7}
+  .boss button{white-space:nowrap}
 `; document.head.appendChild(st); })();
 
 function CAT(){ return {
@@ -136,7 +164,7 @@ function companion(){
   on($('#btnAll'),'click',()=>{ S.party.companions=uniq(Object.keys(C)); save(); companion(); partyBanner(); hud(); });
 }
 
-// tasks awarder (only if panels exist)
+// tasks awarder
 function tasks(){ const main=$('#panelMain'), side=$('#panelSide'), bonus=$('#panelBonus'); if(!main||!side||!bonus) return;
   if(!S.log.tasks?.length){ S.log.tasks=[{id:1,text:'Drink water',xp:5,gold:1,done:false},{id:2,text:'3-min stretch',xp:5,gold:1,done:false}]; }
   const fill=(wrap, arr)=>{ wrap.innerHTML=''; arr.forEach((t,i)=>{ const row=document.createElement('div'); row.className='row task-row';
@@ -151,10 +179,9 @@ function tasks(){ const main=$('#panelMain'), side=$('#panelSide'), bonus=$('#pa
   on($('#addTaskBtn'),'click',()=>{ const title=$('#newTaskTitle')?.value.trim(); if(!title) return; const t={id:Date.now(),text:title,xp:5,gold:1,done:false}; S.log.tasks.push(t); save(); tasks(); });
 }
 
-// MEALS: full weekly grid (content + persistence)
+// MEALS
 function meals(){ const grid=$('#mealGrid'); if(!grid) return;
   const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'];
-  // Ensure data shape
   if(!Array.isArray(S.meals) || S.meals.length!==7){ S.meals=Array.from({length:7},()=>({breakfast:'',lunch:'',dinner:''})); }
   grid.innerHTML='';
   const makeSlot=(d,slot)=>{ const wrap=document.createElement('div'); wrap.className='meal-slot cardish';
@@ -171,7 +198,53 @@ function meals(){ const grid=$('#mealGrid'); if(!grid) return;
   });
 }
 
-const map={home:'tpl-home',tasks:'tpl-tasks',clean:'tpl-clean',coop:'tpl-coop',budget:'tpl-budget',meals:'tpl-meals',calendar:'tpl-calendar',shop:'tpl-shop',characters:'tpl-characters',companion:'tpl-companion',breathe:'tpl-breathe',minigames:'tpl-minigames',journal:'tpl-journal',checkin:'tpl-checkin',rewards:'tpl-rewards',settings:'tpl-settings',pet:'tpl-pet',companionpet:'tpl-companion-pet'};
+// CLEANING interactions
+function cleaning(){ const prog=$('#bossProg'), nameIn=$('#bossName'), setBtn=$('#bossNew'), tickBtn=$('#bossTick'), list=$('#bossList');
+  if(!prog) return;
+
+  function renderBoss(){
+    const p=S.cleaning.weeklyBoss.progress||0;
+    prog.style.width=Math.min(100,Math.max(0,Math.round(p)))+'%';
+    if(list){ list.innerHTML=`Boss: ${S.cleaning.weeklyBoss.name||'—'}`; }
+  }
+  function award(amount=10){
+    S.economy.gold+=amount; S.pet.xp+=amount; play(audio.ding); play(audio.coin); levelCheck(); hud();
+    const r=prog.getBoundingClientRect(); confettiBurst(r.left+r.width/2, r.top-8, 160);
+  }
+  function bump(delta){
+    S.cleaning.weeklyBoss.progress=Math.min(100,(S.cleaning.weeklyBoss.progress||0)+delta);
+    if(S.cleaning.weeklyBoss.progress>=100){ award(30); } else { award(5); }
+    save(); renderBoss();
+  }
+  on(tickBtn,'click',()=>bump(10));
+  const bar=prog.parentElement; if(bar){ on(bar,'click',()=>bump(5)); }
+
+  on(setBtn,'click',()=>{ const v=(nameIn?.value||'').trim(); if(v){ S.cleaning.weeklyBoss.name=v; save(); renderBoss(); } });
+
+  renderBoss();
+
+  // Monthly raid
+  const rwrap=$('#raidInfo');
+  if(rwrap){
+    rwrap.innerHTML='';
+    const title=document.createElement('input'); title.placeholder='Raid title'; title.value=S.cleaning.monthly.title||'';
+    title.className='field-like';
+    const week=document.createElement('input'); week.type='number'; week.min='1'; week.max='5'; week.value=S.cleaning.monthly.week||1; week.style.width='90px';
+    const barOuter=document.createElement('div'); barOuter.className='xp-bar'; const barInner=document.createElement('div'); barInner.style.width=(S.cleaning.monthly.progress||0)+'%'; barOuter.appendChild(barInner);
+    const plus=document.createElement('button'); plus.className='secondary'; plus.textContent='+10%';
+    const saveBtn=document.createElement('button'); saveBtn.className='primary'; saveBtn.textContent='Save';
+    const row1=document.createElement('div'); row1.className='row'; row1.append('Title:',title);
+    const row2=document.createElement('div'); row2.className='row'; row2.append('Week:',week);
+    const row3=document.createElement('div'); row3.className='row'; row3.append('Progress',barOuter,plus,saveBtn);
+    rwrap.append(row1,row2,row3);
+    const renderRaid=()=>{ barInner.style.width=(S.cleaning.monthly.progress||0)+'%'; };
+    on(plus,'click',()=>{ S.cleaning.monthly.progress=Math.min(100,(S.cleaning.monthly.progress||0)+10); award(8); save(); renderRaid(); });
+    on(barOuter,'click',()=>{ S.cleaning.monthly.progress=Math.min(100,(S.cleaning.monthly.progress||0)+5); award(4); save(); renderRaid(); });
+    on(saveBtn,'click',()=>{ S.cleaning.monthly.title=title.value; S.cleaning.monthly.week=parseInt(week.value||'1',10); save(); play(audio.ding); });
+  }
+}
+
+const map={home:'tpl-home',tasks:'tpl-tasks',clean:'tpl-clean',coop:'tpl-coop',budget:'tpl-budget',meals:'tpl-meals',calendar:'tpl-calendar',shop:'tpl-shop',characters:'tpl-characters',companion:'tpl-companion',breathe:'tpl-breathe',minigames:'tpl-minigames',journal:'tpl-journal',checkin:'tpl-checkin',rewards:'tpl-rewards',settings:'tpl-settings',pet:'tpl-pet'};
 const alias={quests:'tasks',cleaning:'clean'};
 let LAST='';
 function routeName(){ const raw=(location.hash||'#home').slice(1)||'home'; return alias[raw]||raw; }
@@ -185,9 +258,10 @@ function render(){
   if(name==='characters'){ char(); }
   if(name==='companion'){ companion(); }
   if(name==='meals'){ meals(); }
+  if(name==='clean'){ cleaning(); }
   window.scrollTo({top:0,behavior:'instant'});
 }
 window.addEventListener('hashchange', ()=>requestAnimationFrame(render));
 $('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('[data-route]'); if(!b) return; e.preventDefault(); location.hash='#'+b.dataset.route; });
 hud(); render();
-console.log('SootheBirb meals hotfix: meals content + party/HUD');
+console.log('SootheBirb cleaning hotfix: weekly boss/monthly raid progress + rewards + confetti + meals + party/HUD');
