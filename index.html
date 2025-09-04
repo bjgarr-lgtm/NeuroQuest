@@ -1,5 +1,8 @@
 <!doctype html>
 <html lang="en" class="theme-retro">
+<script defer src="assets/pet-polyfill.js?v=1"></script>
+<script defer src="assets/compat.js?v=1"></script>
+<script defer src="assets/loop-guard.js?v=1"></script>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -15,22 +18,21 @@
       <h1>SootheBirb</h1>
     </div>
     <nav class="top-nav" aria-label="Primary"><div id="navHighlighter" class="nav-hi"></div>
-      <button type="button" data-route="home" class="nav-btn">Dashboard</button>
-      <button type="button" data-route="tasks" class="nav-btn">Quests</button>
-      <button type="button" data-route="clean" class="nav-btn">Cleaning</button>
-      <button type="button" data-route="coop" class="nav-btn">Co‑Op</button>
-      <button type="button" data-route="budget" class="nav-btn">Budget</button>
-      <button type="button" data-route="meals" class="nav-btn">Meals</button>
-      <button type="button" data-route="calendar" class="nav-btn">Calendar</button>
-      <button type="button" data-route="shop" class="nav-btn">Shopping</button>
-      <button type="button" data-route="characters" class="nav-btn">Character</button>
-      <button type="button" data-route="companion" class="nav-btn">Companion</button>
-      <button type="button" data-route="breathe" class="nav-btn">Breathe</button>
-      <button type="button" data-route="minigames" class="nav-btn toddler-only">Minigames</button>
-      <button type="button" data-route="journal" class="nav-btn">Journal</button>
-      <button type="button" data-route="checkin" class="nav-btn">Check‑In</button>
-      <button type="button" data-route="rewards" class="nav-btn">Rewards</button>
-      <button type="button" data-route="settings" class="nav-btn">Settings</button>
+      <button data-route="home" class="nav-btn">Dashboard</button>
+      <button data-route="tasks" class="nav-btn">Quests</button>
+      <button data-route="clean" class="nav-btn">Cleaning</button>
+      <button data-route="coop" class="nav-btn">Co‑Op</button>
+      <button data-route="budget" class="nav-btn">Budget</button>
+      <button data-route="meals" class="nav-btn">Meals</button>
+      <button data-route="calendar" class="nav-btn">Calendar</button>
+      <button data-route="shop" class="nav-btn">Shopping</button>
+      <button data-route="pet" class="nav-btn">Companion</button>
+      <button data-route="breathe" class="nav-btn">Breathe</button>
+      <button data-route="minigames" class="nav-btn toddler-only">Minigames</button>
+      <button data-route="journal" class="nav-btn">Journal</button>
+      <button data-route="checkin" class="nav-btn">Check‑In</button>
+      <button data-route="rewards" class="nav-btn">Rewards</button>
+      <button data-route="settings" class="nav-btn">Settings</button>
     </nav>
     <button id="musicBtn" class="music-toggle" title="Music">♪</button>
     <div id="hudStrip" class="hud small">
@@ -100,7 +102,7 @@
     </section>
   </template>
 
-  <!-- Quests -->
+  <!-- Quests (lifted layout) -->
   <template id="tpl-tasks">
     <section class="quest-board">
       <h2 class="dash">Daily Quest Board</h2>
@@ -354,7 +356,6 @@
     </section>
   </template>
 
-  <!-- App module -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
