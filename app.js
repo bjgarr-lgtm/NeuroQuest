@@ -191,3 +191,15 @@ $('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('[data-ro
 
 hud(); render();
 console.log('SootheBirb hotfix party controls loaded');
+
+/*(auto-injected)*/
+(function(){const s=document.createElement('style');s.textContent=`
+/* === size tuning for character art === */
+.sprite{width:96px;height:96px}
+.char-card .sprite,.party-card .sprite{width:96px;height:96px}
+.party-members .card .sprite{width:96px;height:96px}
+@media (max-width: 700px){
+  .sprite{width:80px;height:80px}
+  .char-card .sprite,.party-card .sprite,.party-members .card .sprite{width:80px;height:80px}
+}
+`;document.head.appendChild(s);})();
