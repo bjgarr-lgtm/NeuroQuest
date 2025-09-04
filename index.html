@@ -1,7 +1,5 @@
 <!doctype html>
 <html lang="en" class="theme-retro">
-<script defer src="assets/compat.js?v=1"></script>
-<script defer src="assets/loop-guard.js?v=1"></script>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -16,24 +14,27 @@
       <img src="assets/icon.svg" alt="" class="logo"/>
       <h1>SootheBirb</h1>
     </div>
+
     <nav class="top-nav" aria-label="Primary"><div id="navHighlighter" class="nav-hi"></div>
-      <button data-route="home" class="nav-btn">Dashboard</button>
-      <button data-route="tasks" class="nav-btn">Quests</button>
-      <button data-route="clean" class="nav-btn">Cleaning</button>
-      <button data-route="coop" class="nav-btn">Co‑Op</button>
-      <button data-route="budget" class="nav-btn">Budget</button>
-      <button data-route="meals" class="nav-btn">Meals</button>
-      <button data-route="calendar" class="nav-btn">Calendar</button>
-      <button data-route="shop" class="nav-btn">Shopping</button>
-      <button data-route="pet" class="nav-btn">Companion</button>
-      <button data-route="breathe" class="nav-btn">Breathe</button>
-      <button data-route="minigames" class="nav-btn toddler-only">Minigames</button>
-      <button data-route="journal" class="nav-btn">Journal</button>
-      <button data-route="checkin" class="nav-btn">Check‑In</button>
-      <button data-route="rewards" class="nav-btn">Rewards</button>
-      <button data-route="settings" class="nav-btn">Settings</button>
+      <button type="button" data-route="home" class="nav-btn">Dashboard</button>
+      <button type="button" data-route="tasks" class="nav-btn">Quests</button>
+      <button type="button" data-route="clean" class="nav-btn">Cleaning</button>
+      <button type="button" data-route="coop" class="nav-btn">Co-Op</button>
+      <button type="button" data-route="budget" class="nav-btn">Budget</button>
+      <button type="button" data-route="meals" class="nav-btn">Meals</button>
+      <button type="button" data-route="calendar" class="nav-btn">Calendar</button>
+      <button type="button" data-route="shop" class="nav-btn">Shopping</button>
+      <button type="button" data-route="pet" class="nav-btn">Companion</button>
+      <button type="button" data-route="breathe" class="nav-btn">Breathe</button>
+      <button type="button" data-route="minigames" class="nav-btn toddler-only">Minigames</button>
+      <button type="button" data-route="journal" class="nav-btn">Journal</button>
+      <button type="button" data-route="checkin" class="nav-btn">Check-In</button>
+      <button type="button" data-route="rewards" class="nav-btn">Rewards</button>
+      <button type="button" data-route="settings" class="nav-btn">Settings</button>
     </nav>
+
     <button id="musicBtn" class="music-toggle" title="Music">♪</button>
+
     <div id="hudStrip" class="hud small">
       <div class="avatars" id="hudAvatars"></div>
       <div class="hearts" id="hudHearts"></div>
@@ -61,7 +62,10 @@
     <section class="cardish">
       <h2 class="dash">Choose Your Hero</h2>
       <div class="char-grid" id="charGrid"></div>
-      <div class="row"><button id="uploadChar" class="secondary">Upload custom art</button><input id="charFile" type="file" accept="image/*" style="display:none"/></div>
+      <div class="row">
+        <button id="uploadChar" class="secondary">Upload custom art</button>
+        <input id="charFile" type="file" accept="image/*" style="display:none"/>
+      </div>
     </section>
   </template>
 
@@ -89,7 +93,7 @@
         <a class="tile" data-route="tasks"><img class="tile-ico-img" src="assets/icons/planner.svg" alt=""/><div class="tile-label">Daily Planner</div></a>
         <a class="tile" data-route="rewards"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Rewards</div></a>
         <a class="tile" data-route="clean"><img class="tile-ico-img" src="assets/icons/broom.svg" alt=""/><div class="tile-label">Cleaning</div></a>
-        <a class="tile" data-route="coop"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Co‑Op</div></a>
+        <a class="tile" data-route="coop"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Co-Op</div></a>
         <a class="tile" data-route="calendar"><img class="tile-ico-img" src="assets/icons/calendar.svg" alt=""/><div class="tile-label">Calendar</div></a>
         <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
         <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
@@ -164,10 +168,10 @@
     </section>
   </template>
 
-  <!-- Co‑Op -->
+  <!-- Co-Op -->
   <template id="tpl-coop">
     <section class="quest-board">
-      <h2 class="dash">Co‑Op Mode <small id="coopWeek" class="tag">Solo Week</small></h2>
+      <h2 class="dash">Co-Op Mode <small id="coopWeek" class="tag">Solo Week</small></h2>
       <div class="panels">
         <div class="panel panel-green">
           <div class="panel-title">Sidekick Quests</div>
@@ -256,7 +260,7 @@
   <!-- Check-In -->
   <template id="tpl-checkin">
     <section class="cardish">
-      <h2 class="dash">Mood Check‑In</h2>
+      <h2 class="dash">Mood Check-In</h2>
       <div class="mood-row">
         <span class="mood" data-mood="awful">😖</span>
         <span class="mood" data-mood="bad">☹️</span>
@@ -266,7 +270,7 @@
       </div>
       <label class="field"><span>Tags</span><input id="checkinTags" placeholder="slept well, social…"/></label>
       <label class="field"><span>Notes</span><textarea id="checkinNotes" rows="4"></textarea></label>
-      <button id="saveCheckin" class="primary">Save check‑in</button>
+      <button id="saveCheckin" class="primary">Save check-in</button>
       <h3>Recent moods</h3>
       <div id="moodList" class="panel-list"></div>
     </section>
@@ -284,7 +288,7 @@
     </section>
   </template>
 
-  <!-- Pet -->
+  <!-- Pet / Companion -->
   <template id="tpl-pet">
     <section class="cardish">
       <h2 id="petTitle" class="dash">Your Companion</h2>
@@ -309,7 +313,7 @@
   <!-- Breathe -->
   <template id="tpl-breathe">
     <section class="cardish">
-      <h2 class="dash">1‑Minute Breathe</h2>
+      <h2 class="dash">1-Minute Breathe</h2>
       <p>Tap the circle: inhale → hold → exhale → hold.</p>
       <div class="breathe-stage">
         <div class="circle" id="breathCircle" title="Start or stop breathing"></div>
@@ -355,6 +359,30 @@
     </section>
   </template>
 
+  <!-- ===== JS: load shims first (blocking), then module ===== -->
+  <script src="assets/pet-polyfill.js?v=1"></script>
+  <script src="assets/compat.js?v=1"></script>
+  <script src="assets/loop-guard.js?v=1"></script>
+
+  <!-- Route alias shim to bridge old/new names without touching app.js -->
+  <script>
+  (function(){
+    // Alias route names so either side works
+    const alias = { quests:'tasks', tasks:'tasks', clean:'cleaning', pet:'companion' };
+    document.addEventListener('click', function(e){
+      const el = e.target.closest('[data-route]');
+      if(!el) return;
+      const r = el.getAttribute('data-route');
+      const mapped = alias[r];
+      if(mapped && mapped !== r){
+        e.preventDefault();
+        location.hash = '#' + mapped;
+      }
+    }, true);
+  })();
+  </script>
+
+  <!-- Your module MUST be last -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
