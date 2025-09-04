@@ -1,8 +1,8 @@
 'use strict';
-// merge HUD + party controls that work with existing templates
+// SootheBirb merged app with HUD/party + Meals grid content
 
 const KEY='sb.v2.5.0.stable';
-const defaults=()=>({settings:{toddler:false,music:false},party:{companions:[]},economy:{gold:0,ownedAcc:[]},equip:{head:null,face:null,back:null,hand:null},user:{character:null},pet:{level:1,xp:0},log:{tasks:[]}});
+const defaults=()=>({settings:{toddler:false,music:false},party:{companions:[]},economy:{gold:0,ownedAcc:[]},equip:{head:null,face:null,back:null,hand:null},user:{character:null},pet:{level:1,xp:0},log:{tasks:[]},meals:Array.from({length:7},()=>({breakfast:'',lunch:'',dinner:''}))});
 function deep(a,b){ if(Array.isArray(a)) return Array.isArray(b)?b.slice():a.slice(); if(a&&typeof a==='object'){const o={...a}; for(const k of Object.keys(b||{})) o[k]=deep(a[k],b[k]); return o;} return b===undefined?a:b; }
 let S; try{S=deep(defaults(), JSON.parse(localStorage.getItem(KEY)||'{}'))}catch{S=defaults()}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch{} }
@@ -17,7 +17,7 @@ function play(a){ if(a&&a.play){ try{a.currentTime=0;a.play();}catch{} } }
 function xpFor(l){ return l*l*10 }
 function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pet.level++; play(audio.level); save(); hud(); } }
 
-// CSS overrides for sprite sizing + HUD avatars
+// CSS overrides for sprite sizing + HUD avatars + meal grid minimal layout support
 (function(){ const st=document.createElement('style'); st.textContent=`
   .char-grid, .comp-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) !important; gap:16px !important; }
   .char-card, .party-card { display:grid; place-items:center; padding:8px; }
@@ -30,6 +30,12 @@ function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pe
   .party-card.selected::after{content:"✓";position:absolute;right:6px;top:6px;background:#0f0;color:#000;font-weight:700;border-radius:50%;width:18px;height:18px;display:grid;place-items:center;box-shadow:0 0 6px #0f0}
   .party-card{position:relative;cursor:pointer}
   .party-banner,.party-banner .party-label,.party-members .name{color:#111 !important;text-shadow:none !important}
+  /* meals grid fallbacks if theme CSS is missing */
+  .meal-grid{display:grid;grid-template-columns:repeat(7,minmax(160px,1fr));gap:16px}
+  .meal-day{display:grid;grid-template-rows:auto 1fr 1fr 1fr;gap:10px}
+  .meal-head{font-weight:800;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:12px;background:rgba(255,255,255,.05)}
+  .meal-slot{border-radius:12px;padding:0;overflow:hidden}
+  .meal-slot textarea{width:100%;min-height:90px;background:transparent;border:none;color:inherit;padding:14px;resize:vertical}
 `; document.head.appendChild(st); })();
 
 function CAT(){ return {
@@ -130,7 +136,7 @@ function companion(){
   on($('#btnAll'),'click',()=>{ S.party.companions=uniq(Object.keys(C)); save(); companion(); partyBanner(); hud(); });
 }
 
-// lightweight tasks awarder (only if those panels exist)
+// tasks awarder (only if panels exist)
 function tasks(){ const main=$('#panelMain'), side=$('#panelSide'), bonus=$('#panelBonus'); if(!main||!side||!bonus) return;
   if(!S.log.tasks?.length){ S.log.tasks=[{id:1,text:'Drink water',xp:5,gold:1,done:false},{id:2,text:'3-min stretch',xp:5,gold:1,done:false}]; }
   const fill=(wrap, arr)=>{ wrap.innerHTML=''; arr.forEach((t,i)=>{ const row=document.createElement('div'); row.className='row task-row';
@@ -145,7 +151,27 @@ function tasks(){ const main=$('#panelMain'), side=$('#panelSide'), bonus=$('#pa
   on($('#addTaskBtn'),'click',()=>{ const title=$('#newTaskTitle')?.value.trim(); if(!title) return; const t={id:Date.now(),text:title,xp:5,gold:1,done:false}; S.log.tasks.push(t); save(); tasks(); });
 }
 
-const map={home:'tpl-home',tasks:'tpl-tasks',clean:'tpl-clean',coop:'tpl-coop',budget:'tpl-budget',meals:'tpl-meals',calendar:'tpl-calendar',shop:'tpl-shop',characters:'tpl-characters',companion:'tpl-companion',breathe:'tpl-breathe',minigames:'tpl-minigames',journal:'tpl-journal',checkin:'tpl-checkin',rewards:'tpl-rewards',settings:'tpl-settings',pet:'tpl-pet'};
+// MEALS: full weekly grid (content + persistence)
+function meals(){ const grid=$('#mealGrid'); if(!grid) return;
+  const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  // Ensure data shape
+  if(!Array.isArray(S.meals) || S.meals.length!==7){ S.meals=Array.from({length:7},()=>({breakfast:'',lunch:'',dinner:''})); }
+  grid.innerHTML='';
+  const makeSlot=(d,slot)=>{ const wrap=document.createElement('div'); wrap.className='meal-slot cardish';
+    const ta=document.createElement('textarea'); ta.placeholder=slot; ta.value=S.meals[d]?.[slot]||'';
+    ta.addEventListener('input',()=>{ if(!S.meals[d]) S.meals[d]={breakfast:'',lunch:'',dinner:''}; S.meals[d][slot]=ta.value; save(); });
+    wrap.appendChild(ta); return wrap; };
+  DAYS.forEach((name,idx)=>{
+    const col=document.createElement('div'); col.className='meal-day';
+    const head=document.createElement('div'); head.className='meal-head'; head.textContent=name; col.appendChild(head);
+    col.appendChild(makeSlot(idx,'breakfast'));
+    col.appendChild(makeSlot(idx,'lunch'));
+    col.appendChild(makeSlot(idx,'dinner'));
+    grid.appendChild(col);
+  });
+}
+
+const map={home:'tpl-home',tasks:'tpl-tasks',clean:'tpl-clean',coop:'tpl-coop',budget:'tpl-budget',meals:'tpl-meals',calendar:'tpl-calendar',shop:'tpl-shop',characters:'tpl-characters',companion:'tpl-companion',breathe:'tpl-breathe',minigames:'tpl-minigames',journal:'tpl-journal',checkin:'tpl-checkin',rewards:'tpl-rewards',settings:'tpl-settings',pet:'tpl-pet',companionpet:'tpl-companion-pet'};
 const alias={quests:'tasks',cleaning:'clean'};
 let LAST='';
 function routeName(){ const raw=(location.hash||'#home').slice(1)||'home'; return alias[raw]||raw; }
@@ -158,9 +184,10 @@ function render(){
   if(name==='tasks'){ tasks(); }
   if(name==='characters'){ char(); }
   if(name==='companion'){ companion(); }
+  if(name==='meals'){ meals(); }
   window.scrollTo({top:0,behavior:'instant'});
 }
 window.addEventListener('hashchange', ()=>requestAnimationFrame(render));
 $('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('[data-route]'); if(!b) return; e.preventDefault(); location.hash='#'+b.dataset.route; });
 hud(); render();
-console.log('SootheBirb merged full: pages + hero/companion + HUD');
+console.log('SootheBirb meals hotfix: meals content + party/HUD');
