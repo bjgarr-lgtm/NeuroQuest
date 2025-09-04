@@ -1,8 +1,5 @@
 <!doctype html>
 <html lang="en" class="theme-retro">
-
-
-
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -26,7 +23,8 @@
       <button data-route="meals" class="nav-btn">Meals</button>
       <button data-route="calendar" class="nav-btn">Calendar</button>
       <button data-route="shop" class="nav-btn">Shopping</button>
-      <button data-route="pet" class="nav-btn">Companion</button>
+      <button data-route="characters" class="nav-btn">Character</button>
+      <button data-route="companion" class="nav-btn">Companion</button>
       <button data-route="breathe" class="nav-btn">Breathe</button>
       <button data-route="minigames" class="nav-btn toddler-only">Minigames</button>
       <button data-route="journal" class="nav-btn">Journal</button>
@@ -95,14 +93,14 @@
         <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
         <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
         <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
-        <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Character</div></a>
+        <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/hero.svg" alt=""/><div class="tile-label">Character</div></a>
         <a class="tile" data-route="companion"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Companion</div></a>
         <a class="tile toddler-only" data-route="minigames"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Minigames</div></a>
       </div>
     </section>
   </template>
 
-  <!-- Quests (lifted layout) -->
+  <!-- Quests -->
   <template id="tpl-tasks">
     <section class="quest-board">
       <h2 class="dash">Daily Quest Board</h2>
@@ -285,7 +283,7 @@
     </section>
   </template>
 
-  <!-- Pet -->
+  <!-- Pet / Companion settings (kept for compatibility if needed) -->
   <template id="tpl-pet">
     <section class="cardish">
       <h2 id="petTitle" class="dash">Your Companion</h2>

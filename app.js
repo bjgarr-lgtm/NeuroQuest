@@ -1,29 +1,23 @@
-
-/* SootheBirb merge HUD + party controls
-   - Safe on any index.html: if a template isn't present, we skip it (no errors).
-   - Keeps all existing pages/layouts from repo commit.
-*/
 'use strict';
+// merge HUD + party controls that work with existing templates
 
-// -------- persistence
 const KEY='sb.v2.5.0.stable';
 const defaults=()=>({settings:{toddler:false,music:false},party:{companions:[]},economy:{gold:0,ownedAcc:[]},equip:{head:null,face:null,back:null,hand:null},user:{character:null},pet:{level:1,xp:0},log:{tasks:[]}});
 function deep(a,b){ if(Array.isArray(a)) return Array.isArray(b)?b.slice():a.slice(); if(a&&typeof a==='object'){const o={...a}; for(const k of Object.keys(b||{})) o[k]=deep(a[k],b[k]); return o;} return b===undefined?a:b; }
 let S; try{S=deep(defaults(), JSON.parse(localStorage.getItem(KEY)||'{}'))}catch{S=defaults()}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch{} }
 
-// -------- tiny utils
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const uniq=(arr)=>Array.from(new Set(arr||[]));
 function on(el,ev,fn){ if(el) el.addEventListener(ev,fn); }
 
-// -------- fx & audio (minimal keep)
+// audio
 const audio={ding:new Audio('assets/sfx/ding.wav'),coin:new Audio('assets/sfx/coin.wav'),level:new Audio('assets/sfx/level.wav')};
 function play(a){ if(a&&a.play){ try{a.currentTime=0;a.play();}catch{} } }
 function xpFor(l){ return l*l*10 }
 function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pet.level++; play(audio.level); save(); hud(); } }
 
-// -------- style: enforce sane sprite sizing + grid tidy (won over theme)
+// CSS overrides for sprite sizing + HUD avatars
 (function(){ const st=document.createElement('style'); st.textContent=`
   .char-grid, .comp-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) !important; gap:16px !important; }
   .char-card, .party-card { display:grid; place-items:center; padding:8px; }
@@ -38,7 +32,6 @@ function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pe
   .party-banner,.party-banner .party-label,.party-members .name{color:#111 !important;text-shadow:none !important}
 `; document.head.appendChild(st); })();
 
-// -------- catalog for companions (names + images you provided)
 function CAT(){ return {
   molly:{name:'Molly',img:'assets/heroes/comp-molly.png'},
   odin:{name:'Odin',img:'assets/heroes/hero-odin.png'},
@@ -46,10 +39,8 @@ function CAT(){ return {
   fox:{name:'Fox',img:'assets/heroes/hero-fox.png'}
 };}
 
-// -------- HUD
 function hudAvatars(){
   const wrap=$('#hudAvatars') || (function(){
-    // if the HUD strip doesn't have avatars, add them non-destructively
     const hud=$('#hudStrip'); if(!hud) return null;
     const d=document.createElement('div'); d.className='avatars'; d.id='hudAvatars';
     hud.insertBefore(d, hud.firstChild);
@@ -72,7 +63,6 @@ function hud(){
   const lvl=$('#hudLevel'), bar=$('#hudXp'); if(lvl && bar){ const L=S.pet.level,X=S.pet.xp,N=xpFor(L+1),P=xpFor(L); lvl.textContent=`Lv ${L}`; bar.style.width=Math.max(0,Math.min(100,Math.round(((X-P)/(N-P))*100)))+'%'; }
 }
 
-// -------- party banner (dashboard), only if container exists
 function equipLayers(container){ const e=S.equip||{}; const ACC={crown:'assets/acc/crown.svg',glasses:'assets/acc/glasses.svg',cape:'assets/acc/cape.svg',torch:'assets/acc/torch.svg'};
   ['back','head','face','hand'].forEach(slot=>{ const key=e[slot]; if(!key||!ACC[key]) return; const img=new Image(); img.className='acc '+slot; img.src=ACC[key]; container.appendChild(img); });
 }
@@ -95,7 +85,6 @@ function partyBanner(){
   }
 }
 
-// -------- character select (only if template exists)
 function char(){
   const grid=$('#charGrid'); if(!grid) return;
   const choices=[
@@ -115,7 +104,6 @@ function char(){
   on($('#charFile'),'change',e=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ S.user.character={id:'custom',img:r.result,anim:'walk'}; save(); partyBanner(); hud(); location.hash='#companion'; }; r.readAsDataURL(f); });
 }
 
-// -------- companion select (multi-select)
 function companion(){
   const grid=$('#compGrid'); if(!grid) return;
   const host=grid.parentElement;
@@ -142,7 +130,7 @@ function companion(){
   on($('#btnAll'),'click',()=>{ S.party.companions=uniq(Object.keys(C)); save(); companion(); partyBanner(); hud(); });
 }
 
-// -------- tasks logic (only wires if panels exist; keeps your original content)
+// lightweight tasks awarder (only if those panels exist)
 function tasks(){ const main=$('#panelMain'), side=$('#panelSide'), bonus=$('#panelBonus'); if(!main||!side||!bonus) return;
   if(!S.log.tasks?.length){ S.log.tasks=[{id:1,text:'Drink water',xp:5,gold:1,done:false},{id:2,text:'3-min stretch',xp:5,gold:1,done:false}]; }
   const fill=(wrap, arr)=>{ wrap.innerHTML=''; arr.forEach((t,i)=>{ const row=document.createElement('div'); row.className='row task-row';
@@ -157,9 +145,8 @@ function tasks(){ const main=$('#panelMain'), side=$('#panelSide'), bonus=$('#pa
   on($('#addTaskBtn'),'click',()=>{ const title=$('#newTaskTitle')?.value.trim(); if(!title) return; const t={id:Date.now(),text:title,xp:5,gold:1,done:false}; S.log.tasks.push(t); save(); tasks(); });
 }
 
-// -------- router (non‑destructive, only acts if a template exists)
-const map={home:'tpl-home',tasks:'tpl-tasks',clean:'tpl-clean',coop:'tpl-coop',budget:'tpl-budget',meals:'tpl-meals',calendar:'tpl-calendar',shop:'tpl-shop',characters:'tpl-characters',companion:'tpl-companion',breathe:'tpl-breathe',minigames:'tpl-minigames',journal:'tpl-journal',checkin:'tpl-checkin',rewards:'tpl-rewards',settings:'tpl-settings'};
-const alias={quests:'tasks',cleaning:'clean',pet:'companion'};
+const map={home:'tpl-home',tasks:'tpl-tasks',clean:'tpl-clean',coop:'tpl-coop',budget:'tpl-budget',meals:'tpl-meals',calendar:'tpl-calendar',shop:'tpl-shop',characters:'tpl-characters',companion:'tpl-companion',breathe:'tpl-breathe',minigames:'tpl-minigames',journal:'tpl-journal',checkin:'tpl-checkin',rewards:'tpl-rewards',settings:'tpl-settings',pet:'tpl-pet'};
+const alias={quests:'tasks',cleaning:'clean'};
 let LAST='';
 function routeName(){ const raw=(location.hash||'#home').slice(1)||'home'; return alias[raw]||raw; }
 function render(){
@@ -175,7 +162,5 @@ function render(){
 }
 window.addEventListener('hashchange', ()=>requestAnimationFrame(render));
 $('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('[data-route]'); if(!b) return; e.preventDefault(); location.hash='#'+b.dataset.route; });
-
-// boot
 hud(); render();
-console.log('SootheBirb HUD/party merged on existing pages');
+console.log('SootheBirb merged full: pages + hero/companion + HUD');
