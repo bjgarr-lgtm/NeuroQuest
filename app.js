@@ -192,14 +192,30 @@ $('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('[data-ro
 hud(); render();
 console.log('SootheBirb hotfix party controls loaded');
 
-/*(auto-injected)*/
+/* injected sizing */
 (function(){const s=document.createElement('style');s.textContent=`
-/* === size tuning for character art === */
-.sprite{width:96px;height:96px}
-.char-card .sprite,.party-card .sprite{width:96px;height:96px}
-.party-members .card .sprite{width:96px;height:96px}
+/* === hard sizing + layout fixes for character/companion art === */
+.char-grid, .comp-grid { 
+  display: grid !important; 
+  grid-template-columns: repeat(auto-fit, minmax(120px,1fr)) !important; 
+  gap: 16px !important; 
+  align-items: start !important;
+}
+/* Cards */
+.char-card, .party-card { display:grid; place-items:center; padding:8px; }
+/* Sprites */
+.sprite, .char-card .sprite, .party-card .sprite, .party-members .card .sprite {
+  width: 96px !important; height: 96px !important;
+}
+.sprite img, .char-card .sprite img, .party-card .sprite img, .party-members .card .sprite img {
+  width: 100% !important; height: 100% !important; object-fit: contain !important;
+  image-rendering: auto !important; /* don't pixelate watercolor heroes */
+}
+/* Banner readability */
+.party-banner, .party-banner .party-label, .party-members .name { color:#111 !important; text-shadow:none !important; }
 @media (max-width: 700px){
-  .sprite{width:80px;height:80px}
-  .char-card .sprite,.party-card .sprite,.party-members .card .sprite{width:80px;height:80px}
+  .sprite, .char-card .sprite, .party-card .sprite, .party-members .card .sprite {
+    width: 80px !important; height: 80px !important;
+  }
 }
 `;document.head.appendChild(s);})();
