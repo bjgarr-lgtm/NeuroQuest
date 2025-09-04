@@ -1,5 +1,5 @@
 
-/* SootheBirb v2.5.0 hotfix — stable template router + FX/SFX + game logic */
+/* SootheBirb v2.5.0 hotfix — avatars-in-HUD + better banner text + char→companion flow */
 'use strict';
 
 // ---- State
@@ -13,15 +13,25 @@ function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 function on(el,ev,fn){ if(el) el.addEventListener(ev,fn); }
 
-// ---- Minimal CSS needed for overlays/anim
+// ---- Minimal CSS injection for overlays/anim + HUD avatars + banner text
 (function(){ const id='sbHotfixStyle'; if($('#'+id))return; const st=document.createElement('style'); st.id=id; st.textContent=`
+/* sprite + equipment overlays */
 .sprite{position:relative;width:132px;height:132px}
-.sprite img{width:100%;height:100%;object-fit:contain}
+.sprite img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
 .acc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
 .acc.head{z-index:6}.acc.face{z-index:6}.acc.back{z-index:1}.acc.hand{z-index:6}
 @keyframes step{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}} .anim-walk img{animation:step .38s ease-in-out infinite}
-.toddler-only{display: none}
-body.toddler-on .toddler-only{display: inline-flex}
+.toddler-only{display:none} body.toddler-on .toddler-only{display:inline-flex}
+
+/* HUD avatars */
+.hud .avatars{display:flex;gap:6px;align-items:center;margin-right:12px}
+.hud .avatars .hud-ava{width:28px;height:28px;border-radius:6px;image-rendering:pixelated;box-shadow:0 0 0 2px rgba(255,255,255,.08) inset, 0 0 6px rgba(0,255,255,.25)}
+.hud .avatars .hud-ava.you{box-shadow:0 0 0 2px rgba(255,215,0,.45) inset, 0 0 8px rgba(255,215,0,.25)}
+
+/* Party banner readability */
+.party-banner,.party-banner .party-label,.party-members .name{color:#111!important;text-shadow:none!important}
+.party-members .card{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 10px}
+.party-members .name{font-size:.88rem}
 .is-hidden{display:none!important}
 `; document.head.appendChild(st); })();
 
@@ -45,11 +55,23 @@ const FX={layer:(()=>{let d=$('#fxLayer'); if(!d){d=document.createElement('div'
 // ---- XP / HUD
 function xpFor(l){ return l*l*10 }
 function levelCheck(){ const need=xpFor(S.pet.level+1); if(S.pet.xp>=need){ S.pet.level++; play(audio.level); FX.confetti(260); FX.crown(); save(); hud(); } }
+
+function hudAvatars(){
+  const wrap = $('#hudAvatars'); if(!wrap) return;
+  wrap.innerHTML = '';
+  function add(img, cls, title){
+    const i=document.createElement('img'); i.src=img; i.alt=title||''; i.className='hud-ava '+(cls||''); wrap.appendChild(i);
+  }
+  if(S.user?.character?.img) add(S.user.character.img, 'you', 'You');
+  for(const id of (S.party.companions||[])){ const c=CAT()[id]; if(c) add(c.img, '', c.name); }
+}
+
 function hud(){
   document.body.classList.toggle('toddler-on', !!S.settings.toddler);
   const gold=$('#hudGold'); if(gold) gold.textContent=`🪙 ${S.economy.gold||0}`;
   const lvl=$('#hudLevel'), bar=$('#hudXp'); if(lvl && bar){ const L=S.pet.level,X=S.pet.xp,N=xpFor(L+1),P=xpFor(L); lvl.textContent=`Lv ${L}`; bar.style.width=Math.max(0,Math.min(100,Math.round(((X-P)/(N-P))*100)))+'%' }
   const music=$('#musicBtn'); if(music){ music.onclick=async()=>{ S.settings.music=!S.settings.music; save(); if(S.settings.music){ try{ await audio.bgm.play(); }catch{} } else { try{ audio.bgm.pause(); }catch{} } } }
+  hudAvatars();
 }
 
 // ---- Party / Equipment
@@ -100,17 +122,20 @@ function char(){ const grid=$('#charGrid'); if(!grid) return; const choices=[
   {id:'odin',img:'assets/heroes/hero-odin.png',name:'Odin'},
   {id:'fox',img:'assets/heroes/hero-fox.png',name:'Fox'},
 ];
-  grid.innerHTML=''; choices.forEach(c=>{ const card=document.createElement('div'); card.className='char-card'; card.innerHTML=`<div class="sprite anim-walk"><img src="${c.img}" alt="${c.name}"></div><div class="name">${c.name}</div>`; card.onclick=()=>{ S.user.character={id:c.id,img:c.img,anim:'walk'}; save(); partyBanner(); FX.confetti(100); }; grid.appendChild(card); });
-  on($('#uploadChar'),'click',()=> $('#charFile')?.click()); on($('#charFile'),'change',e=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ S.user.character={id:'custom',img:r.result,anim:'walk'}; save(); partyBanner(); }; r.readAsDataURL(f); });
+  grid.innerHTML=''; choices.forEach(c=>{ const card=document.createElement('div'); card.className='char-card'; card.innerHTML=`<div class="sprite anim-walk"><img src="${c.img}" alt="${c.name}"></div><div class="name">${c.name}</div>`; card.onclick=()=>{
+      S.user.character={id:c.id,img:c.img,anim:'walk'}; save(); partyBanner(); hud(); FX.confetti(100);
+      // → advance to party/companion select
+      location.hash = '#companion';
+  }; grid.appendChild(card); });
+  on($('#uploadChar'),'click',()=> $('#charFile')?.click()); on($('#charFile'),'change',e=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ S.user.character={id:'custom',img:r.result,anim:'walk'}; save(); partyBanner(); hud(); location.hash='#companion'; }; r.readAsDataURL(f); });
 }
 
-// ---- Companion
-function companion(){ const grid=$('#compGrid'); if(!grid) return; grid.innerHTML=''; const C=CAT(); Object.keys(C).forEach(id=>{ const c=C[id]; const card=document.createElement('div'); card.className='party-card'+(S.party.companions.includes(id)?' selected':''); card.innerHTML=`<div class="sprite anim-walk"><img src="${c.img}" alt="${c.name}"></div><div class="name">${c.name}</div>`; card.onclick=()=>{ const i=S.party.companions.indexOf(id); if(i>=0) S.party.companions.splice(i,1); else S.party.companions.push(id); save(); companion(); partyBanner(); }; grid.appendChild(card); });
+// ---- Companion (multi-select party)
+function companion(){ const grid=$('#compGrid'); if(!grid) return; grid.innerHTML=''; const C=CAT(); Object.keys(C).forEach(id=>{ const c=C[id]; const card=document.createElement('div'); card.className='party-card'+(S.party.companions.includes(id)?' selected':''); card.innerHTML=`<div class="sprite anim-walk"><img src="${c.img}" alt="${c.name}"></div><div class="name">${c.name}</div>`; card.onclick=()=>{ const i=S.party.companions.indexOf(id); if(i>=0) S.party.companions.splice(i,1); else S.party.companions.push(id); save(); companion(); partyBanner(); hud(); }; grid.appendChild(card); });
 }
 
-// ---- Pet
+// ---- Pet (inline SVG mascot – independent from old globals)
 function pet(){ const stage=$('#petStage'); if(!stage) return; const name=$('#petName'), species=$('#petSpecies'); stage.innerHTML='';
-  // simple inlined SVG pet (no external dependency)
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="128" height="128">
     <defs><radialGradient id="g" cx=".5" cy=".35"><stop offset="0%" stop-color="#00eaff"/><stop offset="100%" stop-color="#8a2be2"/></radialGradient></defs>
     <ellipse cx="60" cy="70" rx="40" ry="35" fill="url(#g)" opacity="0.95"/><circle cx="60" cy="48" r="18" fill="url(#g)" opacity="0.95"/>
@@ -118,7 +143,6 @@ function pet(){ const stage=$('#petStage'); if(!stage) return; const name=$('#pe
     <path d="M60 52 l8 5 -8 5 -8 -5z" fill="#ffd166"/></svg>`;
   stage.innerHTML=svg;
   on($('#savePet'),'click',()=>{ alert('Saved'); });
-  // accessories display
   const store=$('#accStore'); if(store){ store.innerHTML=''; ['glasses','cape','torch','crown'].forEach(id=>{ const row=document.createElement('div'); row.className='row'; row.innerHTML=`<div>${id}</div><button class="primary">Equip</button>`; row.querySelector('button').onclick=()=>{ alert('Equip via Character page for now'); }; store.appendChild(row); }); }
 }
 
@@ -138,23 +162,19 @@ function render(){
   const tplId=map[name]; const tpl=document.getElementById(tplId); const view=$('#view'); if(!tpl||!view){ console.error('view/tpl missing', name, tplId); return; }
   view.innerHTML=''; view.appendChild(tpl.content.cloneNode(true));
   hud(); partyBanner();
-  // per-page
   if(name==='home'){ $$('.tile[data-route]', view).forEach(t=> t.addEventListener('click',()=>{ location.hash='#'+t.getAttribute('data-route'); })); }
   if(name==='tasks'){ if(!S.log.tasks.length) regen(); tasks(); }
   if(name==='shop'){ shop(); }
   if(name==='characters'){ char(); }
   if(name==='companion'){ companion(); }
-  if(name==='pet'){ pet(); } // if you navigate via alias directly
+  if(name==='pet'){ pet(); }
   if(name==='minigames'){ minigame(); }
-  // nav active
   $$('.top-nav [data-route]').forEach(el=> el.classList.toggle('active', (alias[el.dataset.route]||el.dataset.route)===name));
 }
 window.addEventListener('hashchange', ()=>requestAnimationFrame(render));
-
-// top-nav wiring
 $('.top-nav')?.addEventListener('click', e=>{ const b=e.target.closest('[data-route]'); if(!b) return; e.preventDefault(); location.hash='#'+b.dataset.route; });
 
 // boot
 hud(); render();
-window.SOOTHEBIRB_VERSION='v2.5.0-hotfix';
+window.SOOTHEBIRB_VERSION='v2.5.0-hotfix+avatars';
 console.log('SootheBirb hotfix loaded', window.SOOTHEBIRB_VERSION);
