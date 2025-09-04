@@ -15,22 +15,22 @@
       <h1>SootheBirb</h1>
     </div>
     <nav class="top-nav" aria-label="Primary"><div id="navHighlighter" class="nav-hi"></div>
-      <button data-route="home" class="nav-btn">Dashboard</button>
-      <button data-route="tasks" class="nav-btn">Quests</button>
-      <button data-route="clean" class="nav-btn">Cleaning</button>
-      <button data-route="coop" class="nav-btn">Co‑Op</button>
-      <button data-route="budget" class="nav-btn">Budget</button>
-      <button data-route="meals" class="nav-btn">Meals</button>
-      <button data-route="calendar" class="nav-btn">Calendar</button>
-      <button data-route="shop" class="nav-btn">Shopping</button>
-      <button data-route="characters" class="nav-btn">Character</button>
-      <button data-route="companion" class="nav-btn">Companion</button>
-      <button data-route="breathe" class="nav-btn">Breathe</button>
-      <button data-route="minigames" class="nav-btn toddler-only">Minigames</button>
-      <button data-route="journal" class="nav-btn">Journal</button>
-      <button data-route="checkin" class="nav-btn">Check‑In</button>
-      <button data-route="rewards" class="nav-btn">Rewards</button>
-      <button data-route="settings" class="nav-btn">Settings</button>
+      <button type="button" data-route="home" class="nav-btn">Dashboard</button>
+      <button type="button" data-route="tasks" class="nav-btn">Quests</button>
+      <button type="button" data-route="clean" class="nav-btn">Cleaning</button>
+      <button type="button" data-route="coop" class="nav-btn">Co‑Op</button>
+      <button type="button" data-route="budget" class="nav-btn">Budget</button>
+      <button type="button" data-route="meals" class="nav-btn">Meals</button>
+      <button type="button" data-route="calendar" class="nav-btn">Calendar</button>
+      <button type="button" data-route="shop" class="nav-btn">Shopping</button>
+      <button type="button" data-route="characters" class="nav-btn">Character</button>
+      <button type="button" data-route="companion" class="nav-btn">Companion</button>
+      <button type="button" data-route="breathe" class="nav-btn">Breathe</button>
+      <button type="button" data-route="minigames" class="nav-btn toddler-only">Minigames</button>
+      <button type="button" data-route="journal" class="nav-btn">Journal</button>
+      <button type="button" data-route="checkin" class="nav-btn">Check‑In</button>
+      <button type="button" data-route="rewards" class="nav-btn">Rewards</button>
+      <button type="button" data-route="settings" class="nav-btn">Settings</button>
     </nav>
     <button id="musicBtn" class="music-toggle" title="Music">♪</button>
     <div id="hudStrip" class="hud small">
@@ -93,7 +93,7 @@
         <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
         <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
         <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
-        <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/hero.svg" alt=""/><div class="tile-label">Character</div></a>
+        <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Character</div></a>
         <a class="tile" data-route="companion"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Companion</div></a>
         <a class="tile toddler-only" data-route="minigames"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Minigames</div></a>
       </div>
@@ -283,7 +283,7 @@
     </section>
   </template>
 
-  <!-- Pet / Companion settings (kept for compatibility if needed) -->
+  <!-- Pet -->
   <template id="tpl-pet">
     <section class="cardish">
       <h2 id="petTitle" class="dash">Your Companion</h2>
@@ -354,6 +354,7 @@
     </section>
   </template>
 
+  <!-- App module -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
