@@ -14,23 +14,24 @@
       <img src="assets/icon.svg" alt="" class="logo"/>
       <h1>SootheBirb</h1>
     </div>
-    <nav class="top-nav" aria-label="Primary"><div id="navHighlighter" class="nav-hi"></div>
-      <button type="button" data-route="home" class="nav-btn">Dashboard</button>
-      <button type="button" data-route="tasks" class="nav-btn">Quests</button>
-      <button type="button" data-route="clean" class="nav-btn">Cleaning</button>
-      <button type="button" data-route="coop" class="nav-btn">Co‑Op</button>
-      <button type="button" data-route="budget" class="nav-btn">Budget</button>
-      <button type="button" data-route="meals" class="nav-btn">Meals</button>
-      <button type="button" data-route="calendar" class="nav-btn">Calendar</button>
-      <button type="button" data-route="shop" class="nav-btn">Shopping</button>
-      <button type="button" data-route="characters" class="nav-btn">Character</button>
-      <button type="button" data-route="companion" class="nav-btn">Companion</button>
-      <button type="button" data-route="breathe" class="nav-btn">Breathe</button>
-      <button type="button" data-route="minigames" class="nav-btn toddler-only">Minigames</button>
-      <button type="button" data-route="journal" class="nav-btn">Journal</button>
-      <button type="button" data-route="checkin" class="nav-btn">Check‑In</button>
-      <button type="button" data-route="rewards" class="nav-btn">Rewards</button>
-      <button type="button" data-route="settings" class="nav-btn">Settings</button>
+    <nav class="top-nav" aria-label="Primary">
+      <div id="navHighlighter" class="nav-hi"></div>
+      <button data-route="home" class="nav-btn">Dashboard</button>
+      <button data-route="tasks" class="nav-btn">Quests</button>
+      <button data-route="clean" class="nav-btn">Cleaning</button>
+      <button data-route="coop" class="nav-btn">Co‑Op</button>
+      <button data-route="budget" class="nav-btn">Budget</button>
+      <button data-route="meals" class="nav-btn">Meals</button>
+      <button data-route="calendar" class="nav-btn">Calendar</button>
+      <button data-route="shop" class="nav-btn">Shopping</button>
+      <button data-route="characters" class="nav-btn">Character</button>
+      <button data-route="companion" class="nav-btn">Companion</button>
+      <button data-route="breathe" class="nav-btn">Breathe</button>
+      <button data-route="minigames" class="nav-btn toddler-only">Minigames</button>
+      <button data-route="journal" class="nav-btn">Journal</button>
+      <button data-route="checkin" class="nav-btn">Check‑In</button>
+      <button data-route="rewards" class="nav-btn">Rewards</button>
+      <button data-route="settings" class="nav-btn">Settings</button>
     </nav>
     <button id="musicBtn" class="music-toggle" title="Music">♪</button>
     <div id="hudStrip" class="hud small">
@@ -55,24 +56,7 @@
     <button id="importBtn" class="secondary">Import</button>
   </footer>
 
-  <!-- Character Select -->
-  <template id="tpl-characters">
-    <section class="cardish">
-      <h2 class="dash">Choose Your Hero</h2>
-      <div class="char-grid" id="charGrid"></div>
-      <div class="row"><button id="uploadChar" class="secondary">Upload custom art</button><input id="charFile" type="file" accept="image/*" style="display:none"/></div>
-    </section>
-  </template>
-
-  <!-- Companion Select -->
-  <template id="tpl-companion">
-    <section class="cardish">
-      <h2 class="dash">Choose Your Companion</h2>
-      <div class="comp-grid" id="compGrid"></div>
-    </section>
-  </template>
-
-  <!-- Home -->
+  <!-- HOME -->
   <template id="tpl-home">
     <section class="dash-board">
       <div class="party-banner">
@@ -85,276 +69,51 @@
         <div class="xp-meta"><span id="xpBigLabel">Lv 1</span></div>
       </div>
       <div class="tile-grid">
-        <a class="tile" data-route="tasks"><img class="tile-ico-img" src="assets/icons/planner.svg" alt=""/><div class="tile-label">Daily Planner</div></a>
-        <a class="tile" data-route="rewards"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Rewards</div></a>
-        <a class="tile" data-route="clean"><img class="tile-ico-img" src="assets/icons/broom.svg" alt=""/><div class="tile-label">Cleaning</div></a>
-        <a class="tile" data-route="coop"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Co‑Op</div></a>
-        <a class="tile" data-route="calendar"><img class="tile-ico-img" src="assets/icons/calendar.svg" alt=""/><div class="tile-label">Calendar</div></a>
-        <a class="tile" data-route="shop"><img class="tile-ico-img" src="assets/icons/cart.svg" alt=""/><div class="tile-label">Shopping</div></a>
-        <a class="tile" data-route="budget"><img class="tile-ico-img" src="assets/icons/coin.svg" alt=""/><div class="tile-label">Budget</div></a>
-        <a class="tile" data-route="meals"><img class="tile-ico-img" src="assets/icons/meal.svg" alt=""/><div class="tile-label">Meals</div></a>
-        <a class="tile" data-route="characters"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Character</div></a>
-        <a class="tile" data-route="companion"><img class="tile-ico-img" src="assets/icons/buddy.svg" alt=""/><div class="tile-label">Companion</div></a>
-        <a class="tile toddler-only" data-route="minigames"><img class="tile-ico-img" src="assets/icons/trophy.svg" alt=""/><div class="tile-label">Minigames</div></a>
+        <a class="tile" data-route="tasks"><div class="tile-label">Daily Planner</div></a>
+        <a class="tile" data-route="rewards"><div class="tile-label">Rewards</div></a>
+        <a class="tile" data-route="clean"><div class="tile-label">Cleaning</div></a>
+        <a class="tile" data-route="coop"><div class="tile-label">Co‑Op</div></a>
+        <a class="tile" data-route="calendar"><div class="tile-label">Calendar</div></a>
+        <a class="tile" data-route="shop"><div class="tile-label">Shopping</div></a>
+        <a class="tile" data-route="budget"><div class="tile-label">Budget</div></a>
+        <a class="tile" data-route="meals"><div class="tile-label">Meals</div></a>
+        <a class="tile" data-route="characters"><div class="tile-label">Character</div></a>
+        <a class="tile" data-route="companion"><div class="tile-label">Companion</div></a>
+        <a class="tile toddler-only" data-route="minigames"><div class="tile-label">Minigames</div></a>
       </div>
     </section>
   </template>
 
-  <!-- Quests -->
-  <template id="tpl-tasks">
-    <section class="quest-board">
-      <h2 class="dash">Daily Quest Board</h2>
-      <div class="panels">
-        <div class="panel panel-red">
-          <div class="panel-title">Main Quest</div>
-          <div id="panelMain" class="panel-list"></div>
-        </div>
-        <div class="panel panel-green">
-          <div class="panel-title">Side Quests</div>
-          <div id="panelSide" class="panel-list"></div>
-        </div>
-        <div class="panel panel-purple">
-          <div class="panel-title">Bonus Loot</div>
-          <div id="panelBonus" class="panel-list"></div>
-        </div>
-      </div>
-      <div class="panel add-panel">
-        <div class="row">
-          <input id="newTaskTitle" placeholder="Add a quest…"/>
-          <select id="newTaskTier">
-            <option value="main">Main</option>
-            <option value="side">Side</option>
-            <option value="bonus">Bonus</option>
-          </select>
-          <button id="addTaskBtn" class="primary">Add</button>
-        </div>
-      </div>
-    </section>
-  </template>
-
-  <!-- Cleaning -->
-  <template id="tpl-clean">
-    <section class="quest-board">
-      <h2 class="dash">Cleaning Dungeon</h2>
-      <div class="panels">
-        <div class="panel panel-purple">
-          <div class="panel-title">Small Quests</div>
-          <div id="cleanSmall" class="panel-list"></div>
-        </div>
-        <div class="panel panel-blue">
-          <div class="panel-title">Weekly Boss</div>
-          <div class="boss">
-            <div class="row"><span>Progress</span><div class="xp-bar"><div id="bossProg"></div></div></div>
-            <div id="bossList" class="list"></div>
-            <div class="row"><input id="bossName" placeholder="Name this boss…"/><button id="bossNew" class="primary">Set</button><button id="bossTick" class="secondary">+10%</button></div>
-          </div>
-        </div>
-        <div class="panel panel-cyan">
-          <div class="panel-title">Monthly Raid</div>
-          <div id="raidInfo" class="list"></div>
-        </div>
-      </div>
-      <div class="panel add-panel">
-        <div class="row">
-          <input id="newCleanTask" placeholder="Add a cleaning quest…"/>
-          <button id="addCleanTask" class="primary">Add</button>
-        </div>
-      </div>
-    </section>
-  </template>
-
-  <!-- Co‑Op -->
-  <template id="tpl-coop">
-    <section class="quest-board">
-      <h2 class="dash">Co‑Op Mode <small id="coopWeek" class="tag">Solo Week</small></h2>
-      <div class="panels">
-        <div class="panel panel-green">
-          <div class="panel-title">Sidekick Quests</div>
-          <div id="sidekickList" class="panel-list"></div>
-        </div>
-        <div class="panel panel-orange">
-          <div class="panel-title">Collectibles</div>
-          <div id="coopCollect" class="panel-list"></div>
-        </div>
-      </div>
-      <div class="panel add-panel">
-        <div class="row">
-          <input id="newSidekick" placeholder="Add a sidekick quest…"/>
-          <button id="addSidekick" class="primary">Add</button>
-          <button id="toggleWeek" class="secondary">Toggle Week</button>
-        </div>
-      </div>
-    </section>
-  </template>
-
-  <!-- Budget -->
-  <template id="tpl-budget">
-    <section class="budget">
-      <h2 class="dash">Budget Tracker</h2>
-      <div class="grid2">
-        <div class="stat cardish"><div class="k">Gold Pouch</div><div id="goldPouch" class="v">$0</div></div>
-        <div class="stat cardish"><div class="k">This Week's Spend</div><div id="thisSpend" class="v">$0</div></div>
-      </div>
-      <div class="goal cardish">
-        <div class="k">Budget Goal</div>
-        <div class="xp-bar"><div id="budgetBar"></div></div>
-      </div>
-      <section class="cardish">
-        <h3>Recent Transactions</h3>
-        <div id="txnList" class="list"></div>
-      </section>
-      <div class="grid2">
-        <div class="cardish">
-          <h3>New Income</h3>
-          <div class="row"><input id="incLabel" placeholder="Label"/><input id="incAmt" type="number" placeholder="Amount"/></div>
-          <button id="addIncome" class="primary">+ Add Income</button>
-        </div>
-        <div class="cardish">
-          <h3>New Expense</h3>
-          <div class="row"><input id="expLabel" placeholder="Label"/><input id="expAmt" type="number" placeholder="Amount"/></div>
-          <button id="addExpense" class="danger">− Add Expense</button>
-        </div>
-      </div>
-    </section>
-  </template>
-
-  <!-- Meals -->
-  <template id="tpl-meals">
-    <section class="meals">
-      <h2 class="dash">Meal Planner</h2>
-      <div id="mealGrid" class="meal-grid"></div>
-    </section>
-  </template>
-
-  <!-- Calendar -->
+  <!-- CALENDAR -->
   <template id="tpl-calendar">
     <section class="calendar">
       <h2 class="dash">Weekly Calendar</h2>
-      <div class="week-grid" id="weekGrid"></div>
-      <div class="row"><input id="calText" placeholder="Add event…"/><input id="calDay" type="number" min="0" max="6" value="0" title="0=Sun"/><button id="addCal" class="primary">Add</button></div>
-    </section>
-  </template>
-
-  <!-- Shop -->
-  <template id="tpl-shop">
-    <section class="shop">
-      <h2 class="dash">Shopping List</h2>
-      <div id="shopList" class="panel-list"></div>
-      <div class="row"><input id="shopItem" placeholder="Add item…"/><button id="addShop" class="primary">Add</button></div>
-    </section>
-  </template>
-
-  <!-- Rewards -->
-  <template id="tpl-rewards">
-    <section class="rewards">
-      <h2 class="dash">Collectibles & Achievements</h2>
-      <div class="badges" id="badgeGrid"></div>
-    </section>
-  </template>
-
-  <!-- Check-In -->
-  <template id="tpl-checkin">
-    <section class="cardish">
-      <h2 class="dash">Mood Check‑In</h2>
-      <div class="mood-row">
-        <span class="mood" data-mood="awful">😖</span>
-        <span class="mood" data-mood="bad">☹️</span>
-        <span class="mood" data-mood="ok">😐</span>
-        <span class="mood" data-mood="good">🙂</span>
-        <span class="mood" data-mood="great">🤩</span>
+      <div class="embed-wrap">
+        <iframe id="gcalFrame" src="" frameborder="0" scrolling="no"></iframe>
       </div>
-      <label class="field"><span>Tags</span><input id="checkinTags" placeholder="slept well, social…"/></label>
-      <label class="field"><span>Notes</span><textarea id="checkinNotes" rows="4"></textarea></label>
-      <button id="saveCheckin" class="primary">Save check‑in</button>
-      <h3>Recent moods</h3>
-      <div id="moodList" class="panel-list"></div>
     </section>
   </template>
 
-  <!-- Journal -->
-  <template id="tpl-journal">
+  <!-- MINIGAMES HUB -->
+  <template id="tpl-minigames">
     <section class="cardish">
-      <h2 class="dash">Journal</h2>
-      <label class="field"><span>Prompt</span><select id="journalPrompt"></select></label>
-      <label class="field"><span>Entry</span><textarea id="journalText" rows="8" placeholder="Let it out…"></textarea></label>
-      <div class="row"><button id="saveJournal" class="primary">Save</button><button id="newPrompt" class="secondary">New prompt</button></div>
-      <div id="journalList" class="list"></div>
-      <small id="journalStorage"></small>
+      <h2 class="dash">Toddler Minigames</h2>
+      <div id="gamesGrid" class="games-grid"></div>
+      <div id="gameHost" class="game-host" aria-live="polite"></div>
     </section>
   </template>
 
-  <!-- Pet -->
+  <!-- PET (toddler only) -->
   <template id="tpl-pet">
     <section class="cardish">
-      <h2 id="petTitle" class="dash">Your Companion</h2>
-      <div class="pet-stage large" id="petStage"></div>
-      <div id="petStats" class="stats"></div>
-      <div class="row" id="petForm">
-        <label class="field"><span>Name</span><input id="petName"/></label>
-        <label class="field"><span>Species</span>
-          <select id="petSpecies">
-            <option value="birb">Birb</option>
-            <option value="sprout">Sprout</option>
-            <option value="blob">Blob</option>
-          </select>
-        </label>
-        <button id="savePet" class="primary">Save</button>
-      </div>
-      <details><summary>Accessories</summary><div class="grid two" id="accList"></div></details>
-      <div id="accStore" class="panel-list"></div>
+      <h2 class="dash">Your Birb</h2>
+      <div class="pet-stage" id="petStage"></div>
+      <details open><summary>Accessories</summary><div class="grid two" id="accList"></div></details>
+      <div class="panel-list" id="accStore"></div>
     </section>
   </template>
 
-  <!-- Breathe -->
-  <template id="tpl-breathe">
-    <section class="cardish">
-      <h2 class="dash">1‑Minute Breathe</h2>
-      <p>Tap the circle: inhale → hold → exhale → hold.</p>
-      <div class="breathe-stage">
-        <div class="circle" id="breathCircle" title="Start or stop breathing"></div>
-        <div id="breathPhase" class="phase">Ready</div>
-      </div>
-    </section>
-  </template>
-
-  <!-- Minigames -->
-  <template id="tpl-minigames"><canvas id="popGame" class="game" width="300" height="180"></canvas></template>
-
-  <!-- Settings -->
-  <template id="tpl-settings">
-    <section class="cardish">
-      <h2 class="dash">Settings</h2>
-      <label class="field"><span>Your name</span><input id="userName"/></label>
-      <label class="field"><span>Theme</span>
-        <select id="themeSelect">
-          <option value="retro">Retro Neon</option>
-          <option value="forest">Forest</option>
-          <option value="dusk">Dusk</option>
-          <option value="sunrise">Sunrise</option>
-          <option value="ocean">Ocean</option>
-          <option value="punk">Punk</option>
-        </select>
-      </label>
-      <label class="field"><span>Typeface</span>
-        <select id="fontSelect">
-          <option value="press2p">Press Start 2P</option>
-          <option value="system-ui">System</option>
-          <option value="serif">Serif</option>
-          <option value="mono">Mono</option>
-        </select>
-      </label>
-      <label class="field"><span>Art Style</span>
-        <select id="artSelect"><option value="pixel">Pixel</option><option value="classic">Classic</option></select>
-      </label>
-      <label class="field"><span>CRT Scanlines</span><input type="checkbox" id="scanlinesToggle" checked/></label>
-      <label class="field"><span>Toddler Mode</span>
-        <input type="checkbox" id="toddlerToggle"/>
-      </label>
-      <div class="row"><button id="saveSettings" class="primary">Save</button><button id="resetApp" class="danger">Reset app</button></div>
-    </section>
-  </template>
-
-  <!-- App module -->
   <script type="module" src="app.js"></script>
+  <script type="module" src="hotfix.js"></script>
 </body>
 </html>
