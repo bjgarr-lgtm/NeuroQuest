@@ -1,44 +1,53 @@
-/* FX helpers (confetti, crown drop, cursor trail) — v4 */
+
+// hotfix-fx.js — small helpers (toast, modal, confetti crown)
 (function(){
-  const FX = {};
-  FX.confetti = (parent=document.body, n=150) => {
-    const box = document.createElement('div');
-    Object.assign(box.style, {position:'fixed',left:0,top:0,width:'100%',height:'100%',pointerEvents:'none',overflow:'hidden',zIndex:9999});
-    parent.appendChild(box);
-    for(let i=0;i<n;i++){
-      const s = document.createElement('div');
-      const size = 4 + Math.random()*6;
-      Object.assign(s.style, {position:'absolute',left:(Math.random()*100)+'%', top:(-10 - Math.random()*20)+'px',
-        width:size+'px',height:size+'px',background:`hsl(${Math.random()*360},100%,60%)`,opacity:.9,borderRadius:(Math.random()<.3?'50%':'2px')});
-      box.appendChild(s);
-      const dur = 1200 + Math.random()*1400;
-      const dx = (Math.random()*2-1)*80;
-      const rot = (Math.random()*720-360);
-      s.animate([{transform:`translate(0,0) rotate(0deg)`},{transform:`translate(${dx}px, 110vh) rotate(${rot}deg)`}], {duration: dur, easing:'cubic-bezier(.2,.8,.2,1)', fill:'forwards'});
-      setTimeout(()=>s.remove(), dur+120);
+  const STYLE = `
+  .sb-toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+    background:#111a;border:1px solid #8af;backdrop-filter:blur(6px);
+    color:#dff;padding:.6rem 1rem;border-radius:10px;font-family:monospace;z-index:99999}
+  .sb-modal{position:fixed;inset:0;background:linear-gradient(#0009,#000c);display:flex;align-items:center;justify-content:center;z-index:99998}
+  .sb-card{max-width:680px;width:92%;background:#0b0e18;border:1px solid #8af;padding:1rem;border-radius:14px;box-shadow:0 0 40px #9cf2}
+  .sb-card h3{margin:0 0 .5rem 0}
+  .sb-btn{border:1px solid #8af;border-radius:10px;background:#05121f;color:#e2f; padding:.5rem .9rem;cursor:pointer}
+  .sb-row{display:flex;gap:.75rem;align-items:center;justify-content:flex-end;margin-top:1rem}
+  `;
+  const style = document.createElement('style'); style.textContent = STYLE; document.head.appendChild(style);
+
+  window.sbToast = (msg, ms=1400) => {
+    const t = document.createElement('div');
+    t.className='sb-toast'; t.textContent=msg;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(), ms);
+  };
+
+  window.sbModal = (title, bodyHTML) => {
+    const m = document.createElement('div'); m.className='sb-modal';
+    m.innerHTML = `<div class="sb-card"><h3>${title}</h3><div>${bodyHTML||''}</div>
+      <div class="sb-row"><button class="sb-btn" id="sbClose">Close</button></div></div>`;
+    m.addEventListener('click', (e)=>{ if(e.target.id==='sbClose'|| e.target===m) m.remove();});
+    document.body.appendChild(m); return m;
+  };
+
+  // Crown confetti light
+  window.sbCrown = (parent=document.body) => {
+    const crown = document.createElement('div');
+    crown.style.cssText = `position:fixed;left:50%;top:18%;transform:translateX(-50%);
+      width:120px;height:80px;z-index:9999;filter:drop-shadow(0 0 10px #fc3)`;
+    crown.innerHTML = `<svg viewBox="0 0 200 120">
+      <polygon points="0,120 200,120 160,40 100,90 40,30" fill="#f7c200" stroke="#945" stroke-width="6"/>
+      <circle cx="40" cy="30" r="12" fill="#ff9"/>
+      <circle cx="100" cy="40" r="12" fill="#ff9"/>
+      <circle cx="160" cy="40" r="12" fill="#ff9"/>
+    </svg>`;
+    parent.appendChild(crown);
+    setTimeout(()=>crown.remove(),1200);
+    // simple sparkles
+    for(let i=0;i<30;i++){
+      const s=document.createElement('div');
+      s.style.cssText=`position:fixed;left:${50+Math.random()*14-7}%;top:${18+Math.random()*6}%;width:6px;height:6px;border-radius:50%;background:hsl(${40+Math.random()*40} 90% 60%);z-index:9999`;
+      document.body.appendChild(s);
+      const dx=(Math.random()*2-1)*200, dy=200+Math.random()*150;
+      s.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${dx}px,${dy}px)`,opacity:0}],{duration:800+Math.random()*600, easing:'ease-out'}).onfinish=()=>s.remove();
     }
-    setTimeout(()=>box.remove(), 3000);
   };
-  FX.crown = (parent=document.body, emoji='👑', ms=1400) => {
-    const el = document.createElement('div');
-    el.textContent=emoji;
-    Object.assign(el.style, {position:'fixed', left:'50%', top:'-80px', fontSize:'64px', transform:'translateX(-50%)', zIndex:9999, pointerEvents:'none'});
-    parent.appendChild(el);
-    el.animate([{transform:'translate(-50%,-80px)'},{transform:'translate(-50%,35vh)'}],{duration:ms*0.6,easing:'ease-out'});
-    setTimeout(()=>{ el.animate([{opacity:1},{opacity:0}],{duration:ms*0.3}); setTimeout(()=>el.remove(),ms*0.35); }, ms*0.65);
-  };
-  // cursor trail (enabled by default)
-  let trailOn = true, last = 0;
-  FX.cursorTrail = (on=true)=>{ trailOn = on; };
-  window.addEventListener('pointermove', (e)=>{
-    if (!trailOn) return;
-    const now = performance.now(); if (now - last < 18) return; last = now;
-    const dot = document.createElement('div');
-    Object.assign(dot.style, {position:'fixed', left:(e.clientX-2)+'px', top:(e.clientY-2)+'px', width:'6px', height:'6px',
-      borderRadius:'50%', background:`hsl(${(e.clientX+e.clientY)%360},100%,70%)`, pointerEvents:'none', zIndex:9998});
-    document.body.appendChild(dot);
-    dot.animate([{transform:'scale(1)', opacity:1},{transform:'scale(0)', opacity:0}],{duration:500,easing:'ease-out'});
-    setTimeout(()=>dot.remove(),520);
-  });
-  window.SB_FX = FX;
 })();

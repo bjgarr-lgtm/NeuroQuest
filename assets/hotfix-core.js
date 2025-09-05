@@ -1,334 +1,250 @@
-/* SootheBirb Hotfix v4 (core logic)
-   - Budget: net = income - expenses; spend = expenses; bar = expenses/goal
-   - Settings: persist/apply + googleCalSrc (for Calendar embed)
-   - Calendar: clean embed using googleCalSrc
-   - Breathe: colorful spinner ring
-   - Cleaning boss/raid: click rewards + FX
-   - Journal/Check-in/Shop/Rewards like v3
-   - Character overlay SVG reflects equipped items + color picker
-   - Minigames hub: inject Toddler Pet panel when toddler mode ON
-*/
+
+// hotfix-core.js — unify toddler toggle, budget math, calendar embed & breathe ring
 (function(){
-  const QS  = (s,el=document)=>el.querySelector(s);
-  const QSA = (s,el=document)=>Array.from(el.querySelectorAll(s));
-  const nowISO = ()=>new Date().toISOString();
-  const load=(k,def)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } };
-  const save=(k,v)=>localStorage.setItem(k, JSON.stringify(v));
+  const get = (k, d=null)=>{try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d}};
+  const set = (k,v)=>localStorage.setItem(k, JSON.stringify(v));
 
-  // ---------- SETTINGS ----------
-  function applySettings(st){
-    const html=document.documentElement, body=document.body;
-    const themes=['retro','forest','dusk','sunrise','ocean','punk'];
-    themes.forEach(t=>{body.classList.remove('theme-'+t); html.classList.remove('theme-'+t)});
-    body.classList.add('theme-'+(st.theme||'retro'));
-    html.classList.add('theme-'+(st.theme||'retro'));
-    body.dataset.font=(st.font||'press2p'); body.dataset.art=(st.art||'pixel');
-    if (st.scanlines!==false) body.classList.add('crt'); else body.classList.remove('crt');
-    body.classList.toggle('toddler-on', !!st.toddlerToggle);
-  }
-  function currentSettings(){ return load('sb.settings',{theme:'retro', font:'press2p', art:'pixel', scanlines:true, toddlerToggle:false, userName:'', googleCalSrc:''}); }
-  function wireSettings(){
-    const saveBtn=QS('#saveSettings'), resetBtn=QS('#resetApp');
-    const map={'#themeSelect':'theme','#fontSelect':'font','#artSelect':'art','#scanlinesToggle':'scanlines','#toddlerToggle':'toddlerToggle','#userName':'userName','#googleCalSrc':'googleCalSrc'};
-    if (!saveBtn && !resetBtn) return;
-    const st=currentSettings();
-    Object.entries(map).forEach(([sel,k])=>{ const el=QS(sel); if(!el) return;
-      if (el.type==='checkbox') el.checked=!!st[k];
-      else el.value = typeof st[k]!=='undefined'? st[k] : el.value;
-      // autosave on change
-      el.addEventListener('change', ()=>{
-        const s2=currentSettings();
-        Object.entries(map).forEach(([sel2,k2])=>{ const el2=QS(sel2); if(!el2) return; s2[k2] = (el2.type==='checkbox')?!!el2.checked:el2.value; });
-        save('sb.settings', s2); applySettings(s2); window.dispatchEvent(new Event('hashchange'));
+  // --------- Budget math fix ----------
+  const fixBudget = () => {
+    const r = location.hash.toLowerCase();
+    if(!r.includes('budget')) return;
+    // Attempt to find fields/buttons present in prior builds
+    const pouch = document.getElementById('goldPouch');
+    const spend = document.getElementById('thisSpend');
+    const bar   = document.getElementById('budgetBar');
+    // data
+    const data = get('budget.data', {inc:[], exp:[], goal:200});
+    const sum = (arr)=>arr.reduce((a,b)=>a + (Number(b.amt)||0),0);
+    const income = sum(data.inc), expenses = sum(data.exp);
+    if(pouch) pouch.textContent = '$'+(income - expenses);
+    if(spend) spend.textContent = '$'+(expenses);
+    if(bar){
+      const pct = Math.max(0, Math.min(1, data.goal? (expenses / data.goal) : 0));
+      bar.style.width = (pct*100)+'%';
+    }
+    // Wire “Add Income/Expense” if visible
+    const ai = document.getElementById('addIncome');
+    const ae = document.getElementById('addExpense');
+    if(ai && !ai._sb){
+      ai._sb=true; ai.addEventListener('click', ()=>{
+        const label = (document.getElementById('incLabel')||{}).value||'Income';
+        const amt = Number((document.getElementById('incAmt')||{}).value||0);
+        data.inc.push({label,amt,ts:Date.now()}); set('budget.data', data); sbToast('Income added'); fixBudget();
       });
+    }
+    if(ae && !ae._sb){
+      ae._sb=true; ae.addEventListener('click', ()=>{
+        const label = (document.getElementById('expLabel')||{}).value||'Expense';
+        const amt = Number((document.getElementById('expAmt')||{}).value||0);
+        data.exp.push({label,amt,ts:Date.now()}); set('budget.data', data); sbToast('Expense added'); fixBudget();
+      });
+    }
+    // Goal editing
+    let goalNode = document.querySelector('.goal .k');
+    if(goalNode && !goalNode._sb){
+      goalNode._sb=true;
+      goalNode.title='Click to set weekly goal';
+      goalNode.style.cursor='pointer';
+      goalNode.addEventListener('click', ()=>{
+        const v = prompt('Weekly budget goal ($):', data.goal);
+        if(v!=null){ data.goal = Number(v)||0; set('budget.data', data); fixBudget(); }
+      });
+    }
+  };
+
+  // --------- Breathe ring (animated) ----------
+  const breathe = () => {
+    if(!location.hash.toLowerCase().includes('breathe')) return;
+    const circle = document.getElementById('breathCircle');
+    if(!circle || circle._sb) return;
+    circle._sb = true;
+    const phaseEl = document.getElementById('breathPhase');
+    let phase = 0; // 0 in, 1 hold, 2 out, 3 hold
+    let running = false;
+    const D = [4000, 1500, 4000, 1500];
+    circle.addEventListener('click', ()=>{
+      running = !running;
+      if(running) loop(); else phaseEl.textContent='Paused';
     });
-    applySettings(st);
-    if (saveBtn) saveBtn.onclick=()=>{
-      const s2=currentSettings();
-      Object.entries(map).forEach(([sel,k])=>{ const el=QS(sel); if(!el) return; s2[k] = (el.type==='checkbox')?!!el.checked:el.value; });
-      save('sb.settings', s2); applySettings(s2); window.dispatchEvent(new Event('hashchange'));
-      saveBtn.classList.add('pulse'); setTimeout(()=>saveBtn.classList.remove('pulse'),600);
-    };
-    if (resetBtn) resetBtn.onclick=()=>{ if(!confirm('Reset all local data?')) return; Object.keys(localStorage).filter(k=>k.startsWith('sb.')).forEach(k=>localStorage.removeItem(k)); location.reload(); };
-  }
-
-  // ---------- SHOP ----------
-  function renderShop(){
-    const list=QS('#shopList'), inp=QS('#shopItem'), add=QS('#addShop');
-    if (!list||!inp||!add) return;
-    const items=load('sb.shop',[]);
-    function paint(){ list.innerHTML=''; items.forEach((txt,i)=>{ const row=document.createElement('div'); row.className='row'; row.innerHTML=`<span>${txt}</span><span style="flex:1"></span><button class="danger" data-del="${i}">✕</button>`; list.appendChild(row); }); }
-    paint();
-    add.onclick=()=>{ const v=(inp.value||'').trim(); if(!v) return; items.push(v); save('sb.shop',items); inp.value=''; paint(); };
-    list.onclick=(e)=>{ const b=e.target.closest('[data-del]'); if(!b) return; items.splice(+b.getAttribute('data-del'),1); save('sb.shop',items); paint(); };
-  }
-
-  // ---------- BUDGET ----------
-  function renderBudget(){
-    const pouch=QS('#goldPouch'), spend=QS('#thisSpend'), bar=QS('#budgetBar'), list=QS('#txnList');
-    const incLabel=QS('#incLabel'), incAmt=QS('#incAmt'), incBtn=QS('#addIncome');
-    const expLabel=QS('#expLabel')||QS('#expLabel'), expAmt=QS('#expAmt'), expBtn=QS('#addExpense');
-    if (!pouch||!spend||!bar||!list||!incBtn||!expBtn||!incAmt||!expAmt||!incLabel) return;
-    const tx=load('sb.tx',[]);
-    const bud=load('sb.budget',{goal:200});
-    const goal = Math.max(1, Number(bud.goal)||200);
-
-    const sums = tx.reduce((a,x)=>{ if(x.t==='inc') a.income+=x.amt; else if(x.t==='exp') a.expense+=x.amt; return a; }, {income:0,expense:0});
-    const net = sums.income - sums.expense;
-    pouch.textContent = '$'+net.toFixed(0);
-    spend.textContent = '$'+sums.expense.toFixed(0);
-    bar.style.width = Math.min(100, (sums.expense/goal)*100) + '%';
-
-    // Goal label (click to edit)
-    const goalCard = bar.closest('.goal')||bar.parentElement;
-    if (goalCard && !QS('#budgetGoalText', goalCard)){
-      const info=document.createElement('div'); info.id='budgetGoalText'; info.className='muted'; info.style.marginTop='6px'; info.textContent=`Goal: $${goal}`; info.title='Click to change goal';
-      info.style.cursor='pointer'; info.onclick=()=>{ const v=prompt('Set weekly budget goal (USD):', String(load('sb.budget',{goal}).goal||goal)); if(v!==null){ const b=load('sb.budget',{goal}); b.goal=Math.max(0,Number(v)||0); save('sb.budget',b); renderBudget(); } };
-      goalCard.appendChild(info);
-    } else if (goalCard) {
-      const info=QS('#budgetGoalText', goalCard); if (info) info.textContent=`Goal: $${goal}`;
-    }
-
-    function paintList(){ list.innerHTML=''; tx.slice().reverse().forEach(x=>{ const row=document.createElement('div'); row.className='row'; row.innerHTML=`<span>${x.label}</span><span style="flex:1"></span><span class="${x.t==='exp'?'danger':'k'}">${x.t==='exp'?'-':'+'}$${x.amt}</span>`; list.appendChild(row); }); }
-    paintList();
-
-    incBtn.onclick=()=>{ const label=(incLabel.value||'').trim(); const amt=Number(incAmt.value||0); if(!label||!amt) return;
-      tx.push({t:'inc', label, amt, ts:nowISO()}); save('sb.tx',tx); incLabel.value=''; incAmt.value=''; renderBudget();
-    };
-    expBtn.onclick=()=>{ const label=(expLabel&&expLabel.value||'').trim(); const amt=Number(expAmt.value||0); if(!label||!amt) return;
-      tx.push({t:'exp', label, amt, ts:nowISO()}); save('sb.tx',tx); if(expLabel) expLabel.value=''; expAmt.value=''; renderBudget();
-    };
-  }
-
-  // ---------- BREATHE ----------
-  function wireBreathe(){
-    const circle=QS('#breathCircle'), phase=QS('#breathPhase');
-    if(!circle||!phase) return;
-    let running=false, raf=0, idx=0, t0=0;
-    const DUR=4000, phases=[['Inhale',0],['Hold',60],['Exhale',180],['Hold',240]];
-    function frame(ts){
-      if(!t0) t0=ts; const elapsed=ts-t0, r=Math.min(1, elapsed/DUR);
-      const [label, hue]=phases[idx]; phase.textContent=label;
-      const angle=(ts/10)%360;
-      circle.style.background = `conic-gradient(from ${angle}deg, hsl(${hue},90%,60%), hsl(${(hue+120)%360},90%,60%), hsl(${(hue+240)%360},90%,60%))`;
-      circle.style.webkitMaskImage = 'radial-gradient(circle 38px at center, transparent 60%, black 61%)';
-      circle.style.maskImage = 'radial-gradient(circle 38px at center, transparent 60%, black 61%)';
-      let scale=1; if (label==='Inhale') scale=1+0.25*r; else if(label==='Exhale') scale=1.25-0.35*r; else scale=1.25;
-      circle.style.transform=`scale(${scale})`;
-      if (elapsed>=DUR){ idx=(idx+1)%phases.length; t0=ts; }
-      if (running) raf=requestAnimationFrame(frame);
-    }
-    function start(){ if(running) return; running=true; idx=0; t0=0; circle.classList.add('active'); raf=requestAnimationFrame(frame); }
-    function stop(){ running=false; if(raf) cancelAnimationFrame(raf); circle.classList.remove('active'); phase.textContent='Ready'; circle.style.transform='scale(1)'; }
-    circle.onclick = ()=> running?stop():start();
-  }
-
-  // ---------- JOURNAL ----------
-  const PROMPTS=['What made you smile today?','One small win you had:','Something you’re grateful for:','A task you’ll do tomorrow:','How did you take care of yourself today?'];
-  function wireJournal(){
-    const sel=QS('#journalPrompt'), txt=QS('#journalText'), saveBtn=QS('#saveJournal'), newBtn=QS('#newPrompt'), list=QS('#journalList'), info=QS('#journalStorage');
-    if(!sel||!txt||!saveBtn||!newBtn||!list) return;
-    const prompts=load('sb.prompts',PROMPTS); sel.innerHTML=prompts.map(p=>`<option>${p}</option>`).join('');
-    const render=()=>{ const entries=load('sb.journal',[]).slice().reverse(); list.innerHTML=''; entries.forEach(e=>{ const d=new Date(e.ts).toLocaleString(); const c=document.createElement('div'); c.className='cardish'; c.innerHTML=`<div class="k">${d}</div><div class="v"><strong>${e.prompt}</strong><br>${(e.text||'').replace(/</g,'&lt;')}</div>`; list.appendChild(c); }); if(info){ const size=(localStorage.getItem('sb.journal')||'').length; info.textContent=`Storage used: ${size} bytes`; } };
-    render(); newBtn.onclick=()=>{ sel.selectedIndex=(sel.selectedIndex+1)%sel.options.length; };
-    saveBtn.onclick=()=>{ const data=load('sb.journal',[]); data.push({prompt:sel.value,text:txt.value,ts:nowISO()}); save('sb.journal',data); txt.value=''; render(); };
-  }
-
-  // ---------- CHECK-IN ----------
-  function wireCheckin(){
-    const row=QS('.mood-row'), tags=QS('#checkinTags'), notes=QS('#checkinNotes'), btn=QS('#saveCheckin'), list=QS('#moodList');
-    if(!row||!btn||!list) return;
-    const map={'😖':'awful','☹️':'bad','😐':'ok','🙂':'good','🤩':'great'}; let chosen=null;
-    row.onclick=(e)=>{ let el=e.target.closest('.mood'); if(!el && e.target.tagName==='SPAN') el=e.target; if(!el) return; const dm = el.getAttribute('data-mood') || map[el.textContent.trim()]; if(!dm) return; QSA('.mood',row).forEach(x=>x.classList&&x.classList.remove('selected')); if(el.classList) el.classList.add('selected'); chosen=dm; };
-    const paint=()=>{ const items=load('sb.moods',[]).slice().reverse(); list.innerHTML=''; items.forEach(m=>{ const d=new Date(m.ts).toLocaleString(); const r=document.createElement('div'); r.className='row'; r.innerHTML=`<span>${d}</span><span style="flex:1"></span><span>${m.mood}</span>`; list.appendChild(r); }); };
-    paint(); btn.onclick=()=>{ if(!chosen){alert('Pick a mood face first.'); return;} const items=load('sb.moods',[]); items.push({mood:chosen,tags:(tags.value||'').trim(),notes:(notes.value||'').trim(),ts:nowISO()}); save('sb.moods',items); tags.value=''; notes.value=''; chosen=null; paint(); };
-  }
-
-  // ---------- CLEANING ----------
-  function wireCleaning(){
-    const bossBar=QS('#bossProg'), bossList=QS('#bossList'), bossNameIn=QS('#bossName'), bossSet=QS('#bossNew'), bossTick=QS('#bossTick');
-    const raidInfo=QS('#raidInfo'); if (!bossBar||!bossList||!bossNameIn||!bossSet||!bossTick||!raidInfo) return;
-    const state = load('sb.clean', {bossName:'Bathroom', bossPct:0, raidName:'Deep clean', raidWeek:2});
-    function paint(){ bossBar.style.width = Math.min(100, state.bossPct) + '%'; bossList.innerHTML = `<div class="row"><div>Boss: <strong>${state.bossName}</strong></div><div style="flex:1"></div><div>${state.bossPct|0}%</div></div>`; raidInfo.innerHTML = `<div class="row"><div>Week ${state.raidWeek} — <strong>${state.raidName}</strong></div></div>`; }
-    paint();
-    bossSet.onclick = ()=>{ const v=(bossNameIn.value||'').trim(); if(!v) return; state.bossName=v; save('sb.clean', state); paint(); };
-    bossTick.onclick = ()=>{ state.bossPct = Math.min(100, (state.bossPct||0)+10); save('sb.clean', state); paint(); try{window.SB_FX && SB_FX.confetti(); window.SB_FX && SB_FX.crown();}catch{} award(1, 10); };
-    raidInfo.onclick = ()=>{ const v=prompt('Set Monthly Raid name:', state.raidName||''); if (v!==null){ state.raidName=v; save('sb.clean', state); paint(); }};
-    function award(coins, xp){ const t=load('sb.tx',[]); t.push({t:'inc', label:'Cleaning reward', amt:coins, ts:nowISO()}); save('sb.tx', t); const xpEl = document.getElementById('hudXp')||QS('#xpBig'); if (xpEl) { xpEl.style.width = Math.min(100, (parseFloat(xpEl.style.width)||0)+xp) + '%'; } }
-  }
-
-  // ---------- REWARDS ----------
-  function renderRewards(){
-    const grid=QS('#badgeGrid'); if(!grid) return;
-    const tx=load('sb.tx',[]), moods=load('sb.moods',[]), jrnl=load('sb.journal',[]), shop=load('sb.shop',[]);
-    const badges=[];
-    if(tx.length>=1) badges.push({name:'First Coins',desc:'Logged your first budget item.'});
-    if(jrnl.length>=1) badges.push({name:'Inkling',desc:'Saved a journal entry.'});
-    if(moods.length>=3) badges.push({name:'Feelings Tracker',desc:'Tracked 3 moods.'});
-    if(shop.length>=5) badges.push({name:'List Master',desc:'5 things on your shopping list.'});
-    grid.innerHTML = badges.length? badges.map(b=>`<div class="cardish"><div class="k">${b.name}</div><div class="v">${b.desc}</div></div>`).join('') : `<div class="muted">No rewards yet. Keep playing!</div>`;
-  }
-
-  // ---------- Calendar Embed ----------
-  function wireCalendar(){
-    const calWrap = QS('#weekGrid') || QS('.calendar');
-    if (!calWrap) return;
-    const st = currentSettings();
-    if (!st.googleCalSrc) {
-      // show a small prompt button if empty
-      if (!QS('#calPromptBtn', calWrap)) {
-        const btn = document.createElement('button'); btn.id='calPromptBtn'; btn.className='secondary'; btn.textContent='Connect Google Calendar';
-        btn.onclick = ()=>{
-          const v = prompt('Paste Google Calendar "src" (e.g. yourid@group.calendar.google.com):', st.googleCalSrc||'');
-          if (v!==null){ const s2=currentSettings(); s2.googleCalSrc = v.trim(); save('sb.settings', s2); applySettings(s2); renderCalendarEmbed(calWrap, s2.googleCalSrc); }
-        };
-        calWrap.innerHTML=''; calWrap.appendChild(btn);
+    const loop = async ()=>{
+      while(running){
+        const text = ['Inhale','Hold','Exhale','Hold'][phase];
+        phaseEl.textContent = text;
+        circle.style.animation = 'none'; void circle.offsetWidth; // restart
+        circle.style.background = `conic-gradient(from 0deg, #0ff, #fc0, #f0f, #0ff)`;
+        circle.animate([{transform:'scale(1)'},{transform:`scale(${phase===0?1.15:phase===2?0.9:1.0})`}],{duration:D[phase],easing:'ease-in-out'});
+        await new Promise(r=>setTimeout(r,D[phase]));
+        phase = (phase+1)%4;
       }
+    };
+  };
+
+  // --------- Calendar embed (safe) ----------
+  const makeCalendar = () => {
+    if(!location.hash.toLowerCase().includes('calendar')) return;
+    const view = document.getElementById('view'); if(!view) return;
+    if(view.querySelector('.sb-cal-wrap')) return; // already
+    const src = get('settings.gcalsrc', '');
+    const wrap = document.createElement('div'); wrap.className='sb-cal-wrap';
+    wrap.innerHTML = src
+      ? `<iframe style="width:100%;height:70vh;border:0;border-radius:12px"
+           src="https://calendar.google.com/calendar/embed?src=${encodeURIComponent(src)}&ctz=America%2FLos_Angeles"></iframe>`
+      : `<div class="cardish"><button class="sb-btn" id="sbConnectCal">Connect Google Calendar</button></div>`;
+    view.appendChild(wrap);
+    const btn = wrap.querySelector('#sbConnectCal');
+    if(btn) btn.addEventListener('click', ()=>{
+      const v = prompt('Paste your Google Calendar "src" (e.g. yourid@group.calendar.google.com):', get('settings.gcalsrc',''));
+      if(v!=null){ const s=get('settings',{}); s.gcalsrc=v; set('settings',s); set('settings.gcalsrc', v); sbToast('Calendar linked'); location.reload(); }
+    });
+  };
+
+  // --------- Toddler mode unified toggle ----------
+  const updateToddler = (on) => {
+    set('settings.toddler', !!on);
+    const s = get('settings', {}); s.toddler = !!on; set('settings', s);
+    window.dispatchEvent(new CustomEvent('sb:toddler-changed'));
+    sbToast(on? 'Toddler Mode ON' : 'Toddler Mode OFF');
+  };
+  const wireToddler = () => {
+    // Settings toggle
+    const st = document.getElementById('toddlerToggle');
+    if(st && !st._sb){
+      st._sb=true;
+      st.addEventListener('change', e=>updateToddler(e.target.checked));
+    }
+    // Co‑Op toggle (button id observed in earlier builds)
+    const tbtn = document.getElementById('toggleWeek');
+    if(tbtn && !tbtn._sb){
+      tbtn._sb=true;
+      tbtn.addEventListener('click', ()=>{
+        // Flip toddler flag
+        const on = !get('settings.toddler', false);
+        updateToddler(on);
+      });
+    }
+  };
+
+  // ----- Toddler Pet panel inside Minigames -----
+  const renderToddlerHub = () => {
+    if(!location.hash.toLowerCase().includes('minigame')) return;
+    const toddlerOn = get('settings.toddler', false);
+    const view = document.getElementById('view'); if(!view) return;
+    if(view.querySelector('#sbToddlerPet')){ // keep synced
+      view.querySelector('#sbToddlerPet').style.display = toddlerOn? '' : 'none';
       return;
     }
-    renderCalendarEmbed(calWrap, st.googleCalSrc);
-  }
-  function renderCalendarEmbed(host, src){
-    host.innerHTML='';
-    const iframe = document.createElement('iframe');
-    iframe.title = 'Google Calendar';
-    const params = new URLSearchParams({mode:'WEEK', showTitle:'0', wkst:'1', bgcolor:'#00000000', ctz:'America/Los_Angeles', src});
-    iframe.src = 'https://calendar.google.com/calendar/embed?' + params.toString();
-    Object.assign(iframe.style, {border:'0', width:'100%', height:'640px'});
-    host.appendChild(iframe);
-  }
-
-  // ---------- Character Overlay (SVG) ----------
-  const CHAR_CATALOG=[
-    {id:'cap', name:'Adventurer Cap', cost:0, layer:'head'},
-    {id:'cape', name:'Cape', cost:0, layer:'back'},
-    {id:'wand', name:'Wand', cost:4, layer:'hand'},
-    {id:'boots', name:'Ranger Boots', cost:3, layer:'feet'},
-    {id:'pauldrons', name:'Pauldrons', cost:5, layer:'shoulders'}
-  ];
-  function charState(){ return load('sb.charGear', {owned:['cap','cape'], equipped:['cap'], color:'#73b6ff'}); }
-  function setCharState(s){ save('sb.charGear', s); }
-  function charSVG(st){
-    const eq=new Set(st.equipped||[]); const body=st.color||'#73b6ff';
-    const el=(c,s)=>c?s:'';
-    return `<svg viewBox="0 0 220 220" width="260" height="260" xmlns="http://www.w3.org/2000/svg">
-      <defs><filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.5"/></filter></defs>
-      <g filter="url(#shadow)">
-        <!-- body -->
-        <circle cx="110" cy="110" r="60" fill="${body}"/>
-        <!-- head -->
-        <circle cx="110" cy="78" r="26" fill="#ffe0bd"/>
-        <circle cx="96" cy="74" r="4" fill="#222"/><circle cx="124" cy="74" r="4" fill="#222"/>
-        <!-- feet -->
-        ${el(eq.has('boots'), `<rect x="80" y="168" width="25" height="14" rx="4" fill="#8b5a2b"/><rect x="115" y="168" width="25" height="14" rx="4" fill="#8b5a2b"/>`)}
-        <!-- shoulders -->
-        ${el(eq.has('pauldrons'), `<path d="M70,102 q40,-26 80,0 l0,14 q-40,20 -80,0 z" fill="#8f9bb3"/>`)}
-        <!-- cape -->
-        ${el(eq.has('cape'), `<path d="M110,110 q-40,20 -50,60 q50,5 100,0 q-10,-40 -50,-60 z" fill="#6a00f4" opacity="0.85"/>`)}
-        <!-- hand item -->
-        ${el(eq.has('wand'), `<rect x="58" y="120" width="60" height="6" rx="3" fill="#c08c5a"/> <circle cx="120" cy="123" r="6" fill="#ffd24a"/>`)}
-        <!-- cap -->
-        ${el(eq.has('cap'), `<path d="M84,64 q26,-18 52,0 q-5,6 -52,6 z" fill="#2ec4b6"/> <circle cx="138" cy="64" r="6" fill="#0ea5a6"/>`)}
-      </g>
-    </svg>`;
-  }
-  function ensureCharPanel(){
-    if (location.hash!=='#character' && location.hash!=='#characters') return;
-    const view=QS('#view'); if(!view) return;
-    if (!QS('#charDisplay', view)){
-      const sec=document.createElement('section'); sec.className='cardish';
-      sec.innerHTML=`<h2 class="dash">Your Hero</h2><div id="charDisplay" class="pet-stage" style="min-height:260px"></div>
-        <div class="row"><label class="field"><span>Color</span><input type="color" id="charColor" value="#73b6ff"/></label></div>`;
-      view.prepend(sec);
-    }
-    const ownedWrap=QS('#charGearOwned')||QS('#charGearPanel #charGearOwned');
-    const shopWrap =QS('#charGearShop')||QS('#charGearPanel #charGearShop');
-    if (!QS('#charGearPanel', view)){
-      const sec=document.createElement('section'); sec.id='charGearPanel'; sec.className='cardish';
-      sec.innerHTML=`<h3>Character Gear</h3><div class="grid two"><div><h4>Owned</h4><div id="charGearOwned" class="panel-list"></div></div><div><h4>Shop</h4><div id="charGearShop" class="panel-list"></div></div></div>`;
-      view.appendChild(sec);
-    }
-    wireCharGear();
-  }
-  function wireCharGear(){
-    const display=QS('#charDisplay'); const color=QS('#charColor');
-    const ownedWrap=QS('#charGearOwned'); const shopWrap=QS('#charGearShop'); if(!display||!ownedWrap||!shopWrap) return;
-    const st=charState();
-    display.innerHTML = charSVG(st);
-    if (color) { color.value = st.color || '#73b6ff'; color.onchange = ()=>{ const s=charState(); s.color=color.value; setCharState(s); display.innerHTML=charSVG(s); }; }
-    // Owned
-    ownedWrap.innerHTML=''; st.owned.forEach(id=>{
-      const it = CHAR_CATALOG.find(x=>x.id===id); if(!it) return;
-      const eq = st.equipped.includes(id);
-      const row=document.createElement('div'); row.className='row'; row.innerHTML=`<span>${it.name}</span><span style="flex:1"></span><button class="primary" data-eq-char="${id}">${eq?'Unequip':'Equip'}</button>`; ownedWrap.appendChild(row);
+    const box = document.createElement('section'); box.id='sbToddlerPet'; box.className='cardish';
+    box.style.display = toddlerOn ? '' : 'none';
+    const state = get('toddler.pet', {coins:0, owned:{}, equipped:{}});
+    const coin = ()=> state.coins;
+    const BIRD = `<svg viewBox="0 0 120 90" width="120"><circle cx="60" cy="45" r="32" fill="#ffe26a"/><circle cx="78" cy="40" r="5" fill="#423c"/>
+      <polygon points="88,48 100,42 100,54" fill="#f78"/></svg>`;
+    const items = [
+      {id:'cap', name:'Cap', cost:0, svg:'<path d="M20 40 Q60 10 100 40 L100 46 L20 46 Z" fill="#48f"/>'},
+      {id:'bow', name:'Bow', cost:1, svg:'<circle cx="60" cy="58" r="6" fill="#f4a"/><path d="M40 56 q8-8 16 0 q-8 8 -16 0z" fill="#f7c"/><path d="M80 56 q-8-8 -16 0 q8 8 16 0z" fill="#f7c"/>'},
+      {id:'glasses', name:'Glasses', cost:2, svg:'<circle cx="70" cy="40" r="8" fill="none" stroke="#222" stroke-width="3"/><circle cx="50" cy="42" r="8" fill="none" stroke="#222" stroke-width="3"/><rect x="58" y="40" width="6" height="2" fill="#222"/>'},
+      {id:'scarf', name:'Scarf', cost:2, svg:'<path d="M30 64 h60 v8 h-60z" fill="#c33"/>'},
+      {id:'boots', name:'Boots', cost:3, svg:'<rect x="42" y="70" width="12" height="8" fill="#333"/><rect x="66" y="70" width="12" height="8" fill="#333"/>'},
+    ];
+    const shop = items.map(it=>`<div class="panel-list"><b>${it.name}</b> <small>Cost: ${it.cost}</small>
+      <button class="sb-btn buy" data-id="${it.id}">Buy</button></div>`).join('');
+    box.innerHTML = `
+      <h2 class="dash">Toddler Pet</h2>
+      <div style="display:flex;gap:1rem;align-items:center">
+        <div id="petStage" style="border:1px solid #678;border-radius:12px;padding:.5rem">${BIRD}</div>
+        <div><div class="gold">Toddler Coins: <b id="tdCoins">${coin()}</b></div>
+        <button class="sb-btn" id="howEarn">How do we earn?</button></div>
+      </div>
+      <details open><summary>Accessories (owned)</summary><div id="owned"></div></details>
+      <h3>Shop</h3><div id="shop">${shop}</div>
+    `;
+    view.prepend(box);
+    const draw = ()=>{
+      const stage = box.querySelector('#petStage svg');
+      // remove prior overlays
+      stage.querySelectorAll('.ovl').forEach(n=>n.remove());
+      Object.keys(state.owned||{}).forEach(id=>{
+        if(state.equipped[id]){
+          const it = items.find(x=>x.id===id);
+          const g = document.createElementNS('http://www.w3.org/2000/svg','g'); g.setAttribute('class','ovl');
+          g.innerHTML = it.svg; stage.appendChild(g);
+        }
+      });
+      box.querySelector('#tdCoins').textContent = coin();
+      const owned = Object.keys(state.owned||{}); 
+      box.querySelector('#owned').textContent = owned.length? owned.join(', ') : '(none yet)';
+    };
+    box.addEventListener('click', (e)=>{
+      if(e.target.id==='howEarn'){
+        sbModal('How toddler earns coins', `<ul>
+          <li>Win a round in any minigame (+1 coin)</li>
+          <li>Daily check‑in (+1 coin)</li>
+          <li>Sidekick quest complete (+1 coin)</li>
+        </ul>`);
+      }
+      if(e.target.classList.contains('buy')){
+        const id=e.target.dataset.id; const it=items.find(x=>x.id===id);
+        if(state.owned[id]){ state.equipped[id]=!state.equipped[id]; set('toddler.pet', state); draw(); return; }
+        if(state.coins>=it.cost){ state.coins-=it.cost; state.owned[id]=true; state.equipped[id]=true; set('toddler.pet',state); sbToast(`Bought ${it.name}`); draw(); }
+        else sbToast('Not enough coins');
+      }
     });
-    // Shop
-    shopWrap.innerHTML=''; CHAR_CATALOG.forEach(it=>{
-      const has = st.owned.includes(it.id);
-      const row=document.createElement('div'); row.className='row'; row.innerHTML=`<span>${it.name}</span><span style="flex:1"></span><button class="secondary" data-buy-char="${it.id}" ${has?'disabled':''}>${has?'Owned':'Buy'}</button>`; shopWrap.appendChild(row);
+    draw();
+  };
+
+  // --------- Character accessories (adult) ----------
+  const renderCharacter = () => {
+    if(!location.hash.toLowerCase().includes('character')) return;
+    const view = document.getElementById('view'); if(!view) return;
+    if(view.querySelector('#sbCharEquip')) return;
+    const box = document.createElement('section'); box.id='sbCharEquip'; box.className='cardish';
+    const C = get('char.equip', {color:'#63c', items:{cape:false,cap:true,boots:false,pauldrons:false,wand:false}});
+    const items = [
+      {id:'cap', name:'Adventurer Cap', svg:'<path d="M-40 -10 q40-40 80 0 v16 h-80z" fill="#1ea"/>'},
+      {id:'cape', name:'Cape', svg:'<path d="M-80 30 q80 40 160 0 v90 h-160z" fill="#d06" opacity=".8"/>'},
+      {id:'boots', name:'Boots', svg:'<rect x="-30" y="80" width="30" height="16" fill="#432"/><rect x="0" y="80" width="30" height="16" fill="#432"/>'},
+      {id:'pauldrons', name:'Pauldrons', svg:'<circle cx="-30" cy="15" r="18" fill="#888"/><circle cx="30" cy="15" r="18" fill="#888"/>'},
+      {id:'wand', name:'Wand', svg:'<rect x="45" y="20" width="8" height="70" fill="#fc6"/><circle cx="49" cy="16" r="8" fill="#ff0"/>'},
+    ];
+    box.innerHTML = `
+      <h2 class="dash">Hero Customization</h2>
+      <div style="display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap">
+        <svg viewBox="-100 -40 200 200" width="240" height="240" id="sbHero">
+          <circle cx="0" cy="-10" r="26" fill="#f5d4b3"/>
+          <circle cx="-7" cy="-15" r="3" fill="#234"/><circle cx="7" cy="-15" r="3" fill="#234"/>
+          <path d="M-60 20 a60 60 0 0 0 120 0 a60 60 0 0 0 -120 0z" fill="${C.color}" id="sbTorso"/>
+        </svg>
+        <div>
+          <label class="field"><span>Color</span> <input type="color" id="sbColor" value="${C.color}"/></label>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:.5rem;margin-top:.5rem">
+            ${items.map(it=>`<label><input type="checkbox" class="eq" data-id="${it.id}" ${C.items[it.id]?'checked':''}/> ${it.name}</label>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    view.prepend(box);
+    const hero = box.querySelector('#sbHero');
+    const draw = () => {
+      // remove overlays
+      hero.querySelectorAll('.ovl').forEach(n=>n.remove());
+      items.forEach(it=>{
+        if(C.items[it.id]){
+          const g = document.createElementNS('http://www.w3.org/2000/svg','g'); g.setAttribute('class','ovl');
+          g.innerHTML = it.svg; hero.appendChild(g);
+        }
+      });
+      hero.querySelector('#sbTorso').setAttribute('fill', C.color);
+      set('char.equip', C);
+    };
+    box.addEventListener('change', (e)=>{
+      if(e.target.id==='sbColor'){ C.color=e.target.value; draw(); sbToast('Color updated'); return; }
+      if(e.target.classList.contains('eq')){ const id=e.target.dataset.id; C.items[id]=e.target.checked; draw(); sbToast('Equipped updated'); }
     });
-  }
-  document.addEventListener('click',(e)=>{
-    const buy=e.target.closest('[data-buy-char]'); const eq=e.target.closest('[data-eq-char]');
-    if (buy){ const id=buy.getAttribute('data-buy-char'); const st=charState(); if(!st.owned.includes(id)) st.owned.push(id); setCharState(st); wireCharGear(); try{window.SB_FX&&SB_FX.confetti();}catch{} }
-    if (eq){ const id=eq.getAttribute('data-eq-char'); const st=charState(); const i=st.equipped.indexOf(id); if(i>=0) st.equipped.splice(i,1); else st.equipped.push(id); setCharState(st); wireCharGear(); }
-  });
+    draw();
+  };
 
-  // ---------- Minigames hub + Toddler Pet panel ----------
-  function wireMinigames(){
-    if (location.hash !== '#minigames') return;
-    const st = currentSettings();
-    const v=QS('#view'); if(!v) return;
-    const container = v.querySelector('.cardish, .game, .minigame-hub') || v;
-    // build a small hub surface
-    if (!QS('#miniHub', container)){
-      const hub = document.createElement('section');
-      hub.id = 'miniHub'; hub.className='cardish';
-      hub.innerHTML = `<h2 class="dash">Minigame Hub</h2><div id="miniRows"></div>`;
-      container.prepend(hub);
-    }
-    const rows = QS('#miniRows', container);
-    if (!rows) return;
-    rows.innerHTML = '';
-
-    if (st.toddlerToggle) {
-      const petSec = document.createElement('section');
-      petSec.className = 'cardish';
-      petSec.innerHTML = `<h3>Toddler Pet</h3>
-        <div class="row"><div class="gold tag">Toddler Coins: <span id="petCoins">0</span></div>
-        <button id="petEarnHow" class="secondary">How to earn?</button></div>
-        <div class="pet-stage" id="petStage" style="min-height:220px"></div>
-        <details open><summary>Accessories (owned)</summary><div id="accOwned" class="panel-list"></div></details>
-        <section class="cardish"><h4>Shop</h4><div id="accStore" class="panel-list"></div></section>`;
-      rows.appendChild(petSec);
-      // Reuse existing pet hotfix renderer if available
-      if (window.renderPetPage) { window.renderPetPage(); } // noop if not defined
-      // Otherwise, trigger hashchange to let toddler-pet hotfix hook run
-      setTimeout(()=>window.dispatchEvent(new Event('hashchange')), 50);
-    } else {
-      const note = document.createElement('div');
-      note.className='muted';
-      note.textContent='Enable Toddler Mode in Settings to show Toddler Pet and games.';
-      rows.appendChild(note);
-    }
-  }
-
-  // ---------- Router & wiring ----------
-  function onRoute(){
-    wireSettings();
-    renderShop();
-    renderBudget();
-    wireBreathe();
-    wireJournal();
-    wireCheckin();
-    wireCleaning();
-    renderRewards();
-    wireCalendar();
-    ensureCharPanel();
-    wireCharGear();
-    wireMinigames();
-  }
-  window.addEventListener('hashchange', ()=> setTimeout(onRoute, 0));
-  document.addEventListener('DOMContentLoaded', ()=> setTimeout(onRoute, 0));
-  setInterval(onRoute, 1200);
+  // sweep
+  const sweep = () => { fixBudget(); breathe(); makeCalendar(); wireToddler(); renderToddlerHub(); renderCharacter(); };
+  window.addEventListener('DOMContentLoaded', sweep);
+  window.addEventListener('hashchange', sweep);
+  window.addEventListener('sb:toddler-changed', sweep);
 })();

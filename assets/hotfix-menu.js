@@ -1,49 +1,29 @@
-/* Compact Menu + toddler gating — v4 */
+
+// hotfix-menu.js — hide Pet tab, gate Minigames by toddler-mode, tiny burger
 (function(){
-  const qs = (s, el=document)=>el.querySelector(s);
-  const qsa= (s, el=document)=>Array.from(el.querySelectorAll(s));
-  const load=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch{ return d; } };
-  const settings=()=>load('sb.settings',{});
-  const toddlerOn=()=>!!settings().toddlerToggle;
-
-  function ensureHamburger(){
-    const header = qs('.app-header'); if (!header) return;
-    if (qs('#menuToggle', header)) return;
+  const ensureBurger = () => {
+    if(document.querySelector('.sb-burger')) return;
+    const header = document.querySelector('.app-header'); if(!header) return;
     const btn = document.createElement('button');
-    btn.id = 'menuToggle'; btn.className='secondary'; btn.textContent='☰';
-    btn.title = 'Menu';
-    header.insertBefore(btn, header.firstChild);
-    const nav = qs('.top-nav', header); if (!nav) return;
-    nav.classList.add('collapsible');
-    btn.addEventListener('click', ()=> nav.classList.toggle('open'));
-    // add minimal styles
-    const style = document.createElement('style');
-    style.textContent = `
-      .top-nav.collapsible { display:flex; flex-wrap:wrap; gap:.25rem; }
-      @media (max-width: 1100px) {
-        .top-nav.collapsible { display:none; position:absolute; left:.5rem; right:.5rem; top:64px; background:rgba(0,0,0,.8); padding:.5rem; border:1px solid rgba(255,255,255,.2); border-radius:.75rem; z-index:500;}
-        .top-nav.collapsible.open { display:flex; }
-        #menuToggle { margin-right:.5rem; }
-      }`;
-    document.head.appendChild(style);
-  }
+    btn.className='sb-burger'; btn.textContent='☰';
+    btn.style.cssText='position:absolute;left:6px;top:6px;background:#0006;border:1px solid #678;border-radius:8px;color:#9df;padding:.2rem .5rem;cursor:pointer;z-index:5';
+    header.appendChild(btn);
+    const nav=document.querySelector('.top-nav');
+    btn.addEventListener('click',()=>{
+      nav.style.display = (nav.style.display==='none'?'':'none');
+      setTimeout(()=>nav.style.display='', 7000);
+    });
+  };
 
-  function gateToddlerRoutes(){
-    const show = toddlerOn();
-    const petBtn = qs('button[data-route="pet"]');
-    if (petBtn) petBtn.style.display = 'none'; // always hide separate Pet tab
-    const miniBtn = qs('button[data-route="minigames"]');
-    if (miniBtn) miniBtn.style.display = show ? '' : 'none';
-    qsa('.tile[data-route="pet"],a.tile[data-route="pet"]').forEach(t=> t.style.display='none'); // pet handled inside minigames now
-    qsa('.tile[data-route="minigames"],a.tile[data-route="minigames"]').forEach(t=> t.style.display = show ? '' : 'none');
-  }
+  const hidePetShowMini = () => {
+    const qs=(s)=>Array.from(document.querySelectorAll(s));
+    // Hide Companion "Pet" tab if it exists (legacy)
+    qs('[data-route="pet"]').forEach(el=>el.style.display='none');
+    const toddler = JSON.parse(localStorage.getItem('settings.toddler')||'false');
+    qs('[data-route="minigames"]').forEach(el=>el.style.display = toddler ? '' : 'none');
+  };
 
-  function apply(){
-    ensureHamburger();
-    gateToddlerRoutes();
-  }
-
-  window.addEventListener('hashchange', apply);
-  document.addEventListener('DOMContentLoaded', apply);
-  setInterval(apply, 1200);
+  window.addEventListener('DOMContentLoaded', ()=>{ ensureBurger(); hidePetShowMini(); });
+  window.addEventListener('hashchange', hidePetShowMini);
+  window.addEventListener('sb:toddler-changed', hidePetShowMini);
 })();
