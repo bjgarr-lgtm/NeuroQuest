@@ -1,13 +1,25 @@
-/* SootheBirb hotfix: minigames hub, calendar sizing, toddler birb, 3 free wardrobe items */
-const Q = s => document.querySelector(s);
-const view = () => Q('#view');
+/* Routing/Calendar compatibility + Minigames hub + toddler birb + wardrobe freebies */
+const view = () => document.querySelector('#view');
+const LS = {
+  get(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch{return d}},
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)) }
+};
+const S = LS.get('sb_state', { toddler:false, toddlerCoins:0, wardrobe:{owned:[],equipped:[]}, pet:{acc:[]} });
 
-// ---- CSS patch ----
+// freebies for adult character
+(function freebies(){
+  if(!S.wardrobe) S.wardrobe = {owned:[],equipped:[]};
+  const freebies = ['copper-crown','torch','adventurer-cloak'];
+  let changed=false;
+  for(const id of freebies){ if(!S.wardrobe.owned.includes(id)){ S.wardrobe.owned.push(id); changed=true; } }
+  if(changed){ LS.set('sb_state', S); }
+})();
+
+// CSS tweaks and legacy #weekGrid hider (so app.js finds it but we show the iframe)
 const css = `
-  .hud .avatars img{width:28px;height:28px;object-fit:contain;border-radius:6px}
-  .party-members img{max-height:120px;object-fit:contain}
   .calendar .embed-wrap{position:relative;width:100%;max-width:1100px;min-height:70vh}
   .calendar .embed-wrap iframe{position:absolute;inset:0;width:100%;height:100%}
+  .calendar #weekGrid{display:none}
   .games-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:8px}
   .games-grid .card{padding:14px;border:1px solid #6cf;border-radius:14px;background:rgba(50,50,80,.35);cursor:pointer;text-align:center}
   .game-host{margin-top:16px}
@@ -22,57 +34,31 @@ const css = `
   .pet-stage{min-height:180px;display:flex;align-items:flex-end;gap:12px}
   .birb{width:120px;image-rendering:auto;filter:none}
 `;
-const styleTag = document.createElement('style'); styleTag.textContent = css; document.head.appendChild(styleTag);
+const st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
-// ---- tiny state helpers ----
-const LS = {
-  get(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch{return d}},
-  set(k, v){ localStorage.setItem(k, JSON.stringify(v)) }
-};
-const S = LS.get('sb_state', {gold:0,xp:0,toddlerCoins:0,toddler:false, wardrobe:{owned:[],equipped:[]}, pet:{acc:[]} });
-
-// freebies for wardrobe (once)
-(function freebies(){
-  if(!S.wardrobe) S.wardrobe = {owned:[],equipped:[]};
-  const freebies = ['copper-crown','torch','adventurer-cloak'];
-  let changed=false;
-  for(const id of freebies){ if(!S.wardrobe.owned.includes(id)){ S.wardrobe.owned.push(id); changed=true; } }
-  if(changed){ LS.set('sb_state', S); toast('3 free items added to Wardrobe'); }
-})();
-
-// simple toast
-function toast(msg){ const t=document.createElement('div'); t.textContent=msg; Object.assign(t.style,{position:'fixed',bottom:'18px',left:'50%',transform:'translateX(-50%)',background:'#000c',color:'#fff',padding:'8px 12px',borderRadius:'10px',zIndex:9999}); document.body.appendChild(t); setTimeout(()=>t.remove(),1600);}
-
-// ---- Router taps (non-invasive) ----
-function currentRoute(){ return (location.hash||'#home').slice(1); }
-window.addEventListener('hashchange', onRoute);
-document.addEventListener('click', (e)=>{
-  const link = e.target.closest('[data-route]');
-  if(link){ location.hash = '#'+link.dataset.route; }
-});
-
-function onRoute(){
-  const r = currentRoute();
-  if(r==='minigames'){ renderMinigames(); return; }
-  if(r==='calendar'){ renderCalendar(); return; }
-  if(r==='companion' || r==='pet'){
-    if(S.toddler){ renderToddlerPet(); return; }
-  }
+// Safe router hook (non-invasive): when route changes to calendar/minigames/companion
+window.addEventListener('hashchange', routeHook);
+document.addEventListener('DOMContentLoaded', routeHook);
+function routeHook(){
+  const r=(location.hash||'#home').slice(1);
+  if(r==='calendar'){ ensureCalendarIframe(); }
+  if(r==='minigames'){ renderMinigames(); }
+  if((r==='companion'||r==='pet') && LS.get('sb_state', {}).toddler){ renderToddlerPet(); }
 }
-document.addEventListener('DOMContentLoaded', onRoute);
 
-// ---- Calendar (responsive iframe) ----
-function renderCalendar(){
-  const tpl = document.querySelector('#tpl-calendar'); if(!tpl) return;
-  view().innerHTML = ''; view().appendChild(tpl.content.cloneNode(true));
+// Calendar: set iframe src from saved embed or fallback
+function ensureCalendarIframe(){
+  const f=document.querySelector('#gcalFrame');
+  if(!f) return;
   const src = LS.get('sb_gcal', 'https://calendar.google.com/calendar/embed?src=en.usa%23holiday%40group.v.calendar.google.com');
-  const f = document.querySelector('#gcalFrame'); f.src = src;
+  if(!f.src || !f.src.includes('calendar.google')) f.src = src;
 }
 
-// ---- Minigames hub (8 entries) ----
+// ---- Minigames hub (8 entries, easier pacing) ----
 function renderMinigames(){
   const tpl = document.querySelector('#tpl-minigames'); if(!tpl) return;
-  view().innerHTML=''; view().appendChild(tpl.content.cloneNode(true));
+  const v = view(); if(!v) return;
+  v.innerHTML=''; v.appendChild(tpl.content.cloneNode(true));
   const grid = document.querySelector('#gamesGrid');
   const games = [
     {id:'pop', label:'Pop Bubbles'}, {id:'colors', label:'Color Match'},
@@ -88,21 +74,23 @@ function renderMinigames(){
   const host = document.querySelector('#gameHost'); host.innerHTML = '<p>Choose a game. Win rounds to earn toddler coins.</p>';
 }
 
-function awardCoins(n){ S.toddlerCoins = (S.toddlerCoins||0)+n; LS.set('sb_state',S); toast(`+${n} toddler coin${n>1?'s':''}!`); }
+function awardCoins(n){
+  const state = LS.get('sb_state', S); state.toddlerCoins = (state.toddlerCoins||0)+n; LS.set('sb_state', state);
+}
 
 function startGame(id){
   const host = document.querySelector('#gameHost'); host.innerHTML='';
   const box = document.createElement('div'); box.className='game-box'; host.appendChild(box);
   if(id==='pop'){
     let score=0, time=20;
-    const timer = setInterval(()=>{ time--; if(time<=0){ end(); } },1000);
-    const spawn = setInterval(()=>{
+    const timer=setInterval(()=>{ time--; if(time<=0){ end(); } },1000);
+    const spawn=setInterval(()=>{
       const b=document.createElement('div'); b.className='pop-bubble';
       b.style.left=Math.random()*(box.clientWidth-60)+'px';
       b.style.top=Math.random()*(box.clientHeight-60)+'px';
       b.onclick=()=>{ score++; b.remove(); };
-      box.appendChild(b); setTimeout(()=>b.remove(), 1800);
-    }, 450);
+      box.appendChild(b); setTimeout(()=>b.remove(), 2000);
+    }, 520);
     function end(){ clearInterval(timer); clearInterval(spawn); awardCoins(1+Math.floor(score/6)); box.innerHTML=`<h3 style="text-align:center">Score ${score}</h3>`; }
   }
   else if(id==='colors'){
@@ -118,21 +106,20 @@ function startGame(id){
         const btn=document.createElement('button'); btn.textContent=c; btn.style.padding='10px 14px'; btn.style.borderRadius='10px'; btn.onclick=()=>{ if(c===want) score++; next(); };
         row.appendChild(btn);
       }
-    }
-    next();
+    } next();
   }
   else if(id==='float'){
     const balloon=document.createElement('div'); balloon.className='balloon'; balloon.style.top='50%'; box.appendChild(balloon);
     const basket=document.createElement('div'); basket.className='basket'; box.appendChild(basket);
-    let y=box.clientHeight*0.5, vy=-0.03, thrust=0, score=0;
+    let y=box.clientHeight*0.5, vy=-0.02, thrust=0, score=0;
     const info=document.createElement('div'); info.style.position='absolute'; info.style.right='10px'; info.style.top='10px'; info.textContent='Hold mouse/touch to lift'; box.appendChild(info);
     function step(){
       thrust*=0.9;
-      vy += 0.002 - thrust; // gravity minus thrust
+      vy += 0.0016 - thrust;
       y += vy;
       if(y<20){ y=20; vy*= -0.6; } if(y>box.clientHeight-80){ y=box.clientHeight-80; vy*=-0.6; }
       balloon.style.top=y+'px';
-      score++; if(score>1200){ finish(); return; }
+      score++; if(score>1100){ finish(); return; }
       raf = requestAnimationFrame(step);
     }
     let raf=requestAnimationFrame(step);
@@ -148,7 +135,7 @@ function startGame(id){
     function flash(p){ p.classList.add('on'); setTimeout(()=>p.classList.remove('on'),300); }
     function show(){
       active=false; input=[]; seq.push(pads[Math.floor(Math.random()*pads.length)]);
-      (async()=>{ for(const p of seq){ flash(p); await new Promise(r=>setTimeout(r,450)); } active=true; })();
+      (async()=>{ for(const p of seq){ flash(p); await new Promise(r=>setTimeout(r,460)); } active=true; })();
     }
     pads.forEach(p=>p.onclick=()=>{ if(!active) return; flash(p); input.push(p); if(p!==seq[input.length-1]){ box.innerHTML='<h3 style="text-align:center">Try again!</h3>'; }
       else if(input.length===seq.length){ level++; if(level>5){ awardCoins(2); box.innerHTML='<h3 style="text-align:center">You win!</h3>'; } else { setTimeout(show,500); } } });
@@ -172,7 +159,7 @@ function startGame(id){
     let score=0,time=20; const cells=[];
     for(let i=0;i<12;i++){ const b=document.createElement('button'); b.style.height='60px'; b.style.borderRadius='10px'; b.textContent=''; b.onclick=()=>{ if(b.classList.contains('on')){ score++; b.classList.remove('on'); b.textContent=''; } }; grid.appendChild(b); cells.push(b); }
     const timer=setInterval(()=>{ time--; if(time<=0){ clearInterval(timer); clearInterval(spawn); awardCoins(1+Math.floor(score/5)); box.innerHTML=`<h3 style="text-align:center">Whacks ${score}</h3>`; } },1000);
-    const spawn=setInterval(()=>{ cells.forEach(c=>{c.classList.remove('on'); c.textContent='';}); const b=cells[Math.floor(Math.random()*cells.length)]; b.classList.add('on'); b.textContent='🙂'; },700);
+    const spawn=setInterval(()=>{ cells.forEach(c=>{c.classList.remove('on'); c.textContent='';}); const b=cells[Math.floor(Math.random()*cells.length)]; b.classList.add('on'); b.textContent='🙂'; },720);
   }
   else if(id==='catch'){
     const area=document.createElement('div'); area.style.position='relative'; area.style.height='300px'; area.style.background='rgba(255,255,255,.04)'; area.style.borderRadius='12px'; box.appendChild(area);
@@ -187,7 +174,7 @@ function startGame(id){
     }
     const key=(e)=>{ if(e.key==='ArrowLeft') x-=speed; if(e.key==='ArrowRight') x+=speed; setX(); };
     document.addEventListener('keydown', key);
-    const sp=setInterval(spawn,700); const t=setInterval(()=>{ time--; if(time<=0){ clearInterval(sp); clearInterval(t); document.removeEventListener('keydown',key); awardCoins(1+Math.floor(score/5)); box.innerHTML=`<h3 style="text-align:center">Stars ${score}</h3>`; } },1000);
+    const sp=setInterval(spawn,720); const t=setInterval(()=>{ time--; if(time<=0){ clearInterval(sp); clearInterval(t); document.removeEventListener('keydown',key); awardCoins(1+Math.floor(score/5)); box.innerHTML=`<h3 style="text-align:center">Stars ${score}</h3>`; } },1000);
     setX();
   }
   else if(id==='shapes'){
@@ -202,27 +189,23 @@ function startGame(id){
   }
 }
 
-// ---- Toddler pet (simple birb with accessories) ----
+// Toddler-only birb
 function renderToddlerPet(){
   const tpl = document.querySelector('#tpl-pet'); if(!tpl) return;
-  view().innerHTML=''; view().appendChild(tpl.content.cloneNode(true));
+  const v=view(); if(!v) return;
+  v.innerHTML=''; v.appendChild(tpl.content.cloneNode(true));
   const stage = document.querySelector('#petStage');
-  const birb = new Image(); birb.src = 'assets/birb.png'; birb.alt='Birb'; birb.className='birb';
-  birb.onerror = ()=>{ birb.src='assets/icon.svg'; };
+  const birb = new Image(); birb.src='assets/birb.png'; birb.alt='Birb'; birb.className='birb';
+  birb.onerror=()=>{ birb.src='assets/icon.svg'; };
   stage.appendChild(birb);
-  const ACCS=[
-    {id:'cap', name:'Cap'}, {id:'bow', name:'Bow'}, {id:'glasses', name:'Glasses'},
-    {id:'scarf', name:'Scarf'}, {id:'boots', name:'Boots'}
-  ];
+
+  const ACCS=[{id:'cap', name:'Cap'},{id:'bow', name:'Bow'},{id:'glasses', name:'Glasses'},{id:'scarf', name:'Scarf'},{id:'boots', name:'Boots'}];
   const list=document.querySelector('#accList'); list.innerHTML='';
-  ACCS.forEach(a=>{ const cb=document.createElement('label'); cb.style.display='flex'; cb.style.gap='8px'; cb.innerHTML=`<input type="checkbox" data-id="${a.id}"> ${a.name}`; list.appendChild(cb); });
-  list.addEventListener('change', e=>{
-    const id=e.target.dataset.id; if(!id) return;
-    const on=e.target.checked; const idx=(S.pet.acc||[]).indexOf(id);
-    if(on && idx<0){ S.pet.acc.push(id); } else if(!on && idx>=0){ S.pet.acc.splice(idx,1); }
-    LS.set('sb_state',S);
+  if(!S.pet) S.pet={acc:[]}; if(!S.pet.acc) S.pet.acc=[];
+  ACCS.forEach(a=>{ const lab=document.createElement('label'); lab.style.display='flex'; lab.style.gap='8px';
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=S.pet.acc.includes(a.id); chk.onchange=()=>{ const on=chk.checked; const idx=S.pet.acc.indexOf(a.id); if(on && idx<0) S.pet.acc.push(a.id); if(!on && idx>=0) S.pet.acc.splice(idx,1); LS.set('sb_state',S); };
+    lab.appendChild(chk); lab.appendChild(document.createTextNode(a.name)); list.appendChild(lab);
   });
 }
 
-// expose a helper to toggle toddler mode if needed
-window.SootheBirbHotfix = { setToddler(v){ S.toddler=!!v; LS.set('sb_state',S); } };
+window.SootheBirbHotfix = { setToddler(v){ const s=LS.get('sb_state',S); s.toddler=!!v; LS.set('sb_state',s);} };

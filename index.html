@@ -84,10 +84,11 @@
     </section>
   </template>
 
-  <!-- CALENDAR -->
+  <!-- CALENDAR (keeps legacy #weekGrid for app.js; adds responsive iframe) -->
   <template id="tpl-calendar">
     <section class="calendar">
       <h2 class="dash">Weekly Calendar</h2>
+      <div class="week-grid" id="weekGrid"></div>
       <div class="embed-wrap">
         <iframe id="gcalFrame" src="" frameborder="0" scrolling="no"></iframe>
       </div>
