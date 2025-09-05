@@ -1,15 +1,10 @@
-/* Toddler Pet v3: same as v2 (coins, buy/equip) + visibility from settings */
+/* Toddler Pet renderer exposure for hub integration — v4 */
 (function(){
   const QS=(s,el=document)=>el.querySelector(s);
   const load=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch{ return d; } };
   const save=(k,v)=>localStorage.setItem(k, JSON.stringify(v));
   const coins=()=>Number(localStorage.getItem('sb.tCoins')||'0');
   const setCoins=n=>localStorage.setItem('sb.tCoins', String(Math.max(0,n)));
-  const settings=()=>load('sb.settings',{});
-  const toddlerOn=()=>!!settings().toddlerToggle;
-
-  function syncVis(){ const show=toddlerOn(); const btn=QS('button[data-route="pet"]'); if(btn) btn.style.display=show?'':'none'; document.querySelectorAll('.tile[data-route="pet"]').forEach(t=>t.style.display=show?'':'none'); }
-  setInterval(syncVis, 1000); window.addEventListener('hashchange', syncVis); document.addEventListener('DOMContentLoaded', syncVis);
 
   const SHOP=[{id:'cap',name:'Cap',cost:1},{id:'bow',name:'Bow',cost:1},{id:'glasses',name:'Glasses',cost:2},{id:'scarf',name:'Scarf',cost:2},{id:'boots',name:'Boots',cost:3}];
   const getPet=()=>load('sb.pet',{owned:[],equipped:[]}); const setPet=p=>save('sb.pet',p);
@@ -26,32 +21,29 @@
       ${elIf(eq.has('bow'), `<g><ellipse cx="84" cy="58" rx="10" ry="7" fill="#ff5ca8"/><ellipse cx="100" cy="58" rx="10" ry="7" fill="#ff5ca8"/><circle cx="92" cy="58" r="5" fill="#ff79c6"/></g>`)}
     </svg>`;
   }
-  function render(){
-    if (location.hash!=='#pet') return;
-    const v=QS('#view'); if(!v) return;
-    if (!toddlerOn()){ v.innerHTML=`<section class="cardish"><h2 class="dash">Toddler Pet</h2><p>Turn on Toddler Mode in Settings.</p></section>`; return; }
-    const p=getPet(); const coinsEl=document.getElementById('petCoins') || (function(){ const h=document.createElement('div'); h.id='petCoins'; return h; })();
-    const stage=QS('#petStage') || (function(){ const s=document.createElement('div'); s.id='petStage'; v.appendChild(s); return s; })();
-    const owned=QS('#accOwned') || (function(){ const d=document.createElement('div'); d.id='accOwned'; v.appendChild(d); return d; })();
-    const store=QS('#accStore') || (function(){ const d=document.createElement('div'); d.id='accStore'; v.appendChild(d); return d; })();
 
-    stage.innerHTML = svg(p.equipped);
-    if (QS('#petCoins')) QS('#petCoins').textContent = String(coins());
-
+  function renderPetPage(){
+    const stage=QS('#petStage'); const coinEl=QS('#petCoins'); const owned=QS('#accOwned'); const store=QS('#accStore');
+    if (!stage || !coinEl || !owned || !store) return;
+    const p=getPet(); stage.innerHTML=svg(p.equipped); coinEl.textContent=String(coins());
     owned.innerHTML=''; p.owned.forEach(id=>{
       const it=SHOP.find(x=>x.id===id); if(!it) return;
       const eq=p.equipped.includes(id);
-      const row=document.createElement('div'); row.className='row'; row.innerHTML=`<span>${it.name}</span><span style="flex:1"></span><button class="primary" data-eq="${id}">${eq?'Unequip':'Equip'}</button>`; owned.appendChild(row);
+      const row=document.createElement('div'); row.className='row';
+      row.innerHTML=`<span>${it.name}</span><span style="flex:1"></span><button class="primary" data-eq="${id}">${eq?'Unequip':'Equip'}</button>`; owned.appendChild(row);
     });
     store.innerHTML=''; SHOP.forEach(it=>{
       const has=p.owned.includes(it.id);
-      const row=document.createElement('div'); row.className='row'; row.innerHTML=`<span>${it.name}</span><span style="flex:1"></span><button class="secondary" data-buy="${it.id}" ${has?'disabled':''}>${has?'Owned':'Buy ('+it.cost+')'}</button>`; store.appendChild(row);
+      const row=document.createElement('div'); row.className='row';
+      row.innerHTML=`<span>${it.name}</span><span style="flex:1"></span><button class="secondary" data-buy="${it.id}" ${has?'disabled':''}>${has?'Owned':'Buy ('+it.cost+')'}</button>`; store.appendChild(row);
     });
   }
   document.addEventListener('click',(e)=>{
     const buy=e.target.closest('[data-buy]'); const eq=e.target.closest('[data-eq]');
-    if (buy){ const id=buy.getAttribute('data-buy'); const it={'cap':1,'bow':1,'glasses':2,'scarf':2,'boots':3}[id]||1; let c=coins(); if(c<it){ alert('Not enough coins'); return;} c-=it; setCoins(c); const p=load('sb.pet',{owned:[],equipped:[]}); if(!p.owned.includes(id)) p.owned.push(id); save('sb.pet',p); render(); try{window.SB_FX&&SB_FX.confetti();}catch{} }
-    if (eq){ const id=eq.getAttribute('data-eq'); const p=load('sb.pet',{owned:[],equipped:[]}); const i=p.equipped.indexOf(id); if(i>=0) p.equipped.splice(i,1); else p.equipped.push(id); save('sb.pet',p); render(); }
+    if (buy){ const id=buy.getAttribute('data-buy'); const cost={'cap':1,'bow':1,'glasses':2,'scarf':2,'boots':3}[id]||1; let c=coins(); if(c<cost){ alert('Not enough coins'); return;} c-=cost; setCoins(c); const p=getPet(); if(!p.owned.includes(id)) p.owned.push(id); setPet(p); renderPetPage(); try{window.SB_FX&&SB_FX.confetti();}catch{} }
+    if (eq){ const id=eq.getAttribute('data-eq'); const p=getPet(); const i=p.equipped.indexOf(id); if(i>=0) p.equipped.splice(i,1); else p.equipped.push(id); setPet(p); renderPetPage(); }
   });
-  window.addEventListener('hashchange', render); document.addEventListener('DOMContentLoaded', render);
+
+  // Expose for core to call
+  window.renderPetPage = renderPetPage;
 })();
