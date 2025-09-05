@@ -1,10 +1,11 @@
-/* Toddler Pet hotfix (nav visibility + buy/equip + layered SVG) */
+/* Toddler Pet hotfix v2 (strict nav/tile visibility + buy/equip + SVG) */
 (function () {
   const LS_COINS = 'sb.tCoins';
   const LS_PET   = 'sb.pet';
   const LS_SETTINGS = 'sb.settings';
 
   const QS  = (s, el=document) => el.querySelector(s);
+  const QSA = (s, el=document) => Array.from(el.querySelectorAll(s));
   const load = (k, def) => { try { const v = localStorage.getItem(k); return v?JSON.parse(v):def; } catch { return def; } };
   const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
 
@@ -16,17 +17,18 @@
   const toddlerOn = () => !!settings().toddlerToggle;
 
   const CATALOG = [
-    { id:'cap',     name:'Cap',     cost:1, layer:'head'  },
-    { id:'bow',     name:'Bow',     cost:1, layer:'head'  },
-    { id:'glasses', name:'Glasses', cost:2, layer:'face'  },
-    { id:'scarf',   name:'Scarf',   cost:2, layer:'neck'  },
-    { id:'boots',   name:'Boots',   cost:3, layer:'feet'  },
+    { id:'cap',     name:'Cap',     cost:1 },
+    { id:'bow',     name:'Bow',     cost:1 },
+    { id:'glasses', name:'Glasses', cost:2 },
+    { id:'scarf',   name:'Scarf',   cost:2 },
+    { id:'boots',   name:'Boots',   cost:3 },
   ];
 
-  function syncNav() {
+  function syncPetVisibility() {
+    const show = toddlerOn();
     const btn = QS('button[data-route="pet"]');
-    if (!btn) return;
-    btn.style.display = toddlerOn() ? '' : 'none';
+    if (btn) btn.style.display = show ? '' : 'none';
+    QSA('.tile[data-route="pet"], a.tile[data-route="pet"]').forEach(t=> t.style.display = show ? '' : 'none');
   }
 
   function elIf(cond, str){ return cond?str:''; }
@@ -48,10 +50,11 @@
     const ownedWrap = QS('#accOwned'); const shopWrap = QS('#accStore');
     const earn = QS('#petEarnHow');
     if (!stage || !coin || !ownedWrap || !shopWrap) return;
-    const pet = getPet(); const coins = getCoins();
-    stage.innerHTML = birbSVG(pet.equipped); coin.textContent = String(coins);
 
-    // owned
+    const pet = getPet(); const coins = getCoins();
+    stage.innerHTML = birbSVG(pet.equipped);
+    coin.textContent = String(coins);
+
     ownedWrap.innerHTML = '';
     pet.owned.forEach(id=>{
       const item = CATALOG.find(x=>x.id===id); if (!item) return;
@@ -62,8 +65,7 @@
       ownedWrap.appendChild(d);
     });
 
-    // shop
-    shopWrap.innerHTML = '';
+    shopWrap.innerHTML='';
     CATALOG.forEach(it=>{
       const has = pet.owned.includes(it.id);
       const d = document.createElement('div'); d.className='cardish';
@@ -75,14 +77,13 @@
     if (earn) earn.onclick = ()=> alert('Play Minigames to earn Toddler Coins. Each clear awards 1 coin.');
   }
 
-  // event delegation
   document.addEventListener('click', (ev)=>{
     const buy = ev.target.closest('[data-buy]');
     const eq  = ev.target.closest('[data-equip]');
     if (buy) {
       const id = buy.getAttribute('data-buy');
       const it = CATALOG.find(x=>x.id===id); if (!it) return;
-      let coins = getCoins(); if (coins < it.cost) return;
+      let coins = getCoins(); if (coins < it.cost) { alert('Not enough coins'); return; }
       coins -= it.cost; setCoins(coins);
       const p = getPet(); if (!p.owned.includes(id)) p.owned.push(id); setPet(p);
       renderPetPage(); return;
@@ -96,7 +97,7 @@
   });
 
   function maybeRender() {
-    syncNav();
+    syncPetVisibility();
     if (location.hash === '#pet') {
       if (!toddlerOn()) {
         const v = QS('#view'); if (v) v.innerHTML = `<section class="cardish"><h2 class="dash">Toddler Pet</h2><p>Turn on <strong>Toddler Mode</strong> in Settings to play with the birb.</p></section>`;
@@ -108,5 +109,5 @@
 
   window.addEventListener('hashchange', maybeRender);
   document.addEventListener('DOMContentLoaded', maybeRender);
-  setInterval(syncNav, 1000);
+  setInterval(syncPetVisibility, 1000);
 })();
