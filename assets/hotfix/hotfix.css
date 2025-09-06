@@ -1,0 +1,39 @@
+
+/* Burger / Drawer */
+#sb-burger{position:fixed;top:.6rem;right:.6rem;width:36px;height:36px;border-radius:10px;
+ background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;
+ z-index:9999;backdrop-filter:blur(6px);cursor:pointer}
+#sb-burger span,#sb-burger:before,#sb-burger:after{content:"";display:block;width:18px;height:2px;background:#fff;border-radius:2px}
+#sb-burger:before{position:absolute;transform:translateY(-6px)}
+#sb-burger:after{position:absolute;transform:translateY(6px)}
+#sb-drawer{position:fixed;top:0;right:0;height:100dvh;width:min(86vw,360px);background:#0e0e12;border-left:1px solid rgba(255,255,255,.1);
+ box-shadow:-12px 0 30px rgba(0,0,0,.35);transform:translateX(100%);transition:.25s transform;z-index:9998;padding:16px}
+#sb-drawer.open{transform:translateX(0)}
+#sb-drawer .drawer-btn{display:block;width:100%;text-align:left;padding:10px 12px;margin:6px 0;border:1px solid rgba(255,255,255,.12);
+ border-radius:10px;background:rgba(255,255,255,.03)}
+
+/* Breathe ring */
+.breathe-stage{display:flex;flex-direction:column;align-items:center;gap:10px}
+#breathCircle{--p:0;background:
+ conic-gradient(#5ef 0 var(--p),rgba(255,255,255,.08) var(--p) 100%),
+ radial-gradient(circle at 50% 50%, rgba(255,255,255,.15), rgba(0,0,0,0) 60%);
+ width:160px;height:160px;border-radius:50%;border:2px solid rgba(255,255,255,.2);
+ box-shadow:0 0 0 6px rgba(94,239,255,.15) inset;cursor:pointer}
+#breathCircle.play{animation:sb-pulse 2s ease-in-out infinite}
+@keyframes sb-pulse{0%{box-shadow:0 0 0 6px rgba(94,239,255,.15) inset}
+ 50%{box-shadow:0 0 0 6px rgba(191,130,255,.25) inset}
+ 100%{box-shadow:0 0 0 6px rgba(94,239,255,.15) inset}}
+
+/* Moods */
+.mood-row .mood{font-size:28px;filter:grayscale(.3);opacity:.6;cursor:pointer;transition:.15s}
+.mood-row .mood.active{filter:none;opacity:1;transform:translateY(-2px)}
+
+/* Toddler-only visibility helper */
+.toddler-hidden{display:none !important}
+
+/* Overlay target images get relative container */
+.sb-portrait{position:relative;display:inline-block}
+.sb-portrait .sb-layer{position:absolute;inset:0;pointer-events:none}
+
+/* Minor polish */
+.fx-layer .crown{filter:drop-shadow(0 6px 10px rgba(255,215,0,.3))}
