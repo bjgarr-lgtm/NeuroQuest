@@ -1,41 +1,48 @@
+import {load, save} from '../util/storage.js';
+import {confetti} from '../ui/fx.js';
 
-import {S, save, addXP, addGold} from '../core/state.js';
-import {confetti, crownDrop} from '../core/fx.js';
+export default function renderHome(root){
+  const s=load();
+  root.innerHTML = `
+    <section class="party-banner">
+      <div class="party-title">Your Party</div>
+      <div class="party" id="partyRow"></div>
+    </section>
+    <section class="grid two">
+      <div class="panel breathe">
+        <div class="ring"><div class="core"></div></div>
+        <div id="phase">Tap the ring</div>
+      </div>
+      <div class="panel card">
+        <h3>Rewards</h3>
+        <div id="rew">Complete quests to unlock!</div>
+      </div>
+    </section>
+  `;
 
-function heroWithOverlays(src){
-  const wrap=document.createElement('div'); wrap.className='hero';
-  const img=new Image(); img.src='assets/'+src; img.className='base'; wrap.appendChild(img);
-  // overlays only for your hero
-  if(src===S.party.you){
-    const map={ 'copper-crown':['crown.svg',{top:'-6px',left:'22px',width:'120px'}],
-               'adventure-cap':['cap.svg',{top:'10px',left:'14px',width:'120px'}],
-               'adventurer-cloak':['cloak.svg',{bottom:'-10px',left:'0',width:'180px'}],
-               'torch':['torch.svg',{right:'-10px',bottom:'10px',width:'60px'}] };
-    (S.wardrobe.equipped||[]).forEach(id=>{
-      const [file,style]=map[id]||[]; if(!file) return; const o=new Image(); o.src='assets/'+file; o.className='overlay';
-      Object.assign(o.style, style); wrap.appendChild(o);
-    });
+  const row=document.getElementById('partyRow');
+  function heroCard(imgSrc, name){
+    const d=document.createElement('div'); d.className='hero';
+    const img=document.createElement('img'); img.src=imgSrc||'assets/icon.svg'; img.alt=name;
+    const cap=document.createElement('div'); cap.className='name'; cap.textContent=name;
+    d.appendChild(img); d.appendChild(cap); return d;
   }
-  return wrap;
-}
+  if(s.party.hero) row.appendChild(heroCard(s.party.hero.src, 'You'));
+  (s.party.companions||[]).forEach(c=> row.appendChild(heroCard(c.src, c.name||'Companion')));
 
-export function home(){
-  const s=document.createElement('section'); s.className='section banner';
-  const row=document.createElement('div'); row.className='row';
-  const label=document.createElement('div'); label.innerHTML='<div style="font-size:20px;opacity:.8">Your Party</div>';
-  row.appendChild(label);
-  row.appendChild(heroWithOverlays(S.party.you));
-  S.party.companions.forEach(c=>row.appendChild(heroWithOverlays(c)));
-  s.appendChild(row);
-
-  // Tiles
-  const tiles=document.createElement('div'); tiles.className='tile-grid';
-  const links=[['tasks','Daily Planner'],['rewards','Rewards'],['clean','Cleaning'],['coop','Co‑Op'],['calendar','Calendar'],
-               ['shop','Shopping'],['budget','Budget'],['meals','Meals'],['character','Character'],['companion','Companion']];
-  if(S.toddler){ links.push(['pet','Toddler Pet']); links.push(['minigames','Minigames']); }
-  for(const [r,label] of links){
-    const a=document.createElement('a'); a.className='tile'; a.textContent=label; a.onclick=()=>{location.hash='#'+r}; tiles.appendChild(a);
+  // Breathe logic (simple phase timer)
+  const ring=document.querySelector('.ring');
+  const phase=document.getElementById('phase');
+  let timer=null, step=0, running=false;
+  const seq=[{t:4000,txt:'Inhale'}, {t:2000,txt:'Hold'}, {t:4000,txt:'Exhale'}, {t:2000,txt:'Hold'}];
+  function tick(){
+    const p=seq[step%seq.length]; phase.textContent=p.txt;
+    timer=setTimeout(()=>{ step++; tick(); }, p.t);
   }
-  s.appendChild(tiles);
-  return s;
+  ring.onclick=()=>{ if(running){ clearTimeout(timer); running=false; phase.textContent='Paused'; return; } running=true; tick(); };
+
+  // HUD update
+  document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
+  const xpEl=document.getElementById('hudXp'); const lvl=document.getElementById('hudLevel');
+  const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
 }

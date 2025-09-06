@@ -1,53 +1,36 @@
 <!doctype html>
-<html lang="en" class="theme-retro">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SootheBirb — Finch Mode</title>
+  <title>SootheBirb — v2.6 modular</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
 </head>
-<body class="pixel crt">
+<body class="crt">
   <header class="app-header">
-    <div class="brand">
-      <img src="assets/icon.svg" alt="" class="logo"/>
+    <div class="brand" id="brand">
+      <img src="assets/icon.svg" class="logo" alt=""/>
       <h1>SootheBirb</h1>
     </div>
-    <button id="hambtn" class="hamburger" aria-label="Menu">☰</button>
-    <nav id="drawer" class="drawer" aria-label="Primary">
-      <a data-route="home">Dashboard</a>
-      <a data-route="tasks">Quests</a>
-      <a data-route="clean">Cleaning</a>
-      <a data-route="coop">Co‑Op</a>
-      <a data-route="budget">Budget</a>
-      <a data-route="meals">Meals</a>
-      <a data-route="calendar">Calendar</a>
-      <a data-route="shop">Shopping</a>
-      <a data-route="character">Character</a>
-      <a data-route="companion">Companion</a>
-      <a data-route="pet" class="toddler-only">Toddler Pet</a>
-      <a data-route="minigames" class="toddler-only">Minigames</a>
-      <a data-route="breathe">Breathe</a>
-      <a data-route="journal">Journal</a>
-      <a data-route="checkin">Check‑In</a>
-      <a data-route="rewards">Rewards</a>
-      <a data-route="settings">Settings</a>
-    </nav>
-    <button id="musicBtn" class="music-toggle" title="Music">♪</button>
+    <div class="hud" id="hud">
+      <div id="partyMini" class="party-mini"></div>
+      <div class="gold" id="hudGold">🪙 0</div>
+      <div class="xp">
+        <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
+        <div class="bar"><div id="hudXp"></div></div>
+      </div>
+      <button id="hamb" class="hamb" aria-label="Menu">☰</button>
+    </div>
   </header>
 
-  <div id="hud" class="hud">
-    <div id="partyAvatars" class="party-avatars"></div>
-    <div class="hud-counters">
-      <span id="hudGold">🪙 0</span>
-      <span id="hudLvl">Lv 1 🔥</span>
-      <div class="xp"><div id="hudXp"></div></div>
-    </div>
-  </div>
+  <aside id="drawer" class="drawer">
+    <nav id="nav"></nav>
+  </aside>
+  <div id="scrim" class="scrim"></div>
 
-  <main id="view" class="view" aria-live="polite"></main>
-  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+  <main id="view" class="view"></main>
 
   <footer class="app-footer">
     <span id="streakLabel">Streak: 0 🔥 | Best: 0</span>
@@ -57,6 +40,8 @@
     <button id="importBtn" class="secondary">Import</button>
   </footer>
 
-  <script type="module" src="js/main.js"></script>
+  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
