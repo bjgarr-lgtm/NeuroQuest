@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SootheBirb — v2.6 modular</title>
+  <title>SootheBirb — v2.6 single-file hotfix</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
@@ -42,14 +42,209 @@
 
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
-  <!-- Core app -->
+  <!-- Your app entry stays the same -->
   <script type="module" src="js/app.js"></script>
 
-  <!-- Accessory + overlay manager -->
-  <script type="module" src="js/asset-db.js"></script>
-  <script type="module" src="js/overlays.js"></script>
+  <!-- 🔧 SINGLE-FILE ACCESSORY HOTFIX (no external module files) -->
+  <script>
+  (function(){
+    // --- 0) One-time NUKE of old giant state to stop quota errors (dev mode) ---
+    try {
+      const MARK = 'sb_nuked_inline_v26';
+      if (!localStorage.getItem(MARK)) {
+        const OLD = ['sb_v26_state','sb_state_mod','sb_state','sb_v25_state','sb_v26_state_backup'];
+        OLD.forEach(k=>localStorage.removeItem(k));
+        // remove any other suspiciously large sb_* keys
+        const toZap=[];
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if (/^sb_.*_state/i.test(k)) toZap.push(k);
+        }
+        toZap.forEach(k=>localStorage.removeItem(k));
+        localStorage.setItem(MARK, '1');
+        console.info('SootheBirb: nuked legacy state (inline hotfix)');
+      }
+    } catch(e){ console.warn('nuke failed', e); }
 
-  <!-- Hotfixes -->
-  <script type="module" src="assets/hotfix/hotfix-accessory-align.js"></script>
+    // --- 1) Tiny LS wrapper (slim only) ---
+    const LS_KEY='sb_v26_state_clean_inline';
+    const Store={
+      load(def){
+        try{ const raw=localStorage.getItem(LS_KEY);
+             if(!raw) return structuredClone(def);
+             const parsed=JSON.parse(raw);
+             return Object.assign(structuredClone(def), parsed);
+        }catch{ return structuredClone(def); }
+      },
+      save(s){
+        try{
+          const slim=structuredClone(s);
+          if (slim.wardrobe && slim.wardrobe.images) delete slim.wardrobe.images;
+          if (slim.overlays && slim.overlays.images) delete slim.overlays.images;
+          if (slim.pet && slim.pet.images) delete slim.pet.images;
+          localStorage.setItem(LS_KEY, JSON.stringify(slim));
+        }catch(e){ console.error('save failed', e); }
+      }
+    };
+
+    // --- 2) IndexedDB (blob store) ---
+    const DB='sb_idb_inline_v1', ST='assets';
+    function openDB(){
+      return new Promise((res,rej)=>{
+        const r=indexedDB.open(DB,1);
+        r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(ST)) db.createObjectStore(ST,{keyPath:'id'}); };
+        r.onsuccess=()=>res(r.result);
+        r.onerror=()=>rej(r.error);
+      });
+    }
+    async function idbPut(file){
+      const db=await openDB();
+      return new Promise((res,rej)=>{
+        const id=Math.random().toString(36).slice(2);
+        const tx=db.transaction(ST,'readwrite'); tx.objectStore(ST).put({id,blob:file});
+        tx.oncomplete=()=>res(id);
+        tx.onerror=()=>rej(tx.error);
+      });
+    }
+    async function idbGetURL(id){
+      const db=await openDB();
+      return new Promise((res,rej)=>{
+        const tx=db.transaction(ST,'readonly'); const q=tx.objectStore(ST).get(id);
+        q.onsuccess=()=>{ const r=q.result; if(!r){ res(null); return; } res(URL.createObjectURL(r.blob)); };
+        q.onerror=()=>rej(q.error);
+      });
+    }
+
+    // --- 3) Overlay manager (per-character) ---
+    class OverlayManager{
+      constructor(layer, state){ this.layer=layer; this.S=state; this.S.overlays=this.S.overlays||{}; }
+      async loadFor(charId){
+        this.layer.innerHTML='';
+        const arr=this.S.overlays[charId]||[];
+        for(const o of arr) this._spawn(o);
+      }
+      async add(charId, ov){
+        const arr=this.S.overlays[charId]||(this.S.overlays[charId]=[]);
+        arr.push(ov); this._spawn(ov); Store.save(this.S);
+      }
+      async clear(charId){ this.S.overlays[charId]=[]; this.layer.innerHTML=''; Store.save(this.S); }
+      _spawn(ov){
+        const img=new Image();
+        img.decoding='async'; img.loading='eager'; img.src=ov.url; img.alt='overlay';
+        img.className='sb-acc-ov'; Object.assign(img.style,{
+          position:'absolute', left:(ov.x*100)+'%', top:(ov.y*100)+'%',
+          transform:`translate(-50%,-50%) scale(${ov.s||1}) rotate(${ov.r||0}deg)`,
+          pointerEvents:'none'
+        });
+        this.layer.appendChild(img);
+      }
+    }
+
+    // --- 4) 🧩 quick align helper (drag/mwheel) ---
+    function ensureAlignButton(){
+      if(document.getElementById('sbAlignBtn')) return;
+      const b=document.createElement('button');
+      b.id='sbAlignBtn'; b.textContent='🧩';
+      Object.assign(b.style,{position:'fixed',right:'14px',bottom:'14px',zIndex:9999,padding:'10px',borderRadius:'12px'});
+      b.title='Align last accessory (drag / wheel / Shift+wheel)';
+      b.onclick=()=>{
+        const layer=document.querySelector('.sb-acc-layer');
+        if(!layer){ alert('Open Character page first.'); return; }
+        const active=layer.querySelector('.sb-acc-ov:last-of-type');
+        if(!active){ alert('Add an accessory first.'); return; }
+        alert('Align: drag = move, wheel = scale, Shift+wheel = rotate (8s)');
+        const onMove=(ev)=>{ const r=layer.getBoundingClientRect();
+          const x=(ev.clientX-r.left)/r.width, y=(ev.clientY-r.top)/r.height;
+          active.style.left=(x*100)+'%'; active.style.top=(y*100)+'%'; };
+        const onWheel=(ev)=>{ ev.preventDefault();
+          const m=(active.style.transform||'').match(/scale\(([^)]+)\).*rotate\(([^)]+)deg\)/);
+          let s=1,r=0; if(m){ s=parseFloat(m[1]); r=parseFloat(m[2]); }
+          if(ev.shiftKey) r+=(ev.deltaY>0?-4:4); else s+=(ev.deltaY>0?-0.06:0.06);
+          active.style.transform=`translate(-50%,-50%) scale(${Math.max(.2,Math.min(5,s))}) rotate(${r}deg)`;
+        };
+        window.addEventListener('mousemove',onMove);
+        window.addEventListener('wheel',onWheel,{passive:false});
+        setTimeout(()=>{ window.removeEventListener('mousemove',onMove); window.removeEventListener('wheel',onWheel); },8000);
+      };
+      document.body.appendChild(b);
+    }
+
+    // --- 5) Hook into your Character page after it renders ---
+    // We don’t touch js/app.js — we just observe route changes and patch the UI.
+    const S = Store.load({party:{leader:'bambi',members:[]}, overlays:{}});
+    function getLeaderId(){
+      try {
+        // try read from DOM select if present
+        const sel=document.querySelector('#leader');
+        if(sel && sel.value) return sel.value;
+        // fallback to stored
+        return (S.party && S.party.leader) || 'bambi';
+      } catch { return 'bambi'; }
+    }
+
+    async function patchCharacterPageIfPresent(){
+      const portrait = document.querySelector('#portrait');
+      if(!portrait) return; // not on character page
+
+      // Ensure overlay layer exists
+      let layer = document.querySelector('#accLayer');
+      if(!layer){
+        const wrap=portrait.parentElement;
+        wrap.style.position='relative';
+        layer=document.createElement('div');
+        layer.id='accLayer';
+        Object.assign(layer.style,{position:'absolute',left:0,top:0,width:'100%',height:'100%',pointerEvents:'none'});
+        wrap.appendChild(layer);
+      }
+
+      const mgr=new OverlayManager(layer, S);
+      await mgr.loadFor(getLeaderId());
+
+      // Wire Add accessory button (works even if app.js created it)
+      const addBtn = document.querySelector('#addAcc');
+      const fileIn = document.querySelector('#accFile');
+      const clrBtn = document.querySelector('#clearAcc');
+
+      if(addBtn && fileIn && !addBtn._sb_wired){
+        addBtn._sb_wired=true;
+        addBtn.addEventListener('click', async ()=>{
+          const f=fileIn.files && fileIn.files[0];
+          if(!f){ alert('Choose an image first'); return; }
+          try{
+            const id=await idbPut(f);
+            const url=await idbGetURL(id);
+            if(!url){ alert('Accessory load failed'); return; }
+            await mgr.add(getLeaderId(), { id, url, x:0.5, y:0.5, s:1, r:0 });
+            Store.save(S);
+            alert('Accessory added. Click 🧩 to align it.');
+          }catch(err){
+            console.error('Accessory add failed', err);
+            alert('Accessory add failed: '+err);
+          }
+        });
+      }
+      if(clrBtn && !clrBtn._sb_wired){
+        clrBtn._sb_wired=true;
+        clrBtn.addEventListener('click', async ()=>{
+          await mgr.clear(getLeaderId());
+          alert('Cleared overlays.');
+        });
+      }
+
+      ensureAlignButton();
+    }
+
+    // Observe hash navigation (your app uses #routes)
+    function onRoute(){
+      // Give app.js a moment to render the page DOM, then patch
+      setTimeout(patchCharacterPageIfPresent, 60);
+    }
+    window.addEventListener('hashchange', onRoute);
+    document.addEventListener('DOMContentLoaded', onRoute);
+    // Also patch shortly after initial load
+    setTimeout(onRoute, 200);
+
+  })();
+  </script>
 </body>
 </html>
