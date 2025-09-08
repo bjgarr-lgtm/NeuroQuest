@@ -1,6 +1,6 @@
 // character.js — character & party view + overlay editor (v2.6 modular)
 import { load, save } from './storage.js';
-import { applyOverlaysTo, addOverlayFromFile, overlayKeyForImage, clearOverlaysFor } from './overlays.js';
+import { applyOverlaysTo, addOverlayFromFile, overlayKeyForImage, clearOverlaysForKey } from './overlays.js';
 
 const defaults = {
   user: { name: 'Hero' },
@@ -12,7 +12,7 @@ const defaults = {
 
 let S = load(defaults);
 
-export function initCharacterView(root) {
+export async function init(root) {
   root.innerHTML = `
     <section class="cardish">
       <h2 class="dash">Choose Your Hero</h2>
@@ -30,15 +30,12 @@ export function initCharacterView(root) {
         <button id="accAdd" class="primary">Add Accessory</button>
         <button id="accClear" class="danger">Clear Accessories</button>
       </div>
-      <small>Tip: position precisely with the Accessory Align editor if you included it.</small>
+      <small>Tip: pair this with the Accessory Align editor for pixel‑perfect placement.</small>
     </section>
   `;
 
   const portrait = root.querySelector('#charPortrait');
-  if (!S.party.leader) {
-    S.party.leader = 'bambi';
-    save(S);
-  }
+  if (!S.party.leader) { S.party.leader = 'bambi'; save(S); }
   portrait.src = leaderSrc(S.party.leader);
   portrait.setAttribute('data-char-id', S.party.leader);
 
@@ -54,8 +51,7 @@ export function initCharacterView(root) {
     const btn = e.target.closest('[data-char]');
     if (!btn) return;
     const id = btn.dataset.char;
-    S.party.leader = id;
-    save(S);
+    S.party.leader = id; save(S);
     portrait.src = leaderSrc(id);
     portrait.setAttribute('data-char-id', id);
     applyOverlaysTo(portrait);
@@ -67,10 +63,8 @@ export function initCharacterView(root) {
   upFile.addEventListener('change', () => {
     const f = upFile.files?.[0]; if (!f) return;
     const url = URL.createObjectURL(f);
-    S.party.leader = `custom_${Date.now()}`;
-    save(S);
-    portrait.src = url;
-    portrait.setAttribute('data-char-id', S.party.leader);
+    S.party.leader = `custom_${Date.now()}`; save(S);
+    portrait.src = url; portrait.setAttribute('data-char-id', S.party.leader);
     applyOverlaysTo(portrait);
   });
 
@@ -88,14 +82,14 @@ export function initCharacterView(root) {
 
   accClear.addEventListener('click', () => {
     const key = overlayKeyForImage(portrait);
-    clearOverlaysFor(key);
+    clearOverlaysForKey(key);
     applyOverlaysTo(portrait);
   });
 
   applyOverlaysTo(portrait);
 }
 
-function leaderSrc(id) {
+function leaderSrc(id){
   const map = {
     bambi: 'assets/characters/hero-bambi.png',
     ash:   'assets/characters/hero-ash.png',
