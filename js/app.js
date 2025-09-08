@@ -9,6 +9,8 @@ import renderCharacter from './pages/character.js';
 import renderJournal from './pages/journal.js';
 import renderToddler from './pages/toddler.js';
 import renderRewards from './pages/rewards.js';
+import renderCharacter from './pages/character.js';
+
 
 const routes=[
   {id:'home', label:'Dashboard', view:renderHome},
@@ -18,6 +20,7 @@ const routes=[
   {id:'journal', label:'Journal + Check-In', view:renderJournal},
   {id:'toddler', label:'Toddler Hub', view:renderToddler},
   {id:'rewards', label:'Rewards', view:renderRewards},
+
 ];
 
 initDrawer(routes);
