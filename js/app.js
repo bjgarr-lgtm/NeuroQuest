@@ -18,7 +18,6 @@ const routes=[
   {id:'journal', label:'Journal + Check-In', view:renderJournal},
   {id:'toddler', label:'Toddler Hub', view:renderToddler},
   {id:'rewards', label:'Rewards', view:renderRewards},
-
 ];
 
 initDrawer(routes);
