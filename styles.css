@@ -176,3 +176,6 @@ button:disabled{opacity:.55}
 
 /* Try to hide legacy tiny arrow buttons inside hero box if present */
 .accfix-hero-slot .nudge, .accfix-hero-slot .tiny, .accfix-hero-slot .btn-nudge { display: none !important; }
+
+/* Patch: hide floating accessory quick-controls */
+.sb-align-bar, .acc-toolbar { display: none !important; }
