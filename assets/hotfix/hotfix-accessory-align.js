@@ -1,51 +1,116 @@
-/* SootheBirb – Accessory Align Hotfix (v2)
- * - Hides legacy micro-buttons in the hero panel
- * - Reorders 'Change Hero Portrait' ABOVE 'Upload Accessory PNG'
- * - Leaves the rest of the editor intact
+/* --- SootheBirb UI Polish v3 ---
+ * Reorder hero > accessory upload rows, hide old tips,
+ * and restore a simple "Companions" uploader/preview.
  */
 (function(){
-  function q(sel, root=document){ return root.querySelector(sel); }
-  function qa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+  const $ = (s, r=document)=>r.querySelector(s);
+  const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
-  function hideLegacyButtons(){
-    const heroPanel = q('[class*="hero"], [data-hero], .hero');
-    if (!heroPanel) return;
-    qa('button, .btn, .tiny, .nudge', heroPanel).forEach(b => {
-      const txt = (b.textContent || '').trim();
-      if (/^[↑↓←→+–-]$/.test(txt) || ['↶','↷'].includes(txt)) b.style.display = 'none';
+  function moveHeroRowAboveAccessory(){
+    const view = $('#view')||document;
+    // Collect candidate rows
+    const rows = $$('.row, .file-row, .accfix-row, .accfix-file, .field', view);
+    let heroRow=null, accRow=null;
+    rows.forEach(r=>{
+      const t=(r.textContent||'').toLowerCase();
+      if(!heroRow && (t.includes('change hero portrait') || t.includes('hero portrait'))) heroRow=r;
+      if(!accRow && (t.includes('upload accessory') || t.includes('add accessory'))) accRow=r;
     });
-    // Hide any floating tip text
-    qa('.accfix-tip, .acc-tip').forEach(el => el.style.display = 'none');
+    if(heroRow && accRow && heroRow.compareDocumentPosition && (accRow.compareDocumentPosition(heroRow) & Node.DOCUMENT_POSITION_FOLLOWING)){
+      // Insert heroRow right before accRow
+      accRow.parentElement.insertBefore(heroRow, accRow);
+    }
   }
 
-  function reorderFileRows(){
-    const view = q('#view') || document.body;
-    // Find rows by their label text
-    const rows = qa('.file-row, .accfix-file, .field', view);
-    let heroRow=null, accRow=null;
-    rows.forEach(r => {
-      const t = (r.textContent || '').toLowerCase();
-      if (!heroRow && (t.includes('change hero portrait') || t.includes('hero portrait'))) heroRow=r;
-      if (!accRow && (t.includes('upload accessory') || t.includes('add accessory'))) accRow=r;
+  function hideLegacyMicroButtons(){
+    const heroPanel = $('[class*="hero"], [data-hero], .hero');
+    if(!heroPanel) return;
+    $$('.tiny, .nudge, button', heroPanel).forEach(b=>{
+      const txt=(b.textContent||'').trim();
+      if(/^[↑↓←→+–-]$/.test(txt) || ['↶','↷'].includes(txt)) b.style.display='none';
     });
-    if (heroRow && accRow) {
-      const parent = accRow.parentElement;
-      if (parent && parent.contains(heroRow)) {
-        // place heroRow before accRow
-        parent.insertBefore(heroRow, accRow);
+    $$('.accfix-tip, .acc-tip').forEach(el=>el.style.display='none');
+  }
+
+  // --- Companions uploader --------------------------------------------------
+  function ensureCompanionPanel(){
+    // Find right column by heading text "Companions"
+    let compTitle = Array.from(document.querySelectorAll('h2,h3')).find(h=>/companions/i.test(h.textContent||''));
+    if(!compTitle) return;
+    let panel = compTitle.parentElement;
+    // Create uploader UI if missing
+    if(!$('.companion-panel', panel)){
+      const wrap = document.createElement('div');
+      wrap.className='companion-panel';
+      wrap.innerHTML = `
+        <div class="companion-uploader">
+          <strong>Add Companion PNG</strong>
+          <input type="file" accept="image/png,image/*" id="cmpUpload">
+          <button id="cmpAdd" class="btn">Add</button>
+        </div>
+        <div class="companion-list" id="cmpList" aria-live="polite"></div>
+      `;
+      panel.appendChild(wrap);
+
+      const input = $('#cmpUpload', wrap);
+      const btn = $('#cmpAdd', wrap);
+      const list = $('#cmpList', wrap);
+
+      function addCompanion(file){
+        if(!file) return;
+        const url = URL.createObjectURL(file);
+        const item = document.createElement('div');
+        item.className='companion-item';
+        item.innerHTML = `<img alt="Companion" src="${url}"><button class="btn btn-small">Remove</button>`;
+        item.querySelector('button').addEventListener('click', ()=>{
+          URL.revokeObjectURL(url);
+          item.remove();
+          persist();
+        });
+        list.appendChild(item);
+        persist();
       }
+
+      function persist(){
+        try{
+          const imgs = Array.from(list.querySelectorAll('img')).map(img=>img.src);
+          localStorage.setItem('sb_companions_v1', JSON.stringify(imgs));
+        }catch{}
+      }
+
+      function restore(){
+        try{
+          const imgs = JSON.parse(localStorage.getItem('sb_companions_v1')||'[]');
+          imgs.forEach(src=>{
+            const item = document.createElement('div');
+            item.className='companion-item';
+            item.innerHTML = `<img alt="Companion" src="${src}"><button class="btn btn-small">Remove</button>`;
+            item.querySelector('button').addEventListener('click', ()=>{
+              item.remove(); persist();
+            });
+            list.appendChild(item);
+          });
+        }catch{}
+      }
+
+      btn.addEventListener('click', ()=>addCompanion(input.files && input.files[0]));
+      input.addEventListener('change', ()=>{/* optional auto-add on select */});
+
+      restore();
     }
+  }
+
+  function run(){
+    moveHeroRowAboveAccessory();
+    hideLegacyMicroButtons();
+    ensureCompanionPanel();
   }
 
   function onRoute(){
-    const hash=(location.hash||'#').toLowerCase();
-    if (hash.includes('character') || hash.includes('characters')) {
-      setTimeout(()=>{ hideLegacyButtons(); reorderFileRows(); }, 120);
-    }
+    const h=(location.hash||'#').toLowerCase();
+    if(h.includes('character')) setTimeout(run, 120);
   }
   window.addEventListener('hashchange', onRoute);
   document.addEventListener('DOMContentLoaded', onRoute);
-
-  // Run once just in case
-  setTimeout(()=>{ hideLegacyButtons(); reorderFileRows(); }, 200);
+  setTimeout(run, 200);
 })();
