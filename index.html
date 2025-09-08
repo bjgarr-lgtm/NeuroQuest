@@ -3,10 +3,21 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SootheBirb — v2.6 single-file hotfix</title>
+  <title>SootheBirb — v2.6 single-file align hotfix</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
+  <style>
+    /* tiny helper styles so the toolbar looks sane even without CSS changes */
+    .sb-align-bar{position:absolute; left:8px; top:8px; display:flex; gap:6px;
+      background:rgba(10,10,20,.7); border:1px solid #4af; border-radius:10px; padding:6px; z-index:999}
+    .sb-align-bar button{padding:6px 10px; border-radius:8px; border:1px solid #79f; background:#122; color:#fff; cursor:pointer}
+    .sb-align-hint{position:absolute; right:8px; top:8px; background:rgba(0,0,0,.55); color:#fff;
+      padding:6px 10px; border-radius:10px; font-size:.8rem; z-index:999; border:1px solid #456}
+    .sb-acc-layer{position:absolute; left:0; top:0; width:100%; height:100%}
+    .sb-acc-ov{position:absolute; transform:translate(-50%,-50%) scale(1) rotate(0deg); cursor:grab; user-select:none}
+    .sb-acc-ov:active{cursor:grabbing}
+  </style>
 </head>
 <body class="crt">
   <header class="app-header">
@@ -39,156 +50,233 @@
 
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
-  <!-- 0) STORAGE SHIM — MUST LOAD BEFORE YOUR APP -->
+  <!-- 0) STORAGE SHIM (prevents quota crashes) -->
   <script>
   (function(){
-    // Wipe the giant legacy key once (dev mode safety)
-    try { localStorage.removeItem('sb_v26_state'); } catch(e){}
-
     const origSet = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, val){
-      // Intercept the old giant blob and prune huge fields before saving
       if (key === 'sb_v26_state') {
         try {
           const obj = JSON.parse(val);
-          // Kill any accidental image blobs/base64 branches
           if (obj?.wardrobe?.images) delete obj.wardrobe.images;
           if (obj?.pet?.images) delete obj.pet.images;
           if (obj?.overlays?.images) delete obj.overlays.images;
-          // Also clamp history arrays if they exist
           if (Array.isArray(obj?.journal)) obj.journal = obj.journal.slice(-50);
           if (Array.isArray(obj?.moods)) obj.moods = obj.moods.slice(-100);
           val = JSON.stringify(obj);
-        } catch(e) {/* ignore and try to save anyway */}
+        } catch(e) {}
       }
-      try {
-        return origSet(key, val);
-      } catch (e) {
-        console.warn('storage shim: quota on', key, e);
-        // Last-chance tiny save path to avoid hard crashes
-        try {
+      try { return origSet(key, val); }
+      catch(e){
+        try{
           const obj = JSON.parse(val);
-          const tiny = {
-            user: obj.user, xp: obj.xp, gold: obj.gold,
-            streak: obj.streak, settings: obj.settings,
-            party: obj.party, overlays: obj.overlays
-          };
+          const tiny = { user: obj.user, xp: obj.xp, gold: obj.gold,
+                         streak: obj.streak, settings: obj.settings,
+                         party: obj.party, overlays: obj.overlays };
           return origSet(key, JSON.stringify(tiny));
-        } catch(e2) { /* give up silently */ }
+        }catch(e2){ /* swallow */ }
       }
     };
   })();
   </script>
 
-  <!-- 1) YOUR APP ENTRY (unchanged) -->
+  <!-- 1) YOUR APP (unchanged) -->
   <script type="module" src="js/app.js"></script>
 
-  <!-- 2) INLINE ACCESSORY SYSTEM (IndexedDB + overlay manager + align tool) -->
+  <!-- 2) Inline IDB + overlay + ALIGN TOOL that’s visible on Character -->
   <script>
   (function(){
-    // --- Lightweight state for overlays only (kept tiny) ---
-    const KEY='sb_v26_overlay_state';
-    const OverlayStore = {
-      get(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch{ return {}; } },
-      set(v){ try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){ console.warn('overlay store fail', e); } }
+    // Small, separate state for overlays so we never bloat your main state
+    const OKEY='sb_v26_overlay_state';
+    const OStore = {
+      get(){ try{ return JSON.parse(localStorage.getItem(OKEY))||{} }catch{ return {} } },
+      set(v){ try{ localStorage.setItem(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
     };
 
-    // --- IndexedDB blob store for accessory images ---
+    // IndexedDB for accessory images (no localStorage quota issue)
     const DB='sb_idb_inline_v1', ST='assets';
     function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1);
-      r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(ST)) db.createObjectStore(ST,{keyPath:'id'}); };
-      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+      r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(ST)) db.createObjectStore(ST,{keyPath:'id'}) };
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error) }) }
     async function idbPut(file){ const db=await openDB(); return new Promise((res,rej)=>{ const id=Math.random().toString(36).slice(2);
-      const tx=db.transaction(ST,'readwrite'); tx.objectStore(ST).put({id,blob:file}); tx.oncomplete=()=>res(id); tx.onerror=()=>rej(tx.error); }); }
+      const tx=db.transaction(ST,'readwrite'); tx.objectStore(ST).put({id,blob:file}); tx.oncomplete=()=>res(id); tx.onerror=()=>rej(tx.error) }) }
     async function idbGetURL(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(ST,'readonly'); const q=tx.objectStore(ST).get(id);
-      q.onsuccess=()=>{ const r=q.result; res(r?URL.createObjectURL(r.blob):null); }; q.onerror=()=>rej(q.error); }); }
+      q.onsuccess=()=>res(q.result?URL.createObjectURL(q.result.blob):null); q.onerror=()=>rej(q.error) }) }
 
-    // --- Overlay manager (per leader char) ---
     class OverlayMgr{
-      constructor(layer){ this.layer=layer; this.state=OverlayStore.get(); }
-      _arr(id){ return this.state[id]||(this.state[id]=[]); }
-      save(){ OverlayStore.set(this.state); }
-      async load(id){ this.layer.innerHTML=''; for(const o of this._arr(id)) this._spawn(o); }
-      async add(id, o){ this._arr(id).push(o); this._spawn(o); this.save(); }
-      async clear(id){ this.state[id]=[]; this.layer.innerHTML=''; this.save(); }
+      constructor(layer){ this.layer=layer; this.S=OStore.get() }
+      _arr(id){ return this.S[id]||(this.S[id]=[]) }
+      save(){ OStore.set(this.S) }
+      async load(id){ this.layer.innerHTML=''; for(const o of this._arr(id)) this._spawn(o) }
+      async add(id,o){ this._arr(id).push(o); this._spawn(o); this.save() }
+      async clear(id){ this.S[id]=[]; this.layer.innerHTML=''; this.save() }
       _spawn(o){
-        const img=new Image(); img.decoding='async'; img.loading='eager'; img.alt='overlay';
-        img.src=o.url; img.className='sb-acc-ov'; Object.assign(img.style,{
-          position:'absolute', left:(o.x*100)+'%', top:(o.y*100)+'%',
-          transform:`translate(-50%,-50%) scale(${o.s||1}) rotate(${o.r||0}deg)`,
-          pointerEvents:'none'
-        }); this.layer.appendChild(img);
+        const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=o.url; img.alt='overlay';
+        img.className='sb-acc-ov';
+        img.dataset.x=o.x??0.5; img.dataset.y=o.y??0.5; img.dataset.s=o.s??1; img.dataset.r=o.r??0;
+        this._apply(img); this.layer.appendChild(img)
+      }
+      _apply(el){
+        const x=parseFloat(el.dataset.x), y=parseFloat(el.dataset.y),
+              s=parseFloat(el.dataset.s), r=parseFloat(el.dataset.r);
+        el.style.left=(x*100)+'%'; el.style.top=(y*100)+'%';
+        el.style.transform=`translate(-50%,-50%) scale(${s}) rotate(${r}deg)`
+      }
+      updateLastTransform(id){
+        const arr=this._arr(id); if(!arr.length) return;
+        const last=this.layer.querySelector('.sb-acc-ov:last-of-type'); if(!last) return;
+        arr[arr.length-1] = {
+          id: arr[arr.length-1].id,
+          url: arr[arr.length-1].url,
+          x: parseFloat(last.dataset.x),
+          y: parseFloat(last.dataset.y),
+          s: parseFloat(last.dataset.s),
+          r: parseFloat(last.dataset.r)
+        };
+        this.save();
       }
     }
 
-    // Align tool (drag, wheel, Shift+wheel)
-    function ensureAlignBtn(){
-      if(document.getElementById('sbAlignBtn')) return;
-      const b=document.createElement('button'); b.id='sbAlignBtn'; b.textContent='🧩';
-      Object.assign(b.style,{position:'fixed',right:'14px',bottom:'14px',zIndex:9999,padding:'10px',borderRadius:'12px'});
-      b.title='Align last accessory (drag / wheel / Shift+wheel)';
-      b.onclick=()=>{
-        const layer=document.querySelector('.sb-acc-layer'); if(!layer){ alert('Open Character page first.'); return; }
-        const active=layer.querySelector('.sb-acc-ov:last-of-type'); if(!active){ alert('Add an accessory first.'); return; }
-        alert('Align: drag = move, wheel = scale, Shift+wheel = rotate (8s)');
-        const onMove=(ev)=>{ const r=layer.getBoundingClientRect(); const x=(ev.clientX-r.left)/r.width, y=(ev.clientY-r.top)/r.height;
-          active.style.left=(x*100)+'%'; active.style.top=(y*100)+'%'; };
-        const onWheel=(ev)=>{ ev.preventDefault(); const m=(active.style.transform||'').match(/scale\\(([^)]+)\\).*rotate\\(([^)]+)deg\\)/);
-          let s=1,r=0; if(m){ s=parseFloat(m[1]); r=parseFloat(m[2]); } if(ev.shiftKey) r+=(ev.deltaY>0?-4:4); else s+=(ev.deltaY>0?-0.06:0.06);
-          active.style.transform=`translate(-50%,-50%) scale(${Math.max(.2,Math.min(5,s))}) rotate(${r}deg)`; };
-        window.addEventListener('mousemove',onMove); window.addEventListener('wheel',onWheel,{passive:false});
-        setTimeout(()=>{ window.removeEventListener('mousemove',onMove); window.removeEventListener('wheel',onWheel); },8000);
-      };
-      document.body.appendChild(b);
+    // Build a visible align toolbar inside the portrait wrapper
+    function injectAlignUI(wrap, mgr, leaderId){
+      // remove existing
+      wrap.querySelector('.sb-align-bar')?.remove();
+      wrap.querySelector('.sb-align-hint')?.remove();
+
+      const bar=document.createElement('div'); bar.className='sb-align-bar';
+      bar.innerHTML = `
+        <button data-act="align">Enable Align</button>
+        <button data-act="save">Save</button>
+        <button data-act="clear">Clear</button>
+        <button data-act="exit">Exit</button>
+      `;
+      const hint=document.createElement('div'); hint.className='sb-align-hint';
+      hint.textContent='Drag to move · Wheel to scale · Q/E to rotate';
+      wrap.appendChild(bar); wrap.appendChild(hint);
+
+      let active=null, dragging=false, lastPos=null;
+
+      function pickLast(){
+        active = wrap.querySelector('.sb-acc-ov:last-of-type');
+        return !!active;
+      }
+      function enableAlign(){
+        if(!pickLast()){ alert('Add an accessory first.'); return; }
+        // allow interaction
+        active.style.pointerEvents='auto';
+        // move
+        active.addEventListener('mousedown', onDown);
+        // scale (hover anywhere on wrapper)
+        wrap.addEventListener('wheel', onWheel, {passive:false});
+        // rotate by keys
+        window.addEventListener('keydown', onKey);
+      }
+      function disableAlign(){
+        if(active){
+          active.style.pointerEvents='none';
+          active.removeEventListener('mousedown', onDown);
+        }
+        wrap.removeEventListener('wheel', onWheel);
+        window.removeEventListener('keydown', onKey);
+        active=null; dragging=false; lastPos=null;
+      }
+      function onDown(ev){
+        ev.preventDefault(); dragging=true;
+        const r=wrap.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      }
+      function onMove(ev){
+        if(!dragging||!active||!lastPos) return;
+        const {r}=lastPos;
+        let x=(ev.clientX - r.left)/r.width, y=(ev.clientY - r.top)/r.height;
+        x=Math.max(0,Math.min(1,x)); y=Math.max(0,Math.min(1,y));
+        active.dataset.x=x; active.dataset.y=y;
+        const xS=(x*100)+'%'; const yS=(y*100)+'%';
+        active.style.left=xS; active.style.top=yS;
+      }
+      function onUp(){
+        dragging=false; window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        mgr.updateLastTransform(leaderId);
+      }
+      function onWheel(ev){
+        if(!active) return;
+        ev.preventDefault();
+        const s=parseFloat(active.dataset.s)||1;
+        const delta = (ev.deltaY>0 ? -0.06 : 0.06);
+        const ns = Math.max(.2, Math.min(5, s+delta));
+        active.dataset.s = ns.toFixed(3);
+        applyTRS();
+      }
+      function onKey(ev){
+        if(!active) return;
+        if(ev.key==='q' || ev.key==='Q'){ rotate(-4) }
+        else if(ev.key==='e' || ev.key==='E'){ rotate(4) }
+      }
+      function rotate(d){
+        const r=parseFloat(active.dataset.r)||0;
+        active.dataset.r=(r+d).toFixed(2);
+        applyTRS();
+      }
+      function applyTRS(){
+        const s=parseFloat(active.dataset.s)||1;
+        const r=parseFloat(active.dataset.r)||0;
+        active.style.transform=`translate(-50%,-50%) scale(${s}) rotate(${r}deg)`;
+      }
+
+      bar.addEventListener('click', (e)=>{
+        const act = e.target.getAttribute('data-act');
+        if(!act) return;
+        if(act==='align'){ enableAlign(); }
+        if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory transform.'); }
+        if(act==='clear'){ disableAlign(); mgr.clear(leaderId); }
+        if(act==='exit'){ disableAlign(); bar.remove(); hint.remove(); }
+      });
     }
 
-    // Route observer: patch Character page after your app renders it
-    function currentLeaderId(){
+    // Patch Character page after your app renders it
+    function leaderId(){
       const sel=document.querySelector('#leader');
-      if(sel && sel.value) return sel.value;
-      // fallback: try to read from small overlay store’s last known, else bambi
-      const st=OverlayStore.get(); return st.__lastLeader || 'bambi';
+      return sel?.value || 'bambi';
     }
-    function rememberLeader(id){ const st=OverlayStore.get(); st.__lastLeader=id; OverlayStore.set(st); }
-
     async function patchCharacter(){
       const portrait=document.querySelector('#portrait'); if(!portrait) return;
-      let layer=document.querySelector('.sb-acc-layer');
-      if(!layer){
-        portrait.parentElement.style.position='relative';
-        layer=document.createElement('div'); layer.className='sb-acc-layer';
-        Object.assign(layer.style,{position:'absolute',left:0,top:0,width:'100%',height:'100%',pointerEvents:'none'});
-        portrait.parentElement.appendChild(layer);
-      }
-      const mgr=new OverlayMgr(layer);
-      const leaderSel=document.querySelector('#leader');
-      const leaderId=leaderSel?.value || currentLeaderId(); rememberLeader(leaderId);
-      await mgr.load(leaderId);
+      const wrap=portrait.parentElement;
+      // ensure layer
+      let layer=wrap.querySelector('.sb-acc-layer');
+      if(!layer){ layer=document.createElement('div'); layer.className='sb-acc-layer'; wrap.appendChild(layer) }
 
+      const mgr=new OverlayMgr(layer);
+      await mgr.load(leaderId());
+
+      // wire buttons if present
       const addBtn=document.querySelector('#addAcc');
       const fileIn=document.querySelector('#accFile');
       const clrBtn=document.querySelector('#clearAcc');
-
-      if(addBtn && fileIn && !addBtn._sb_wired){
-        addBtn._sb_wired=true;
+      if(addBtn && fileIn && !addBtn._wired){
+        addBtn._wired=true;
         addBtn.addEventListener('click', async ()=>{
           const f=fileIn.files && fileIn.files[0]; if(!f){ alert('Choose an image first'); return; }
           try{
             const id=await idbPut(f); const url=await idbGetURL(id);
             if(!url){ alert('Accessory load failed'); return; }
-            await mgr.add(leaderSel?.value || currentLeaderId(), { id, url, x:0.5, y:0.5, s:1, r:0 });
-            alert('Accessory added. Click 🧩 to align it.');
-          }catch(err){ console.error('Accessory add failed', err); alert('Accessory add failed: '+err); }
+            await mgr.add(leaderId(), { id, url, x:0.5, y:0.5, s:1, r:0 });
+            injectAlignUI(wrap, mgr, leaderId());
+            alert('Accessory added. Use the Align toolbar (top-left of portrait).');
+          }catch(err){ console.error(err); alert('Accessory add failed: '+err); }
         });
       }
-      if(clrBtn && !clrBtn._sb_wired){
-        clrBtn._sb_wired=true;
-        clrBtn.addEventListener('click', async ()=>{ await mgr.clear(leaderSel?.value || currentLeaderId()); alert('Cleared overlays.'); });
+      if(clrBtn && !clrBtn._wired){
+        clrBtn._wired=true;
+        clrBtn.addEventListener('click', async ()=>{ await mgr.clear(leaderId()); alert('Cleared overlays.'); });
       }
-      ensureAlignBtn();
+
+      // if there’s already an overlay, show the toolbar
+      if (layer.querySelector('.sb-acc-ov')) injectAlignUI(wrap, mgr, leaderId());
     }
 
-    function onRoute(){ setTimeout(patchCharacter, 60); }
+    function onRoute(){ setTimeout(patchCharacter, 60) }
     window.addEventListener('hashchange', onRoute);
     document.addEventListener('DOMContentLoaded', onRoute);
     setTimeout(onRoute, 200);
