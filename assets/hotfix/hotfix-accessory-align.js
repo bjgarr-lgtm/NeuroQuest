@@ -1,127 +1,265 @@
-// hotfix-accessory-align.js — floating editor wired to overlays.js (ESM)
-import { overlayKeyForImage, listPlacements, setPlacementAt, replacePlacements, addOverlayFromFile, applyOverlaysTo } from '../js/overlays.js';
+/* assets/hotfix/hotfix-accessory-align.js
+   Accessory Drag/Resize/Rotate hotfix for SootheBirb v2.6
+   - Works against whatever your Character view renders.
+   - Persists per-accessory transform in localStorage (sb_v26_acc_xforms).
+   - Applies transforms automatically on page render & on DOM mutations.
+*/
+(() => {
+  const LS_KEY = 'sb_v26_acc_xforms';
 
-function findPortrait(){
-  const view=document.querySelector('#view')||document.body;
-  let img=view.querySelector('.char-portrait img, .portrait img, img.portrait, img.char, img.character');
-  if(img) return img;
-  img=view.querySelector('.party-banner img, .party-members img');
-  if(img) return img;
-  return view.querySelector('img');
-}
+  const getState = () => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+    catch { return {}; }
+  };
+  const setState = (obj) => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); }
+    catch (e) {
+      console.warn('Accessory xform save failed, trimming…', e);
+      // very defensive: drop oldest half if we ever hit quota here
+      const entries = Object.entries(obj).slice(-200);
+      localStorage.setItem(LS_KEY, JSON.stringify(Object.fromEntries(entries)));
+    }
+  };
 
-function ensureStyles(){
-  if(document.getElementById('sb-align-style')) return;
-  const css=`
-  .sb-acc-fab{position:fixed;right:16px;bottom:86px;z-index:99999;border-radius:50%;width:48px;height:48px;font-size:24px;background:#0ff5;border:1px solid #0ff9;color:#fff;backdrop-filter:blur(6px)}
-  .sb-acc-panel{position:fixed;right:16px;bottom:146px;width:380px;max-width:92vw;background:rgba(18,22,32,.95);color:#eee;border:1px solid #4cf;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.45);z-index:99998;font-family:system-ui,sans-serif}
-  .sb-acc-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #3af}
-  .sb-acc-tools{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap}
-  .sbbtn{background:#1e2b;color:#fff;border:1px solid #6cf;border-radius:10px;padding:6px 10px;cursor:pointer}
-  .sbhint{opacity:.7;font-size:12px}
-  .sb-portrait-wrap{position:relative;display:inline-block}
-  .sb-acc-layer{position:absolute;inset:0;pointer-events:none}
-  .sb-list{max-height:160px;overflow:auto;padding:8px 12px;border-top:1px solid #234}
-  .sb-row{display:flex;align-items:center;gap:8px;margin:6px 0}
-  .sb-row input[type="range"]{flex:1}
-  `;
-  const el=document.createElement('style'); el.id='sb-align-style'; el.textContent=css; document.head.appendChild(el);
-}
+  // A “key” that stays the same every time we see the same accessory img.
+  function keyForImg(img) {
+    // Prefer an explicit data key if your app provides one.
+    return (
+      img.getAttribute('data-acc-key') ||
+      img.getAttribute('data-key') ||
+      // fall back to src (works for data: and file names)
+      (img.src || '').slice(0, 256)
+    );
+  }
 
-function createEditor(){
-  ensureStyles();
-  const img=findPortrait();
-  if(!img){ alert('No portrait image found on this screen.'); return; }
-  const key=overlayKeyForImage(img);
-  let wrap=img.closest('.sb-portrait-wrap');
-  if(!wrap){ wrap=document.createElement('div'); wrap.className='sb-portrait-wrap'; img.parentNode.insertBefore(wrap,img); wrap.appendChild(img); wrap.style.display='inline-block'; wrap.style.position='relative'; }
-  let layer=wrap.querySelector('.sb-acc-layer'); if(!layer){ layer=document.createElement('div'); layer.className='sb-acc-layer'; wrap.appendChild(layer); }
+  // Return the portrait container for the current Character page.
+  function findPortraitRoot() {
+    // try several common containers used in your builds
+    const sel = [
+      '.hero-portrait', '.char-hero', '.character-hero',
+      '.avatar-wrap', '.avatar', '.portrait', '#heroPreview',
+      '.cardish .avatar', '.cardish .portrait'
+    ];
+    for (const s of sel) {
+      const el = document.querySelector(s);
+      if (el) return el;
+    }
+    // last resort: the first cardish that contains a single <img>
+    const fallback = Array.from(document.querySelectorAll('.cardish'))
+      .find(c => c.querySelector('img'));
+    return fallback || null;
+  }
 
-  let panel=document.querySelector('.sb-acc-panel'); if(panel) panel.remove();
-  panel=document.createElement('div'); panel.className='sb-acc-panel';
-  panel.innerHTML=`
-    <div class="sb-acc-head"><strong>Accessory Align</strong><div style="flex:1"></div><button class="sbbtn" data-act="close">✕</button></div>
-    <div class="sb-acc-tools">
-      <input type="file" accept="image/*" class="sbfile"/>
-      <button class="sbbtn" data-act="add">Add</button>
-      <button class="sbbtn" data-act="clear">Clear All</button>
-      <span class="sbhint">Drag=move • Wheel=scale • Shift+Wheel=rotate</span>
-    </div>
-    <div class="sb-list" id="sbList"></div>
-  `;
-  document.body.appendChild(panel);
-
-  const listEl=panel.querySelector('#sbList');
-  let placements = listPlacements(key);
-
-  function renderList(){
-    placements = listPlacements(key);
-    listEl.innerHTML = placements.map(p=>`
-      <div class="sb-row" data-i="${p.index}">
-        <span>#${p.index+1}</span>
-        <label>X <input type="range" min="0" max="100" step="0.1" value="${p.x}"></label>
-        <label>Y <input type="range" min="0" max="100" step="0.1" value="${p.y}"></label>
-        <label>W <input type="range" min="2" max="200" step="0.5" value="${p.w}"></label>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.sb-row').forEach(row=>{
-      const i = parseInt(row.dataset.i,10);
-      const [rx, ry, rw] = row.querySelectorAll('input[type="range"]');
-      rx.oninput = ()=>{ setPlacementAt(key,i,{x:parseFloat(rx.value)}); applyOverlaysTo(img); };
-      ry.oninput = ()=>{ setPlacementAt(key,i,{y:parseFloat(ry.value)}); applyOverlaysTo(img); };
-      rw.oninput = ()=>{ setPlacementAt(key,i,{w:parseFloat(rw.value)}); applyOverlaysTo(img); };
+  // Return all accessory <img> nodes rendered over the portrait.
+  function findAccessoryImgs(root) {
+    if (!root) return [];
+    // typical classes in prior builds: .acc, [data-acc], .accessory img
+    let imgs = root.querySelectorAll('img.acc, img[data-acc], .accessory img');
+    imgs = imgs.length ? imgs : root.querySelectorAll('img');
+    // Heuristic: exclude the base portrait (largest area) and keep the small overlays.
+    const arr = Array.from(imgs);
+    if (arr.length <= 1) return [];
+    // compute areas
+    const areas = arr.map(i => (i.naturalWidth || i.width) * (i.naturalHeight || i.height));
+    const maxArea = Math.max(...areas);
+    return arr.filter(i => {
+      const a = (i.naturalWidth || i.width) * (i.naturalHeight || i.height);
+      return a < maxArea * 0.8; // anything significantly smaller than the big portrait
     });
   }
 
-  // Drag / wheel edit on the live image
-  function enableDragOnLast(){
-    const ov = wrap.querySelector('.sb-acc-layer img:last-of-type');
-    if(!ov) return;
-    ov.style.pointerEvents='auto';
-    function startDrag(ev){
-      ev.preventDefault();
-      const rect=wrap.getBoundingClientRect();
-      function move(e){
-        const px=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
-        const py=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
-        const x=px/rect.width*100, y=py/rect.height*100;
-        const arr=listPlacements(key); const idx=arr.length-1;
-        setPlacementAt(key, idx, {x,y}); applyOverlaysTo(img); renderList();
-      }
-      function end(){ document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',end); document.removeEventListener('touchmove',move); document.removeEventListener('touchend',end); }
-      document.addEventListener('mousemove',move); document.addEventListener('mouseup',end);
-      document.addEventListener('touchmove',move,{passive:false}); document.addEventListener('touchend',end);
-    }
-    function onWheel(e){
-      e.preventDefault();
-      const arr=listPlacements(key); const idx=arr.length-1; if(idx<0) return;
-      if(e.shiftKey){ const r=((arr[idx].r||0)+(e.deltaY>0?4:-4))%360; setPlacementAt(key, idx, {r}); }
-      else { const w=Math.max(2, Math.min(200, (arr[idx].w||40)+(e.deltaY>0?-2:2))); setPlacementAt(key, idx, {w}); }
-      applyOverlaysTo(img); renderList();
-    }
-    ov.addEventListener('mousedown',startDrag); ov.addEventListener('touchstart',startDrag,{passive:false}); ov.addEventListener('wheel',onWheel,{passive:false});
+  // Apply saved transforms to an accessory <img>
+  function applyXform(img) {
+    const st = getState();
+    const key = keyForImg(img);
+    const xf = st[key];
+    if (!xf) return;
+    img.style.position = 'absolute';
+    img.style.left = (xf.x || 0) + 'px';
+    img.style.top = (xf.y || 0) + 'px';
+    img.style.transformOrigin = 'center center';
+    img.style.transform =
+      `translate(0,0) scale(${xf.s || 1}) rotate(${xf.r || 0}deg)` +
+      (xf.flip ? ' scaleX(-1)' : '');
+    img.style.zIndex = xf.z != null ? String(xf.z) : '5';
+    img.dataset.xfApplied = '1';
   }
 
-  panel.querySelector('[data-act="add"]').onclick=async()=>{
-    const f=panel.querySelector('.sbfile'); const file=f.files?.[0];
-    if(!file){ alert('Pick an image first'); return; }
-    await addOverlayFromFile(img, file);
-    await applyOverlaysTo(img);
-    renderList(); enableDragOnLast(); f.value='';
-  };
-  panel.querySelector('[data-act="clear"]').onclick=()=>{
-    replacePlacements(key, []); applyOverlaysTo(img); renderList();
-  };
-  panel.querySelector('[data-act="close"]').onclick=()=>panel.remove();
+  // Scan and apply transforms to all accessories currently in DOM.
+  function reapplyAll() {
+    const root = findPortraitRoot();
+    if (!root) return;
+    root.style.position = root.style.position || 'relative';
+    findAccessoryImgs(root).forEach(applyXform);
+  }
 
-  applyOverlaysTo(img);
-  renderList();
-  enableDragOnLast();
-}
+  // Lightweight editor UI
+  function ensureEditor() {
+    // only on Character route
+    const hash = (location.hash || '').toLowerCase();
+    if (!/character/.test(hash)) return;
 
-function ensureFab(){
-  if(document.querySelector('.sb-acc-fab')) return;
-  const b=document.createElement('button'); b.className='sb-acc-fab'; b.title='Accessory Align'; b.textContent='🧩';
-  document.body.appendChild(b); b.addEventListener('click', createEditor);
-}
-const mo=new MutationObserver(()=>ensureFab()); mo.observe(document.body,{childList:true,subtree:true}); ensureFab();
+    const root = findPortraitRoot();
+    if (!root || document.getElementById('accEditorToolbar')) return;
+
+    root.style.position = root.style.position || 'relative';
+
+    // Toolbar
+    const bar = document.createElement('div');
+    bar.id = 'accEditorToolbar';
+    bar.className = 'acc-toolbar';
+    bar.innerHTML = `
+      <button class="acc-btn" data-acc-edit>✥ Edit accessories</button>
+      <span class="acc-help">Drag to move • Shift + Drag corner to rotate •
+      Scroll to scale • D to delete • F to flip • [ / ] to z-order</span>
+    `;
+    root.appendChild(bar);
+
+    let editMode = false;
+    let active = null;
+
+    function toggleEdit() {
+      editMode = !editMode;
+      bar.querySelector('[data-acc-edit]').classList.toggle('on', editMode);
+      const overlays = findAccessoryImgs(root);
+      overlays.forEach(img => {
+        img.style.pointerEvents = editMode ? 'auto' : '';
+        img.classList.toggle('acc-editable', editMode);
+        // guarantee absolute so we can position
+        img.style.position = 'absolute';
+        img.style.zIndex = img.style.zIndex || '5';
+        // if first time, center it gently
+        if (!img.dataset.xfApplied && !img.style.left) {
+          const r = root.getBoundingClientRect();
+          const ir = img.getBoundingClientRect();
+          img.style.left = Math.max(0, (r.width - ir.width) / 2) + 'px';
+          img.style.top = Math.max(0, (r.height - ir.height) / 2) + 'px';
+        }
+      });
+    }
+
+    bar.querySelector('[data-acc-edit]').addEventListener('click', () => {
+      toggleEdit();
+    });
+
+    // dragging/rotating/scaling
+    let drag = { on: false, dx: 0, dy: 0, startX: 0, startY: 0, baseLeft: 0, baseTop: 0 };
+    function onDown(e) {
+      if (!editMode) return;
+      const t = e.target;
+      if (!(t instanceof HTMLElement) || t.tagName !== 'IMG') return;
+      if (!findAccessoryImgs(root).includes(t)) return;
+      active = t;
+      const rect = active.getBoundingClientRect();
+      drag.on = true;
+      drag.startX = e.clientX;
+      drag.startY = e.clientY;
+      drag.baseLeft = parseFloat(active.style.left || '0');
+      drag.baseTop = parseFloat(active.style.top || '0');
+      e.preventDefault();
+    }
+    function onMove(e) {
+      if (!drag.on || !active) return;
+      const shift = e.shiftKey;
+      if (!shift) {
+        // move
+        const nx = drag.baseLeft + (e.clientX - drag.startX);
+        const ny = drag.baseTop + (e.clientY - drag.startY);
+        active.style.left = nx + 'px';
+        active.style.top = ny + 'px';
+      } else {
+        // rotate if Shift is held: angle by horizontal delta
+        const dx = (e.clientX - drag.startX);
+        const cur = parseFloat(active.dataset.rot || '0');
+        const ang = cur + dx * 0.2;
+        active.dataset.rot = String(ang);
+        const s = parseFloat(active.dataset.scale || '1');
+        const flip = active.dataset.flip === '1';
+        active.style.transform =
+          `translate(0,0) scale(${s}) rotate(${ang}deg)` + (flip ? ' scaleX(-1)' : '');
+      }
+    }
+    function onUp() {
+      if (!active) return;
+      // save xform
+      const st = getState();
+      const k = keyForImg(active);
+      const s = parseFloat(active.dataset.scale || '1');
+      const r = parseFloat(active.dataset.rot || '0');
+      const z = parseInt(active.style.zIndex || '5', 10);
+      const flip = active.dataset.flip === '1';
+      st[k] = {
+        x: Math.round(parseFloat(active.style.left || '0')),
+        y: Math.round(parseFloat(active.style.top || '0')),
+        s: Math.round(s * 1000) / 1000,
+        r: Math.round(r * 10) / 10,
+        z,
+        flip
+      };
+      setState(st);
+      drag.on = false;
+    }
+
+    // scale with wheel
+    function onWheel(e) {
+      if (!editMode || !active) return;
+      e.preventDefault();
+      const cur = parseFloat(active.dataset.scale || '1');
+      const next = Math.min(5, Math.max(0.15, cur + (e.deltaY < 0 ? 0.05 : -0.05)));
+      active.dataset.scale = String(next);
+      const r = parseFloat(active.dataset.rot || '0');
+      const flip = active.dataset.flip === '1';
+      active.style.transform =
+        `translate(0,0) scale(${next}) rotate(${r}deg)` + (flip ? ' scaleX(-1)' : '');
+    }
+
+    // hotkeys for delete/flip/z-index
+    function onKey(e) {
+      if (!editMode || !active) return;
+      if (e.key === 'f' || e.key === 'F') {
+        const flip = active.dataset.flip !== '1';
+        active.dataset.flip = flip ? '1' : '0';
+        const s = parseFloat(active.dataset.scale || '1');
+        const r = parseFloat(active.dataset.rot || '0');
+        active.style.transform =
+          `translate(0,0) scale(${s}) rotate(${r}deg)` + (flip ? ' scaleX(-1)' : '');
+      }
+      if (e.key === 'd' || e.key === 'D' || e.key === 'Backspace') {
+        const st = getState();
+        delete st[keyForImg(active)];
+        setState(st);
+        active.remove();
+        active = null;
+      }
+      if (e.key === '[' || e.key === ']') {
+        const z = parseInt(active.style.zIndex || '5', 10) + (e.key === ']' ? 1 : -1);
+        active.style.zIndex = String(Math.max(1, Math.min(99, z)));
+      }
+    }
+
+    // pointer events on the portrait area only
+    root.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    root.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('keydown', onKey);
+  }
+
+  // Reapply transforms whenever the Character view is shown or changes.
+  function onRouteOrMutate() {
+    reapplyAll();
+    ensureEditor();
+  }
+
+  // Observe portrait subtree (your app re-renders on selection)
+  const obs = new MutationObserver(() => onRouteOrMutate());
+  const boot = () => {
+    onRouteOrMutate();
+    const root = findPortraitRoot();
+    if (root) obs.observe(root, { childList: true, subtree: true, attributes: true });
+  };
+
+  // Route changes + boot
+  window.addEventListener('hashchange', boot);
+  document.addEventListener('DOMContentLoaded', boot);
+})();
