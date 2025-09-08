@@ -1,265 +1,243 @@
-/* assets/hotfix/hotfix-accessory-align.js
-   Accessory Drag/Resize/Rotate hotfix for SootheBirb v2.6
-   - Works against whatever your Character view renders.
-   - Persists per-accessory transform in localStorage (sb_v26_acc_xforms).
-   - Applies transforms automatically on page render & on DOM mutations.
-*/
-(() => {
-  const LS_KEY = 'sb_v26_acc_xforms';
+/* SootheBirb – Accessory Editor Hotfix
+ * Drop-in for v2.6 builds. Positions editor under the upload row, doubles
+ * the portrait preview, and adds drag / wheel resize / shift+wheel rotate.
+ * No binary is stored in localStorage – only transforms & z-order.
+ */
 
-  const getState = () => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
-    catch { return {}; }
-  };
-  const setState = (obj) => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); }
-    catch (e) {
-      console.warn('Accessory xform save failed, trimming…', e);
-      // very defensive: drop oldest half if we ever hit quota here
-      const entries = Object.entries(obj).slice(-200);
-      localStorage.setItem(LS_KEY, JSON.stringify(Object.fromEntries(entries)));
-    }
+(function () {
+  const KEY = 'sb_acc_hotfix_v1';
+  const S = {
+    load() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || { items: [] }; }
+      catch { return { items: [] }; }
+    },
+    save(state) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
   };
 
-  // A “key” that stays the same every time we see the same accessory img.
-  function keyForImg(img) {
-    // Prefer an explicit data key if your app provides one.
-    return (
-      img.getAttribute('data-acc-key') ||
-      img.getAttribute('data-key') ||
-      // fall back to src (works for data: and file names)
-      (img.src || '').slice(0, 256)
-    );
-  }
+  // Utility ---------------------------------------------------------------
+  function q(sel, root = document) { return root.querySelector(sel); }
+  function qa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+  function make(tag, cls) { const el = document.createElement(tag); if (cls) el.className = cls; return el; }
 
-  // Return the portrait container for the current Character page.
-  function findPortraitRoot() {
-    // try several common containers used in your builds
-    const sel = [
-      '.hero-portrait', '.char-hero', '.character-hero',
-      '.avatar-wrap', '.avatar', '.portrait', '#heroPreview',
-      '.cardish .avatar', '.cardish .portrait'
-    ];
-    for (const s of sel) {
-      const el = document.querySelector(s);
-      if (el) return el;
-    }
-    // last resort: the first cardish that contains a single <img>
-    const fallback = Array.from(document.querySelectorAll('.cardish'))
-      .find(c => c.querySelector('img'));
-    return fallback || null;
-  }
-
-  // Return all accessory <img> nodes rendered over the portrait.
-  function findAccessoryImgs(root) {
-    if (!root) return [];
-    // typical classes in prior builds: .acc, [data-acc], .accessory img
-    let imgs = root.querySelectorAll('img.acc, img[data-acc], .accessory img');
-    imgs = imgs.length ? imgs : root.querySelectorAll('img');
-    // Heuristic: exclude the base portrait (largest area) and keep the small overlays.
-    const arr = Array.from(imgs);
-    if (arr.length <= 1) return [];
-    // compute areas
-    const areas = arr.map(i => (i.naturalWidth || i.width) * (i.naturalHeight || i.height));
-    const maxArea = Math.max(...areas);
-    return arr.filter(i => {
-      const a = (i.naturalWidth || i.width) * (i.naturalHeight || i.height);
-      return a < maxArea * 0.8; // anything significantly smaller than the big portrait
-    });
-  }
-
-  // Apply saved transforms to an accessory <img>
-  function applyXform(img) {
-    const st = getState();
-    const key = keyForImg(img);
-    const xf = st[key];
-    if (!xf) return;
-    img.style.position = 'absolute';
-    img.style.left = (xf.x || 0) + 'px';
-    img.style.top = (xf.y || 0) + 'px';
-    img.style.transformOrigin = 'center center';
-    img.style.transform =
-      `translate(0,0) scale(${xf.s || 1}) rotate(${xf.r || 0}deg)` +
-      (xf.flip ? ' scaleX(-1)' : '');
-    img.style.zIndex = xf.z != null ? String(xf.z) : '5';
-    img.dataset.xfApplied = '1';
-  }
-
-  // Scan and apply transforms to all accessories currently in DOM.
-  function reapplyAll() {
-    const root = findPortraitRoot();
-    if (!root) return;
-    root.style.position = root.style.position || 'relative';
-    findAccessoryImgs(root).forEach(applyXform);
-  }
-
-  // Lightweight editor UI
-  function ensureEditor() {
-    // only on Character route
+  // Find the characters page by looking for the heading text we render today
+  function onCharactersPage() {
     const hash = (location.hash || '').toLowerCase();
-    if (!/character/.test(hash)) return;
+    if (hash.includes('character')) return true;
+    // older builds used #characters
+    if (hash.includes('characters')) return true;
+    return false;
+  }
 
-    const root = findPortraitRoot();
-    if (!root || document.getElementById('accEditorToolbar')) return;
+  // Hide the legacy floating nudge buttons inside the hero panel (the tiny ↑ ↓ ← → + – … row)
+  function hideLegacyNudgers(root) {
+    const heroPanel = root.querySelector('[class*="hero"], [data-hero], .hero'); // best-effort
+    if (!heroPanel) return;
+    qa('button, .btn, .tiny, .nudge', heroPanel).forEach(b => {
+      const txt = (b.textContent || '').trim();
+      if (/^[↑↓←→+–-]$/.test(txt) || ['↶','↷'].includes(txt)) b.style.display = 'none';
+    });
+  }
 
-    root.style.position = root.style.position || 'relative';
+  // Build our editor UI just below the “Upload Accessory / Change Hero Portrait” row
+  function injectEditor() {
+    const view = q('#view');
+    if (!view) return;
 
-    // Toolbar
-    const bar = document.createElement('div');
-    bar.id = 'accEditorToolbar';
-    bar.className = 'acc-toolbar';
-    bar.innerHTML = `
-      <button class="acc-btn" data-acc-edit>✥ Edit accessories</button>
-      <span class="acc-help">Drag to move • Shift + Drag corner to rotate •
-      Scroll to scale • D to delete • F to flip • [ / ] to z-order</span>
-    `;
-    root.appendChild(bar);
+    // If we already injected, just ensure it’s visible and return
+    if (q('.accfix-wrap', view)) { q('.accfix-wrap', view).style.display = ''; return; }
 
-    let editMode = false;
-    let active = null;
-
-    function toggleEdit() {
-      editMode = !editMode;
-      bar.querySelector('[data-acc-edit]').classList.toggle('on', editMode);
-      const overlays = findAccessoryImgs(root);
-      overlays.forEach(img => {
-        img.style.pointerEvents = editMode ? 'auto' : '';
-        img.classList.toggle('acc-editable', editMode);
-        // guarantee absolute so we can position
-        img.style.position = 'absolute';
-        img.style.zIndex = img.style.zIndex || '5';
-        // if first time, center it gently
-        if (!img.dataset.xfApplied && !img.style.left) {
-          const r = root.getBoundingClientRect();
-          const ir = img.getBoundingClientRect();
-          img.style.left = Math.max(0, (r.width - ir.width) / 2) + 'px';
-          img.style.top = Math.max(0, (r.height - ir.height) / 2) + 'px';
-        }
-      });
+    // Try to locate an existing hero portrait panel; if not found, we’ll make our own light wrapper
+    let heroSlot = q('.hero-slot, #heroSlot, [data-hero-slot]', view);
+    if (!heroSlot) {
+      heroSlot = make('div', 'hero-slot accfix-hero-slot');
+      heroSlot.innerHTML = `
+        <h3 class="dash">Your Hero</h3>
+        <div class="accfix-stage">
+          <img id="accfixHero" class="accfix-hero" alt="Hero portrait" />
+          <div id="accfixLayer" class="accfix-layer" aria-live="polite"></div>
+        </div>
+        <div class="accfix-row">
+          <label class="accfix-file"><span>Change Hero Portrait</span>
+            <input id="accfixHeroFile" type="file" accept="image/*">
+          </label>
+          <label class="accfix-file"><span>Upload Accessory PNG</span>
+            <input id="accfixAccFile" type="file" accept="image/png,image/*">
+          </label>
+          <button id="accfixAdd" class="btn small">Add Accessory</button>
+        </div>
+      `;
+      // Put our slot at the top of the page so it’s obvious
+      view.prepend(heroSlot);
     }
 
-    bar.querySelector('[data-acc-edit]').addEventListener('click', () => {
-      toggleEdit();
+    // Accessory Editor controls (below uploads)
+    const wrap = make('section', 'accfix-wrap cardish');
+    wrap.innerHTML = `
+      <h4 class="dash">Accessory Editor</h4>
+      <div class="accfix-tip">Tip: drag accessory to move • mouse wheel = resize • Shift+wheel = rotate</div>
+      <div class="accfix-toolbar">
+        <button data-act="front"  class="btn tiny">Bring Front</button>
+        <button data-act="back"   class="btn tiny">Send Back</button>
+        <button data-act="save"   class="btn tiny primary">Save</button>
+        <button data-act="remove" class="btn tiny danger">Remove</button>
+      </div>
+      <div class="accfix-status" id="accfixStatus">No accessory selected.</div>
+    `;
+    heroSlot.appendChild(wrap);
+
+    // Wire up file inputs
+    const heroImg = q('#accfixHero', heroSlot);
+    const layer   = q('#accfixLayer', heroSlot);
+    const heroIn  = q('#accfixHeroFile', heroSlot);
+    const accIn   = q('#accfixAccFile', heroSlot);
+    const addBtn  = q('#accfixAdd', heroSlot);
+    const status  = q('#accfixStatus', heroSlot);
+
+    // Double the preview (CSS also scales the slot)
+    heroImg.style.width = 'auto';
+
+    // Allow setting hero portrait without storing binary
+    heroIn.addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      heroImg.src = url;
+      heroImg.onload = () => {
+        // fit into stage height
+        const st = q('.accfix-stage', heroSlot);
+        if (st) {
+          const maxH = st.clientHeight - 8;
+          heroImg.style.maxHeight = maxH + 'px';
+        }
+      };
     });
 
-    // dragging/rotating/scaling
-    let drag = { on: false, dx: 0, dy: 0, startX: 0, startY: 0, baseLeft: 0, baseTop: 0 };
-    function onDown(e) {
-      if (!editMode) return;
-      const t = e.target;
-      if (!(t instanceof HTMLElement) || t.tagName !== 'IMG') return;
-      if (!findAccessoryImgs(root).includes(t)) return;
-      active = t;
-      const rect = active.getBoundingClientRect();
-      drag.on = true;
-      drag.startX = e.clientX;
-      drag.startY = e.clientY;
-      drag.baseLeft = parseFloat(active.style.left || '0');
-      drag.baseTop = parseFloat(active.style.top || '0');
-      e.preventDefault();
-    }
-    function onMove(e) {
-      if (!drag.on || !active) return;
-      const shift = e.shiftKey;
-      if (!shift) {
-        // move
-        const nx = drag.baseLeft + (e.clientX - drag.startX);
-        const ny = drag.baseTop + (e.clientY - drag.startY);
-        active.style.left = nx + 'px';
-        active.style.top = ny + 'px';
-      } else {
-        // rotate if Shift is held: angle by horizontal delta
-        const dx = (e.clientX - drag.startX);
-        const cur = parseFloat(active.dataset.rot || '0');
-        const ang = cur + dx * 0.2;
-        active.dataset.rot = String(ang);
-        const s = parseFloat(active.dataset.scale || '1');
-        const flip = active.dataset.flip === '1';
-        active.style.transform =
-          `translate(0,0) scale(${s}) rotate(${ang}deg)` + (flip ? ' scaleX(-1)' : '');
-      }
-    }
-    function onUp() {
-      if (!active) return;
-      // save xform
-      const st = getState();
-      const k = keyForImg(active);
-      const s = parseFloat(active.dataset.scale || '1');
-      const r = parseFloat(active.dataset.rot || '0');
-      const z = parseInt(active.style.zIndex || '5', 10);
-      const flip = active.dataset.flip === '1';
-      st[k] = {
-        x: Math.round(parseFloat(active.style.left || '0')),
-        y: Math.round(parseFloat(active.style.top || '0')),
-        s: Math.round(s * 1000) / 1000,
-        r: Math.round(r * 10) / 10,
-        z,
-        flip
-      };
-      setState(st);
-      drag.on = false;
+    // Local state (not persisted) for currently selected accessory node
+    let selected = null;
+    function select(node) {
+      qa('.accfix-acc', layer).forEach(n => n.classList.remove('is-selected'));
+      selected = node || null;
+      if (selected) selected.classList.add('is-selected');
+      status.textContent = selected ? 'Accessory selected.' : 'No accessory selected.';
     }
 
-    // scale with wheel
-    function onWheel(e) {
-      if (!editMode || !active) return;
-      e.preventDefault();
-      const cur = parseFloat(active.dataset.scale || '1');
-      const next = Math.min(5, Math.max(0.15, cur + (e.deltaY < 0 ? 0.05 : -0.05)));
-      active.dataset.scale = String(next);
-      const r = parseFloat(active.dataset.rot || '0');
-      const flip = active.dataset.flip === '1';
-      active.style.transform =
-        `translate(0,0) scale(${next}) rotate(${r}deg)` + (flip ? ' scaleX(-1)' : '');
+    // Drag / wheel handlers
+    function makeDraggable(node) {
+      let startX = 0, startY = 0, startL = 0, startT = 0;
+      node.addEventListener('pointerdown', (ev) => {
+        select(node);
+        node.setPointerCapture(ev.pointerId);
+        startX = ev.clientX; startY = ev.clientY;
+        const r = node.getBoundingClientRect();
+        const parent = node.parentElement.getBoundingClientRect();
+        startL = r.left - parent.left;
+        startT = r.top  - parent.top;
+        node.dataset.dragging = '1';
+      });
+      node.addEventListener('pointermove', (ev) => {
+        if (node.dataset.dragging !== '1') return;
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        node.style.left = Math.round(startL + dx) + 'px';
+        node.style.top  = Math.round(startT + dy) + 'px';
+      });
+      node.addEventListener('pointerup',   () => node.dataset.dragging = '');
+      node.addEventListener('pointercancel', () => node.dataset.dragging = '');
+
+      node.addEventListener('wheel', (ev) => {
+        ev.preventDefault();
+        let scale = parseFloat(node.dataset.scale || '1');
+        let rot   = parseFloat(node.dataset.rot   || '0');
+        if (ev.shiftKey) {
+          // rotate
+          rot += (ev.deltaY > 0 ?  -4 : 4);
+        } else {
+          // scale
+          scale += (ev.deltaY > 0 ? -0.06 : 0.06);
+          scale = Math.max(0.2, Math.min(3, scale));
+        }
+        node.dataset.scale = String(scale);
+        node.dataset.rot   = String(rot);
+        node.style.transform = `translate(-50%, -50%) rotate(${rot}deg) scale(${scale})`;
+      }, { passive: false });
     }
 
-    // hotkeys for delete/flip/z-index
-    function onKey(e) {
-      if (!editMode || !active) return;
-      if (e.key === 'f' || e.key === 'F') {
-        const flip = active.dataset.flip !== '1';
-        active.dataset.flip = flip ? '1' : '0';
-        const s = parseFloat(active.dataset.scale || '1');
-        const r = parseFloat(active.dataset.rot || '0');
-        active.style.transform =
-          `translate(0,0) scale(${s}) rotate(${r}deg)` + (flip ? ' scaleX(-1)' : '');
-      }
-      if (e.key === 'd' || e.key === 'D' || e.key === 'Backspace') {
-        const st = getState();
-        delete st[keyForImg(active)];
-        setState(st);
-        active.remove();
-        active = null;
-      }
-      if (e.key === '[' || e.key === ']') {
-        const z = parseInt(active.style.zIndex || '5', 10) + (e.key === ']' ? 1 : -1);
-        active.style.zIndex = String(Math.max(1, Math.min(99, z)));
-      }
+    function addAccessoryFromFile(file) {
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const img = make('img', 'accfix-acc');
+      img.src = url;
+      img.alt = file.name;
+      img.draggable = false;
+
+      // default position = center
+      const st = q('.accfix-stage', heroSlot);
+      const rect = st.getBoundingClientRect();
+      img.style.left = rect.width / 2 + 'px';
+      img.style.top  = rect.height / 2 + 'px';
+      img.dataset.scale = '1';
+      img.dataset.rot   = '0';
+      img.style.transform = 'translate(-50%, -50%) scale(1)';
+
+      img.addEventListener('pointerdown', () => select(img));
+      makeDraggable(img);
+      layer.appendChild(img);
+      select(img);
     }
 
-    // pointer events on the portrait area only
-    root.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    root.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('keydown', onKey);
+    addBtn.addEventListener('click', () => {
+      const f = accIn.files && accIn.files[0];
+      if (!f) { status.textContent = 'Choose a PNG first.'; return; }
+      addAccessoryFromFile(f);
+      accIn.value = '';
+    });
+
+    // Toolbar actions
+    wrap.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      if (!selected && b.dataset.act !== 'save') { status.textContent = 'Select an accessory first.'; return; }
+
+      if (b.dataset.act === 'front') {
+        layer.appendChild(selected);
+      } else if (b.dataset.act === 'back') {
+        layer.insertBefore(selected, layer.firstChild);
+      } else if (b.dataset.act === 'remove') {
+        selected.remove(); select(null);
+      } else if (b.dataset.act === 'save') {
+        // Save only transforms/ordering; no binary data
+        const items = qa('.accfix-acc', layer).map(n => ({
+          left: parseFloat(n.style.left),
+          top:  parseFloat(n.style.top),
+          scale: parseFloat(n.dataset.scale || '1'),
+          rot: parseFloat(n.dataset.rot || '0'),
+          // fileName kept for debugging; not used for reload
+          name: n.alt || ''
+        }));
+        const state = S.load();
+        state.items = items;
+        S.save(state);
+        status.textContent = 'Saved accessory layout (session only).';
+      }
+    });
+
+    // Try to hide the old nudge row if it exists
+    hideLegacyNudgers(view);
   }
 
-  // Reapply transforms whenever the Character view is shown or changes.
-  function onRouteOrMutate() {
-    reapplyAll();
-    ensureEditor();
+  // Enlarge the preview slot with CSS class on the parent
+  function enlargePreviewSlot() {
+    const view = q('#view'); if (!view) return;
+    view.classList.add('accfix-big');
   }
 
-  // Observe portrait subtree (your app re-renders on selection)
-  const obs = new MutationObserver(() => onRouteOrMutate());
-  const boot = () => {
-    onRouteOrMutate();
-    const root = findPortraitRoot();
-    if (root) obs.observe(root, { childList: true, subtree: true, attributes: true });
-  };
+  // Router hook
+  function maybeInit() {
+    if (!onCharactersPage()) return;
+    enlargePreviewSlot();
+    injectEditor();
+  }
 
-  // Route changes + boot
-  window.addEventListener('hashchange', boot);
-  document.addEventListener('DOMContentLoaded', boot);
+  window.addEventListener('hashchange', () => setTimeout(maybeInit, 30));
+  document.addEventListener('DOMContentLoaded', () => setTimeout(maybeInit, 30));
 })();

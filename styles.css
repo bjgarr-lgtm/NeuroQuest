@@ -130,3 +130,49 @@ button:disabled{opacity:.55}
   padding:6px 10px; border-radius:10px;
 }
 
+/* --- Accessory Editor hotfix --- */
+.accfix-big .accfix-stage { height: 360px; }            /* ~2x the old slot */
+.accfix-hero-slot { margin-bottom: 16px; }
+.accfix-stage {
+  position: relative;
+  width: 320px;            /* fits well with doubled height */
+  height: 360px;
+  border: 1px solid rgba(120,180,255,.35);
+  border-radius: 12px;
+  background: rgba(30,35,55,.35);
+  overflow: hidden;
+}
+.accfix-hero {
+  position: absolute; inset: 0; margin: auto;
+  max-height: 100%; max-width: 100%;
+  object-fit: contain;
+  filter: none; image-rendering: auto;
+}
+.accfix-layer { position: absolute; inset: 0; }
+.accfix-acc {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  transform-origin: center;
+  cursor: grab;
+  user-select: none;
+  max-width: 70%;
+  max-height: 70%;
+  transition: box-shadow .12s ease;
+}
+.accfix-acc.is-selected { box-shadow: 0 0 0 2px rgba(110,200,255,.9); }
+
+.accfix-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.accfix-file { display: inline-flex; gap: 8px; align-items: center; background: rgba(50,70,110,.35); padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(120,180,255,.25); }
+.accfix-file span { opacity: .85; font-size: 12px; }
+.accfix-file input { accent-color: #79d; }
+
+.accfix-wrap { margin-top: 12px; }
+.accfix-tip { opacity: .7; font-size: 12px; margin-bottom: 6px; }
+.accfix-toolbar { display: flex; gap: 8px; margin-bottom: 6px; }
+.btn.tiny { padding: 6px 10px; font-size: 12px; border-radius: 10px; }
+.btn.danger { background: #8a2d2d; }
+.btn.primary { background: #2d6aa8; }
+
+/* Try to hide legacy tiny arrow buttons inside hero box if present */
+.accfix-hero-slot .nudge, .accfix-hero-slot .tiny, .accfix-hero-slot .btn-nudge { display: none !important; }
