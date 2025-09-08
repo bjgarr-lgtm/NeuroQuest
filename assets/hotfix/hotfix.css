@@ -1,33 +1,19 @@
-/* v2 polish: hide tip text and tidy editor rows */
-.accfix-tip, .acc-tip { display: none !important; }
-
-/* Make the accessory editor controls look cleaner */
-.accfix-toolbar, .editor-toolbar, .accessory-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+/* assets/hotfix/hotfix.css */
+.acc-toolbar{
+  position:absolute; left:8px; top:8px; z-index:99;
+  display:flex; gap:8px; align-items:center;
+  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.2);
+  padding:6px 8px; border-radius:10px; backdrop-filter: blur(2px);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Press Start 2P", sans-serif;
 }
-
-.accfix-row, .file-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
+.acc-toolbar .acc-btn{
+  background:#0cf; color:#001018; border:none; border-radius:8px;
+  padding:6px 10px; cursor:pointer; font-weight:700;
 }
+.acc-toolbar .acc-btn.on{ background:#ffd84f; }
+.acc-toolbar .acc-help{ color:#d7f2ff; opacity:.8; font-size:.9rem }
 
-.field { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 8px; 
-  padding: 8px 10px; 
-  border-radius: 10px; 
-  border: 1px solid rgba(120,180,255,.25); 
-  background: rgba(10,20,35,.35);
+img.acc-editable{
+  outline: 1px dashed rgba(255,255,255,.5);
+  cursor: move;
 }
-
-.field label, .field span { opacity: .9; }
-
-/* Nicer section spacing */
-.character-page .portrait-wrap { margin-bottom: 10px; }
-.character-page .accfix-wrap { margin-top: 6px; }
