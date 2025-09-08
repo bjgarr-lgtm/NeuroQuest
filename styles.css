@@ -176,3 +176,24 @@ button:disabled{opacity:.55}
 
 /* Try to hide legacy tiny arrow buttons inside hero box if present */
 .accfix-hero-slot .nudge, .accfix-hero-slot .tiny, .accfix-hero-slot .btn-nudge { display: none !important; }
+/* Character page tidy */
+.character-grid { display:grid; grid-template-columns: 1.25fr 0.75fr; gap:16px; }
+.hero-side h3, .companions-side h3 { margin-top:0; }
+.portrait-wrap{ position:relative; width: 360px; height: 460px; margin: 6px 0 10px;
+  border-radius: 16px; background: rgba(255,255,255,0.03); outline: 1px solid rgba(180,200,255,0.2); overflow:hidden; }
+.hero-base{ position:absolute; inset:0; width:100%; height:100%; object-fit: contain; z-index:0; }
+.acc-layer{ position:absolute; inset:0; z-index:2; }
+.acc-img{ position:absolute; left:50%; top:50%; transform: translate(0,0); transform-origin:center; user-select:none; filter:drop-shadow(0 0 4px rgba(0,0,0,.35)); cursor:grab; }
+.acc-img.active{ outline:2px dashed rgba(120,200,255,.75); outline-offset:2px; }
+.file-row{ gap:10px; align-items: end; }
+.acc-editor{ margin-top:10px; }
+.acc-editor .hint{ margin:0 0 6px; opacity:.75; font-size:.85rem; }
+.acc-editor .toolbar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn.tiny{ padding:6px 10px; font-size:12px; border-radius:10px; }
+.btn.danger{ background:#2a0f18; border:1px solid #ff5078; color:#ff8da7; }
+.btn.primary{ background:#1a9bd6; border:1px solid #30b0eb; color:#001019; }
+
+/* nuke legacy little arrow/nudge buttons if still present in this view */
+.portrait-wrap .nudge,
+.portrait-wrap .tiny,
+.portrait-wrap .btn-nudge { display:none !important; }
