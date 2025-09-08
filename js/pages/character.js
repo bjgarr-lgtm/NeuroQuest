@@ -1,268 +1,166 @@
-// js/pages/character.js
-import { load, save as saveState } from '../util/storage.js';
+// pages/character.js
+import {load, save} from '../util/storage.js';
 
-export default function renderCharacter(root) {
-  const s = load();
-  s.party ||= {};
-  s.party.hero ||= { src: s.party.hero?.src || '', acc: [] };
-  s.party.hero.acc ||= [];
-  s.party.companions ||= [];
+export default function renderCharacter(root){
+  const state = load();
+  if(!state.party) state.party = {};
+  if(!state.party.hero) state.party.hero = { src: state.party.hero?.src || 'assets/bambi.png' };
+  if(!state.party.acc) state.party.acc = []; // [{src,x,y,scale,rot,z}]
 
-  // --- DOM -------------------------------------------------------------------
   root.innerHTML = `
-    <section class="panel">
-      <h2>Character & Companions</h2>
+  <section class="panel">
+    <h2>Character & Companions</h2>
 
-      <div class="character-grid">
+    <div class="character-grid">
+      <!-- Left: hero + editor -->
+      <div class="hero-side">
+        <h3>Your Hero</h3>
 
-        <div class="hero-side">
-          <h3>Your Hero</h3>
+        <div class="portrait-wrap" id="portrait">
+          <img class="hero-base" id="heroImg" alt="hero">
+          <div class="acc-layer" id="accLayer" aria-live="polite"></div>
+        </div>
 
-          <div class="portrait-wrap" id="heroStage">
-            <img id="heroBase" class="hero-base" alt="hero"/>
-            <div id="accLayer" class="acc-layer"></div>
-          </div>
+        <div class="file-row">
+          <label>Upload Accessory PNG</label>
+          <input id="accFile" type="file" accept="image/png,image/webp,image/*">
+          <button class="btn primary" id="addAccBtn">Add Accessory</button>
+        </div>
 
-          <div class="file-row list row">
-            <label class="secondary" style="display:inline-flex;align-items:center;gap:8px;">
-              <span>Upload Accessory PNG</span>
-              <input id="accFile" type="file" accept="image/png" />
-            </label>
-            <button id="addAcc" class="primary">Add Accessory</button>
-          </div>
-
-          <div class="acc-editor">
-            <p class="hint">
-              Tip: <b>drag</b> to move • <b>mouse wheel</b> to resize • <b>Shift + wheel</b> to rotate.
-              Click an accessory to select it.
-            </p>
-            <div class="toolbar">
-              <button id="bringFront" class="secondary btn tiny">Bring Front</button>
-              <button id="sendBack" class="secondary btn tiny">Send Back</button>
-              <button id="saveAcc" class="primary btn tiny">Save</button>
-              <button id="removeAcc" class="danger btn tiny">Remove</button>
-              <span id="accInfo" class="tooltip">No accessory selected.</span>
-            </div>
-            <div class="file-row list row" style="margin-top:8px">
-              <label class="secondary" style="display:inline-flex;align-items:center;gap:8px;">
-                <span>Change Hero Portrait</span>
-                <input id="heroFile" type="file" accept="image/*" />
-              </label>
-            </div>
+        <div class="acc-editor">
+          <div class="hint">Tip: <b>drag</b> to move • <b>mouse wheel</b> to resize • <b>Shift + wheel</b> to rotate.
+            Click an accessory to select it.</div>
+          <div class="toolbar">
+            <button class="btn" id="bringFront">Bring Front</button>
+            <button class="btn" id="sendBack">Send Back</button>
+            <button class="btn primary" id="saveAcc">Save</button>
+            <button class="btn danger" id="removeAcc">Remove</button>
+            <span id="accStatus" style="opacity:.8"></span>
           </div>
         </div>
 
-        <div class="companions-side">
-          <h3>Companions</h3>
-          <p class="tooltip">Unchanged here—this panel keeps your current companions flow.</p>
-          <div id="compList" class="list"></div>
+        <div class="file-row">
+          <label>Change Hero Portrait</label>
+          <input id="heroFile" type="file" accept="image/*">
         </div>
-
       </div>
-    </section>
+
+      <!-- Right: companions -->
+      <div class="companions-side">
+        <h3>Companions</h3>
+        <p class="companions-blurb">Unchanged here — this panel keeps your current companions flow.</p>
+        <div id="companionsList"></div>
+      </div>
+    </div>
+  </section>
   `;
 
-  // --- Wire hero image --------------------------------------------------------
-  const heroBase = root.querySelector('#heroBase');
-  if (s.party.hero.src) heroBase.src = s.party.hero.src;
-  else heroBase.src = 'assets/placeholder-hero.png'; // safe fallback in case
-
-  // --- Render companions (unchanged behavior) --------------------------------
-  const compList = root.querySelector('#compList');
-  compList.innerHTML = '';
-  (s.party.companions || []).forEach((c, i) => {
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `
-      <img src="${c.src}" alt="" style="height:44px;border-radius:8px"/>
-      <span>${c.name || 'Companion ' + (i + 1)}</span>
-    `;
-    compList.appendChild(row);
-  });
-
-  // --- Accessory Layer + editor ----------------------------------------------
+  // --- wiring
+  const heroImg = root.querySelector('#heroImg');
   const accLayer = root.querySelector('#accLayer');
-  let selected = null;     // currently selected accessory node <img>
-  let drag = null;         // {startX,startY, x,y}
-  const stage = root.querySelector('#heroStage');
+  const status = root.querySelector('#accStatus');
 
-  // render all accessories saved on the hero
-  function renderAccessories() {
+  // load hero
+  heroImg.src = state.party.hero?.src || 'assets/bambi.png';
+
+  // render accessories
+  function renderAcc(){
     accLayer.innerHTML = '';
-    s.party.hero.acc.forEach((a, idx) => {
-      const img = document.createElement('img');
-      img.className = 'acc-img';
-      img.src = a.src;
-      img.style.transform = `translate(${a.x||0}px, ${a.y||0}px) rotate(${a.r||0}deg) scale(${a.k||1})`;
-      img.dataset.index = idx;
-      accLayer.appendChild(img);
-    });
+    state.party.acc
+      .sort((a,b)=> (a.z??0) - (b.z??0))
+      .forEach((a, idx)=>{
+        const img = new Image();
+        img.src = a.src;
+        img.className = 'acc-img';
+        img.style.transform =
+          `translate(${a.x||0}px, ${a.y||0}px) scale(${a.scale||1}) rotate(${a.rot||0}deg)`;
+        img.dataset.index = idx;
+        accLayer.appendChild(img);
+      });
   }
-  renderAccessories();
+  renderAcc();
 
-  // select helper
-  function selectNode(node) {
-    accLayer.querySelectorAll('.acc-img').forEach(n => n.classList.remove('active'));
-    selected = node || null;
-    if (selected) {
-      selected.classList.add('active');
-      const i = +selected.dataset.index;
-      const a = s.party.hero.acc[i];
-      updateInfo(a);
-    } else {
-      accInfo.textContent = 'No accessory selected.';
-    }
-  }
+  // selection + drag/scale/rotate
+  let sel = -1, dragging = false, lastY=0;
+  const select = (i)=>{
+    sel = i;
+    [...accLayer.children].forEach((n,ix)=> n.classList.toggle('active', ix===sel));
+    status.textContent = sel>=0 ? `Accessory ${sel+1} selected` : `No accessory selected.`;
+  };
 
-  // pointer (drag) handlers on accessories
-  accLayer.addEventListener('pointerdown', (e) => {
+  accLayer.addEventListener('mousedown', e=>{
     const target = e.target.closest('.acc-img');
-    if (!target) return;
+    if(!target){ select(-1); return; }
+    select(+target.dataset.index);
+    dragging = true;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', ()=> dragging=false);
+  window.addEventListener('mousemove', e=>{
+    if(sel<0 || !dragging) return;
+    const a = state.party.acc[sel];
+    a.x = (a.x||0) + e.movementX;
+    a.y = (a.y||0) + e.movementY;
+    renderAcc(); select(sel);
+  });
+
+  accLayer.addEventListener('wheel', e=>{
+    if(sel<0) return;
     e.preventDefault();
-    selectNode(target);
-
-    const idx = +target.dataset.index;
-    const a = s.party.hero.acc[idx];
-    drag = {
-      startX: e.clientX, startY: e.clientY,
-      x: a.x || 0, y: a.y || 0
-    };
-    target.setPointerCapture(e.pointerId);
-  });
-
-  accLayer.addEventListener('pointermove', (e) => {
-    if (!drag || !selected) return;
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-    const idx = +selected.dataset.index;
-    const a = s.party.hero.acc[idx];
-    a.x = drag.x + dx;
-    a.y = drag.y + dy;
-    applyTransform(selected, a);
-    updateInfo(a);
-  });
-
-  ['pointerup','pointercancel'].forEach(evt => {
-    accLayer.addEventListener(evt, () => drag = null);
-  });
-
-  // wheel: scale; shift+wheel: rotate
-  stage.addEventListener('wheel', (e) => {
-    if (!selected) return;
-    e.preventDefault();
-    const idx = +selected.dataset.index;
-    const a = s.party.hero.acc[idx];
-    const delta = Math.sign(e.deltaY);
-    if (e.shiftKey) {
-      a.r = clamp((a.r || 0) - delta * 3, -180, 180);
-    } else {
-      const k = a.k || 1;
-      a.k = clamp(k * (delta < 0 ? 1.06 : 0.94), 0.2, 4);
+    const a = state.party.acc[sel];
+    if(e.shiftKey){
+      // rotate
+      a.rot = (a.rot||0) + (e.deltaY>0 ? 2 : -2);
+    }else{
+      // scale
+      const s = Math.max(0.2, Math.min(4, (a.scale||1) * (e.deltaY>0 ? 0.95 : 1.05)));
+      a.scale = +s.toFixed(3);
     }
-    applyTransform(selected, a);
-    updateInfo(a);
-  }, { passive: false });
-
-  // clicking empty stage clears selection
-  stage.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.acc-img')) return;
-    selectNode(null);
-  });
-
-  // apply transform helper
-  function applyTransform(node, a) {
-    node.style.transform = `translate(${a.x||0}px, ${a.y||0}px) rotate(${a.r||0}deg) scale(${a.k||1})`;
-  }
-
-  // info HUD
-  const accInfo = root.querySelector('#accInfo');
-  function updateInfo(a) {
-    accInfo.textContent = `x:${Math.round(a.x||0)} y:${Math.round(a.y||0)} scale:${(a.k||1).toFixed(2)} rot:${Math.round(a.r||0)}°`;
-  }
-
-  // toolbar buttons
-  root.querySelector('#bringFront').onclick = () => {
-    if (!selected) return;
-    accLayer.appendChild(selected);
-    // reorder backing array to end
-    const i = +selected.dataset.index;
-    const item = s.party.hero.acc.splice(i, 1)[0];
-    s.party.hero.acc.push(item);
-    renderAccessories();
-    selectNode(accLayer.lastElementChild);
-  };
-
-  root.querySelector('#sendBack').onclick = () => {
-    if (!selected) return;
-    const first = accLayer.firstElementChild;
-    accLayer.insertBefore(selected, first);
-    // reorder backing array to beginning
-    const i = +selected.dataset.index;
-    const item = s.party.hero.acc.splice(i, 1)[0];
-    s.party.hero.acc.unshift(item);
-    renderAccessories();
-    selectNode(accLayer.firstElementChild);
-  };
-
-  root.querySelector('#saveAcc').onclick = () => {
-    saveState(s);
-    flash('Saved!');
-  };
-
-  root.querySelector('#removeAcc').onclick = () => {
-    if (!selected) return;
-    const i = +selected.dataset.index;
-    s.party.hero.acc.splice(i, 1);
-    renderAccessories();
-    saveState(s);
-    selectNode(null);
-  };
+    renderAcc(); select(sel);
+  }, {passive:false});
 
   // add accessory
-  root.querySelector('#addAcc').onclick = () => {
+  root.querySelector('#addAccBtn').onclick = ()=>{
     const f = root.querySelector('#accFile').files?.[0];
-    if (!f) return alert('Choose a PNG first.');
+    if(!f){ alert('Choose a PNG/WebP first'); return; }
     const r = new FileReader();
-    r.onload = () => {
-      const a = { src: r.result, x: 0, y: 0, k: 1, r: 0 };
-      s.party.hero.acc.push(a);
-      saveState(s);
-      renderAccessories();
-      // select the newly spawned node
-      selectNode(accLayer.lastElementChild);
+    r.onload = ()=>{
+      state.party.acc.push({ src:r.result, x:0, y:0, scale:1, rot:0, z:(state.party.acc.length? Math.max(...state.party.acc.map(a=>a.z||0))+1 : 1)});
+      renderAcc(); select(state.party.acc.length-1);
     };
     r.readAsDataURL(f);
   };
 
-  // change hero portrait
-  root.querySelector('#heroFile').onchange = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  // hero portrait change
+  root.querySelector('#heroFile').onchange = e=>{
+    const f = e.target.files?.[0]; if(!f) return;
     const r = new FileReader();
-    r.onload = () => {
-      s.party.hero.src = r.result;
-      heroBase.src = r.result;
-      saveState(s);
-    };
+    r.onload = ()=>{ state.party.hero.src = r.result; heroImg.src = r.result; save(state); };
     r.readAsDataURL(f);
   };
 
-  // tiny feedback
-  function flash(text) {
-    const el = document.createElement('div');
-    el.textContent = text;
-    el.style.position = 'fixed';
-    el.style.left = '50%';
-    el.style.top = '66px';
-    el.style.transform = 'translateX(-50%)';
-    el.style.padding = '8px 12px';
-    el.style.border = '1px solid #69c';
-    el.style.background = 'rgba(15,22,40,.9)';
-    el.style.borderRadius = '10px';
-    el.style.zIndex = '60';
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(), 900);
-  }
-
-  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+  // z-order + save/remove
+  root.querySelector('#bringFront').onclick = ()=>{
+    if(sel<0) return;
+    const maxZ = state.party.acc.reduce((m,a)=> Math.max(m, a.z||0), 0);
+    state.party.acc[sel].z = maxZ + 1;
+    renderAcc(); select(sel);
+  };
+  root.querySelector('#sendBack').onclick = ()=>{
+    if(sel<0) return;
+    const minZ = state.party.acc.reduce((m,a)=> Math.min(m, a.z||0), 0);
+    state.party.acc[sel].z = minZ - 1;
+    renderAcc(); select(sel);
+  };
+  root.querySelector('#saveAcc').onclick = ()=>{
+    save(state);
+    status.textContent = 'Saved.';
+    setTimeout(()=> status.textContent='', 1200);
+  };
+  root.querySelector('#removeAcc').onclick = ()=>{
+    if(sel<0) return;
+    state.party.acc.splice(sel,1);
+    save(state);
+    renderAcc(); select(-1);
+  };
 }
