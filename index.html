@@ -42,11 +42,14 @@
 
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
+  <!-- Core app -->
   <script type="module" src="js/app.js"></script>
-  <script type="module">
-  import './assets/js/asset-db.js';
-  import './assets/js/overlays.js';
-  </script>
+
+  <!-- Accessory + overlay manager -->
+  <script type="module" src="js/asset-db.js"></script>
+  <script type="module" src="js/overlays.js"></script>
+
+  <!-- Hotfixes -->
   <script type="module" src="assets/hotfix/hotfix-accessory-align.js"></script>
 </body>
 </html>
