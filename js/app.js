@@ -9,8 +9,6 @@ import renderCharacter from './pages/character.js';
 import renderJournal from './pages/journal.js';
 import renderToddler from './pages/toddler.js';
 import renderRewards from './pages/rewards.js';
-import renderCharacter from './pages/character.js';
-
 
 const routes=[
   {id:'home', label:'Dashboard', view:renderHome},
