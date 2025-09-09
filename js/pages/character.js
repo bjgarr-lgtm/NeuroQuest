@@ -326,18 +326,18 @@ export default function renderCharacter(viewEl) {
 
         // composite
         const rect = portraitWrap.getBoundingClientRect();
-        const W = Math.max(360, Math.round(rect.width || 360));
-        const H = Math.max(460, Math.round(rect.height || 460));
-        const can = document.createElement('canvas'); can.width = W; can.height = H;
-        const ctx = can.getContext('2d');
+const W = 360, H = 460; // fixed target to match dashboard card
+const can = document.createElement('canvas'); can.width = W; can.height = H;
+const ctx = can.getContext('2d');
 
-        // Draw base using object-fit: contain behavior (to match CSS)
-        const base = new Image(); base.src = heroBase.src; await base.decode();
-        const bw = base.naturalWidth || base.width, bh = base.naturalHeight || base.height;
-        const scaleB = Math.min(W/(bw||W), H/(bh||H));
-        const dw = Math.round((bw||W) * scaleB), dh = Math.round((bh||H) * scaleB);
-        const offX = Math.round((W - dw)/2), offY = Math.round((H - dh)/2);
-        ctx.drawImage(base, offX, offY, dw, dh);
+// Draw base portrait with CSS 'contain' logic
+const base = new Image(); base.src = heroBase.src; await base.decode();
+const scale = Math.min(W / base.width, H / base.height);
+const drawW = Math.round(base.width * scale);
+const drawH = Math.round(base.height * scale);
+const offX = Math.round((W - drawW) / 2);
+const offY = Math.round((H - drawH) / 2);
+ctx.drawImage(base, offX, offY, drawW, drawH);
 
         // Draw accessories in Z order
         const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
