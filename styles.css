@@ -14,7 +14,7 @@ h1,h2,h3{letter-spacing:1px}
 
 .app-header{display:flex; align-items:center; justify-content:space-between; padding:8px 12px; position:sticky; top:0; background:linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,.2)); backdrop-filter: blur(6px); z-index:20}
 .brand{display:flex; align-items:center; gap:10px}
-.logo{width:100px; height:100px; filter:drop-shadow(0 0 6px #7cf)}
+.logo{width:70px; height:70px; filter:drop-shadow(0 0 6px #7cf)}
 .hud{display:flex; align-items:center; gap:12px}
 .hamb{border:1px solid #555; background:#111; color:#9fe; border-radius:10px; padding:6px 10px; cursor:pointer}
 .hamb:active{transform:translateY(1px)}
