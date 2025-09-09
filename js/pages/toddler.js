@@ -22,12 +22,12 @@ export default function renderToddler(root){
   s.toddlerQs ||= [];
   save(s);
 
-  root.innerHTML = \`
+  root.innerHTML = `
     <h2>Toddler Hub</h2>
     <section class="grid three">
       <div class="panel">
         <h3>Pet</h3>
-        <div class="row"><span>🪙 Coins: <b id="coins">\${s.toddlerCoins}</b></span></div>
+        <div class="row"><span>🪙 Coins: <b id="coins">${s.toddlerCoins}</b></span></div>
         <div class="row" style="gap:8px; align-items:center">
           <select id="species"></select>
           <img id="petImg" style="height:120px"/>
@@ -45,7 +45,7 @@ export default function renderToddler(root){
         <div id="game" class="card" style="min-height:220px"></div>
       </div>
     </section>
-  \`;
+  `;
 
   // Species
   const sel=document.getElementById('species'); SPECIES.forEach(sp=>{ const o=document.createElement('option'); o.value=sp.id; o.textContent=sp.name; sel.appendChild(o); });
