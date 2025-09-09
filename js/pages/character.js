@@ -279,21 +279,39 @@ export default function renderCharacter(viewEl) {
   });
 
   
-  // ===== SAVE: composite hero + accessories and write to party (DOM-synced) =====
+  
+// ===== SAVE: composite hero + accessories and write to party (DOM-synced) =====
   (function(){
     const saveBtn = $('#saveAcc', wrap);
     if(!saveBtn) return;
-    function parseTransform(str){
-      // expecting: translate(Xpx, Ypx) rotate(Rdeg) scale(S)
+
+    function readTransformFrom(node){
+      // prefer computed matrix for absolute truth
+      const m = getComputedStyle(node).transform;
       const out = {x:0,y:0,rot:0,scale:1};
-      const mT = /translate\(([-0-9.]+)px,\s*([-0-9.]+)px\)/.exec(str||'');
-      if(mT){ out.x=parseFloat(mT[1]); out.y=parseFloat(mT[2]); }
-      const mR = /rotate\(([-0-9.]+)deg\)/.exec(str||'');
-      if(mR){ out.rot=parseFloat(mR[1]); }
-      const mS = /scale\(([-0-9.]+)\)/.exec(str||'');
-      if(mS){ out.scale=parseFloat(mS[1]); }
+      if(m && m !== 'none'){
+        const mm = /matrix\(([-0-9.,\s]+)\)/.exec(m);
+        if(mm){
+          const parts = mm[1].split(',').map(Number);
+          const a=parts[0], b=parts[1], c=parts[2], d=parts[3], tx=parts[4], ty=parts[5];
+          out.x = isFinite(tx)?tx:0;
+          out.y = isFinite(ty)?ty:0;
+          out.rot = Math.atan2(b, a) * 180/Math.PI;
+          out.scale = Math.sqrt(a*a + b*b) || 1;
+        }
+      }else{
+        // fallback to inline style
+        const s = node.style.transform || '';
+        const t = /translate\(([-0-9.]+)px,\s*([-0-9.]+)px\)/.exec(s);
+        if(t){ out.x=parseFloat(t[1]); out.y=parseFloat(t[2]); }
+        const r = /rotate\(([-0-9.]+)deg\)/.exec(s);
+        if(r){ out.rot=parseFloat(r[1]); }
+        const sc = /scale\(([-0-9.]+)\)/.exec(s);
+        if(sc){ out.scale=parseFloat(sc[1]); }
+      }
       return out;
     }
+
     saveBtn.addEventListener('click', async ()=>{
       try{
         // sync from DOM so we capture EXACT on-screen alignment
@@ -301,8 +319,7 @@ export default function renderCharacter(viewEl) {
           const id = node.dataset.id;
           const a = state.hero.acc.find(x=> String(x.id)===String(id));
           if(a){
-            const tf = node.style.transform || '';
-            const v = parseTransform(tf, node);
+            const v = readTransformFrom(node);
             a.x = v.x; a.y = v.y; a.rot = v.rot; a.scale = v.scale;
           }
         });
@@ -314,13 +331,20 @@ export default function renderCharacter(viewEl) {
         const can = document.createElement('canvas'); can.width = W; can.height = H;
         const ctx = can.getContext('2d');
 
+        // Draw base using object-fit: contain behavior (to match CSS)
         const base = new Image(); base.src = heroBase.src; await base.decode();
-        ctx.drawImage(base, 0, 0, W, H);
+        const bw = base.naturalWidth || base.width, bh = base.naturalHeight || base.height;
+        const scaleB = Math.min(W/(bw||W), H/(bh||H));
+        const dw = Math.round((bw||W) * scaleB), dh = Math.round((bh||H) * scaleB);
+        const offX = Math.round((W - dw)/2), offY = Math.round((H - dh)/2);
+        ctx.drawImage(base, offX, offY, dw, dh);
 
+        // Draw accessories in Z order
         const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
         for(const a of sorted){
           const img = new Image(); img.src = a.data; await img.decode();
           ctx.save();
+          // container center anchor to match CSS left:50% top:50%
           ctx.translate(W/2, H/2);
           ctx.translate(a.x||0, a.y||0);
           ctx.rotate(((a.rot||0) * Math.PI) / 180);
@@ -335,7 +359,7 @@ export default function renderCharacter(viewEl) {
         st.party.hero = { src: merged };
         setState(st);
         // update HUD mini immediately
-        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);} 
+        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);}
 
         accStatus.textContent = 'Saved to party!';
         setTimeout(()=> accStatus.textContent = '', 1500);
@@ -346,6 +370,7 @@ export default function renderCharacter(viewEl) {
       }
     });
   })();
+();
 
 // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
