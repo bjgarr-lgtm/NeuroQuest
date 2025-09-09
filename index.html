@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>NeuroQuest — v2.6 single-file align hotfix</title>
+  <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml"/>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    /* tiny helper styles so the toolbar looks sane even without CSS changes */
+    .sb-align-bar{position:absolute; left:8px; top:8px; display:flex; gap:6px;
+      background:rgba(10,10,20,.7); border:1px solid #4af; border-radius:10px; padding:6px; z-index:999}
+    .sb-align-bar button{padding:6px 10px; border-radius:8px; border:1px solid #79f; background:#122; color:#fff; cursor:pointer}
+    .sb-align-hint{position:absolute; right:8px; top:8px; background:rgba(0,0,0,.55); color:#fff;
+      padding:6px 10px; border-radius:10px; font-size:.8rem; z-index:999; border:1px solid #456}
+    .sb-acc-layer{position:absolute; left:0; top:0; width:100%; height:100%}
+    .sb-acc-ov{position:absolute; transform:translate(-50%,-50%) scale(1) rotate(0deg); cursor:grab; user-select:none}
+    .sb-acc-ov:active{cursor:grabbing}
+  </style>
+<style id="patch-hide-toolbar">.sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}</style>
+</head>
+<body class="crt">
+  <header class="app-header">
+    <div class="brand" id="brand">
+      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest logo"/>
+      <h1>NeuroQuest</h1>
+    </div>
+    <div class="hud" id="hud">
+      <div id="partyMini" class="party-mini"></div>
+      <div class="gold" id="hudGold">🪙 0</div>
+      <div class="xp">
+        <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
+        <div class="bar"><div id="hudXp"></div></div>
+      </div>
+      <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
+      <input type="file" id="musicFile" accept="audio/*" style="display:none"/>
+      <button id="hamb" class="hamb" aria-label="Menu">☰</button>
+    </div>
+  </header>
+
+  <aside id="drawer" class="drawer"><nav id="nav"></nav></aside>
+  <div id="scrim" class="scrim"></div>
+  <main id="view" class="view"></main>
+
+  <footer class="app-footer">
+    <span id="streakLabel">Streak: 0 🔥 | Best: 0</span>
+    <span class="dot">•</span>
+    <button id="exportBtn" class="secondary">Export</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none"/>
+    <button id="importBtn" class="secondary">Import</button>
+  </footer>
+
+  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+
+  <!-- 0) STORAGE SHIM (prevents quota crashes) -->
+  <script>
+  (function(){
+    const origSet = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, val){
+      if (key === 'sb_v26_state') {
+        try {
+          const obj = JSON.parse(val);
+          if (obj?.wardrobe?.images) delete obj.wardrobe.images;
+          if (obj?.pet?.images) delete obj.pet.images;
+          if (obj?.overlays?.images) delete obj.overlays.images;
+          if (Array.isArray(obj?.journal)) obj.journal = obj.journal.slice(-50);
+          if (Array.isArray(obj?.moods)) obj.moods = obj.moods.slice(-100);
+          val = JSON.stringify(obj);
+        } catch(e) {}
+      }
+      try { return origSet(key, val); }
+      catch(e){
+        try{
+          const obj = JSON.parse(val);
+          const tiny = { user: obj.user, xp: obj.xp, gold: obj.gold,
+                         streak: obj.streak, settings: obj.settings,
+                         party: obj.party, overlays: obj.overlays };
+          return origSet(key, JSON.stringify(tiny));
+        }catch(e2){ /* swallow */ }
+      }
+    };
+  })();
+  </script>
+
+  <!-- 1) YOUR APP (unchanged) -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- 2) Inline IDB + overlay + ALIGN TOOL that’s visible on Character -->
+  <script>
+  (function(){
+    // Small, separate state for overlays so we never bloat your main state
+    const OKEY='sb_v26_overlay_state';
+    const OStore = {
+      get(){ try{ return JSON.parse(localStorage.getItem(OKEY))||{} }catch{ return {} } },
+      set(v){ try{ localStorage.setItem(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
+    };
+
+    // IndexedDB for accessory images (no localStorage quota issue)
+    const DB='sb_idb_inline_v1', ST='assets';
+    function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1);
+      r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(ST)) db.createObjectStore(ST,{keyPath:'id'}) };
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error) }) }
+    async function idbPut(file){ const db=await openDB(); return new Promise((res,rej)=>{ const id=Math.random().toString(36).slice(2);
+      const tx=db.transaction(ST,'readwrite'); tx.objectStore(ST).put({id,blob:file}); tx.oncomplete=()=>res(id); tx.onerror=()=>rej(tx.error) }) }
+    async function idbGetURL(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(ST,'readonly'); const q=tx.objectStore(ST).get(id);
+      q.onsuccess=()=>res(q.result?URL.createObjectURL(q.result.blob):null); q.onerror=()=>rej(q.error) }) }
+
+    class OverlayMgr{
+      constructor(layer){ this.layer=layer; this.S=OStore.get() }
+      _arr(id){ return this.S[id]||(this.S[id]=[]) }
+      save(){ OStore.set(this.S) }
+      async load(id){ this.layer.innerHTML=''; for(const o of this._arr(id)) this._spawn(o) }
+      async add(id,o){ this._arr(id).push(o); this._spawn(o); this.save() }
+      async clear(id){ this.S[id]=[]; this.layer.innerHTML=''; this.save() }
+      _spawn(o){
+        const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=o.url; img.alt='overlay';
+        img.className='sb-acc-ov';
+        img.dataset.x=o.x??0.5; img.dataset.y=o.y??0.5; img.dataset.s=o.s??1; img.dataset.r=o.r??0;
+        this._apply(img); this.layer.appendChild(img)
+      }
+      _apply(el){
+        const x=parseFloat(el.dataset.x), y=parseFloat(el.dataset.y),
+              s=parseFloat(el.dataset.s), r=parseFloat(el.dataset.r);
+        el.style.left=(x*100)+'%'; el.style.top=(y*100)+'%';
+        el.style.transform=`translate(-50%,-50%) scale(${s}) rotate(${r}deg)`
+      }
+      updateLastTransform(id){
+        const arr=this._arr(id); if(!arr.length) return;
+        const last=this.layer.querySelector('.sb-acc-ov:last-of-type'); if(!last) return;
+        arr[arr.length-1] = {
+          id: arr[arr.length-1].id,
+          url: arr[arr.length-1].url,
+          x: parseFloat(last.dataset.x),
+          y: parseFloat(last.dataset.y),
+          s: parseFloat(last.dataset.s),
+          r: parseFloat(last.dataset.r)
+        };
+        this.save();
+      }
+    }
+
+    // Build a visible align toolbar inside the portrait wrapper
+    function injectAlignUI(wrap, mgr, leaderId){
+      // remove existing
+      wrap.querySelector('.sb-align-bar')?.remove();
+      wrap.querySelector('.sb-align-hint')?.remove();
+
+      const bar=document.createElement('div'); bar.className='sb-align-bar';
+      bar.innerHTML = `
+        <button data-act="align">Enable Align</button>
+        <button data-act="save">Save</button>
+        <button data-act="clear">Clear</button>
+        <button data-act="exit">Exit</button>
+      `;
+      const hint=document.createElement('div'); hint.className='sb-align-hint';
+      hint.textContent='Drag to move · Wheel to scale · Q/E to rotate';
+      wrap.appendChild(bar); wrap.appendChild(hint);
+
+      let active=null, dragging=false, lastPos=null;
+
+      function pickLast(){
+        active = wrap.querySelector('.sb-acc-ov:last-of-type');
+        return !!active;
+      }
+      function enableAlign(){
+        if(!pickLast()){ alert('Add an accessory first.'); return; }
+        // allow interaction
+        active.style.pointerEvents='auto';
+        // move
+        active.addEventListener('mousedown', onDown);
+        // scale (hover anywhere on wrapper)
+        wrap.addEventListener('wheel', onWheel, {passive:false});
+        // rotate by keys
+        window.addEventListener('keydown', onKey);
+      }
+      function disableAlign(){
+        if(active){
+          active.style.pointerEvents='none';
+          active.removeEventListener('mousedown', onDown);
+        }
+        wrap.removeEventListener('wheel', onWheel);
+        window.removeEventListener('keydown', onKey);
+        active=null; dragging=false; lastPos=null;
+      }
+      function onDown(ev){
+        ev.preventDefault(); dragging=true;
+        const r=wrap.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      }
+      function onMove(ev){
+        if(!dragging||!active||!lastPos) return;
+        const {r}=lastPos;
+        let x=(ev.clientX - r.left)/r.width, y=(ev.clientY - r.top)/r.height;
+        x=Math.max(0,Math.min(1,x)); y=Math.max(0,Math.min(1,y));
+        active.dataset.x=x; active.dataset.y=y;
+        const xS=(x*100)+'%'; const yS=(y*100)+'%';
+        active.style.left=xS; active.style.top=yS;
+      }
+      function onUp(){
+        dragging=false; window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        mgr.updateLastTransform(leaderId);
+      }
+      function onWheel(ev){
+        if(!active) return;
+        ev.preventDefault();
+        const s=parseFloat(active.dataset.s)||1;
+        const delta = (ev.deltaY>0 ? -0.06 : 0.06);
+        const ns = Math.max(.2, Math.min(5, s+delta));
+        active.dataset.s = ns.toFixed(3);
+        applyTRS();
+      }
+      function onKey(ev){
+        if(!active) return;
+        if(ev.key==='q' || ev.key==='Q'){ rotate(-4) }
+        else if(ev.key==='e' || ev.key==='E'){ rotate(4) }
+      }
+      function rotate(d){
+        const r=parseFloat(active.dataset.r)||0;
+        active.dataset.r=(r+d).toFixed(2);
+        applyTRS();
+      }
+      function applyTRS(){
+        const s=parseFloat(active.dataset.s)||1;
+        const r=parseFloat(active.dataset.r)||0;
+        active.style.transform=`translate(-50%,-50%) scale(${s}) rotate(${r}deg)`;
+      }
+
+      bar.addEventListener('click', (e)=>{
+        const act = e.target.getAttribute('data-act');
+        if(!act) return;
+        if(act==='align'){ enableAlign(); }
+        if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory transform.'); }
+        if(act==='clear'){ disableAlign(); mgr.clear(leaderId); }
+        if(act==='exit'){ disableAlign(); bar.remove(); hint.remove(); }
+      });
+    }
+
+    // Patch Character page after your app renders it
+    function leaderId(){
+      const sel=document.querySelector('#leader');
+      return sel?.value || 'bambi';
+    }
+    async function patchCharacter(){
+      const portrait=document.querySelector('#portrait'); if(!portrait) return;
+      const wrap=portrait.parentElement;
+      // ensure layer
+      let layer=wrap.querySelector('.sb-acc-layer');
+      if(!layer){ layer=document.createElement('div'); layer.className='sb-acc-layer'; wrap.appendChild(layer) }
+
+      const mgr=new OverlayMgr(layer);
+      await mgr.load(leaderId());
+
+      // wire buttons if present
+      const addBtn=document.querySelector('#addAcc');
+      const fileIn=document.querySelector('#accFile');
+      const clrBtn=document.querySelector('#clearAcc');
+      if(addBtn && fileIn && !addBtn._wired){
+        addBtn._wired=true;
+        addBtn.addEventListener('click', async ()=>{
+          const f=fileIn.files && fileIn.files[0]; if(!f){ alert('Choose an image first'); return; }
+          try{
+            const id=await idbPut(f); const url=await idbGetURL(id);
+            if(!url){ alert('Accessory load failed'); return; }
+            await mgr.add(leaderId(), { id, url, x:0.5, y:0.5, s:1, r:0 });
+            injectAlignUI(wrap, mgr, leaderId());
+            alert('Accessory added. Use the Align toolbar (top-left of portrait).');
+          }catch(err){ console.error(err); alert('Accessory add failed: '+err); }
+        });
+      }
+      if(clrBtn && !clrBtn._wired){
+        clrBtn._wired=true;
+        clrBtn.addEventListener('click', async ()=>{ await mgr.clear(leaderId()); alert('Cleared overlays.'); });
+      }
+
+      // if there’s already an overlay, show the toolbar
+      if (layer.querySelector('.sb-acc-ov')) injectAlignUI(wrap, mgr, leaderId());
+    }
+
+    function onRoute(){ setTimeout(patchCharacter, 60) }
+    window.addEventListener('hashchange', onRoute);
+    document.addEventListener('DOMContentLoaded', onRoute);
+    setTimeout(onRoute, 200);
+  })();
+</script>
+
+
+</body>
+</html>
