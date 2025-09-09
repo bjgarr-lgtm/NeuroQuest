@@ -38,6 +38,13 @@ function render(){
 window.addEventListener('hashchange', render);
 render();
 
+// Make the header brand clickable → go to Dashboard
+try{
+  const brand = document.getElementById('brand');
+  if (brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ location.hash='#home'; }; }
+}catch(_){}
+
+
 function updateHud(){
   const s=load();
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);

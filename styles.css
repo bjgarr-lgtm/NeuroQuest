@@ -37,7 +37,18 @@ h1,h2,h3{letter-spacing:1px}
 .grid.three{grid-template-columns:repeat(3,1fr)}
 .card{background:#11162a; border:1px solid #3a3f68; border-radius:16px; padding:12px}
 
-.party-banner{background:linear-gradient(180deg,#2a2338,#1a1825); border:1px solid #2a2d50; border-radius:16px; padding:12px; display:flex; align-items:center; gap:12px; overflow:hidden; max-width:1200px;}
+.party-banner{
+  background:linear-gradient(180deg,#2a2338,#1a1825);
+  border:1px solid #2a2d50;
+  border-radius:16px;
+  padding:12px;
+  display:flex;
+  flex-direction:column;  /* stack vertically */
+  align-items:center;
+  gap:12px;
+  overflow:hidden;
+  max-width:1200px;
+}
 .party-title{color:#111; background:#f2e7ff; padding:4px 8px; border-radius:8px}
 .party{display:flex; align-items:flex-end; gap:20px}
 .party .hero{display:flex; flex-direction:column; align-items:center}
