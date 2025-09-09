@@ -320,13 +320,15 @@ export default function renderCharacter(viewEl) {
           const a = state.hero.acc.find(x=> String(x.id)===String(id));
           if(a){
             const v = readTransformFrom(node);
-            a.x = v.x; a.y = v.y; a.rot = v.rot; a.scale = v.scale;
+            a.x = (v.x||0) * scaleX; a.y = (v.y||0) * scaleY; a.rot = v.rot; a.scale = v.scale;
           }
         });
 
         // composite
         const rect = portraitWrap.getBoundingClientRect();
 const W = 360, H = 460; // fixed target to match dashboard card
+const scaleX = W / (rect.width || W);
+const scaleY = H / (rect.height || H);
 const can = document.createElement('canvas'); can.width = W; can.height = H;
 const ctx = can.getContext('2d');
 
