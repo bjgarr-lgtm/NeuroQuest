@@ -209,7 +209,7 @@
       function onDown(ev){
         select(ev.target);
         ev.preventDefault(); dragging=true;
-        const r=wrap.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
+        const r=layer.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
       }
@@ -281,7 +281,7 @@
       }
       function positionHandles(){
         if(!active) return;
-        const r=active.getBoundingClientRect(); const w=wrap.getBoundingClientRect();
+        const r=active.getBoundingClientRect(); const w=layer.getBoundingClientRect();
         const toWrap = (x,y)=>({ left:(x-w.left)+'px', top:(y-w.top)+'px' });
         const hh=(sel, x, y)=>{ const el=wrap.querySelector(sel); if(el){ const p=toWrap(x,y); el.style.left=p.left; el.style.top=p.top; } };
         hh('.sb-handle.ne', r.right, r.top);
@@ -294,7 +294,7 @@
 
       function onResize(ev){
         ev.preventDefault();
-        const r=wrap.getBoundingClientRect();
+        const r=layer.getBoundingClientRect();
         const start={x:ev.clientX, y:ev.clientY, w:active.offsetWidth, h:active.offsetHeight};
         function mm(e){
           const dx=e.clientX-start.x, dy=e.clientY-start.y;
@@ -356,11 +356,14 @@ if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory tran
       return sel?.value || 'bambi';
     }
     async function patchCharacter(){
-      const portrait=document.querySelector('#portrait'); if(!portrait) return;
-      const wrap=portrait.parentElement;
-      // ensure layer
+      const portrait=document.querySelector('#heroBase, #charPortrait, .portrait-wrap img, .char-portrait img'); if(!portrait) return;
+      const wrap=portrait.closest('.portrait-wrap, .char-portrait')||portrait.parentElement;
+      wrap.style.position = wrap.style.position || 'relative';
+      // ensure layer anchored to the IMG box, not the whole wrap
       let layer=wrap.querySelector('.sb-acc-layer');
       if(!layer){ layer=document.createElement('div'); layer.className='sb-acc-layer'; wrap.appendChild(layer) }
+      function sizeLayer(){ const r=portrait.getBoundingClientRect(); const w=wrap.getBoundingClientRect(); layer.style.position='absolute'; layer.style.left=(r.left-w.left)+'px'; layer.style.top=(r.top-w.top)+'px'; layer.style.width=r.width+'px'; layer.style.height=r.height+'px'; layer.style.zIndex=1; }
+      sizeLayer(); new ResizeObserver(()=>sizeLayer()).observe(wrap);
 
       const mgr=new OverlayMgr(layer);
       await mgr.load(leaderId());
