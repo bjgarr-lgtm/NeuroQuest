@@ -359,7 +359,7 @@ export default function renderCharacter(viewEl) {
         st.party.hero = { src: merged };
         setState(st);
         // update HUD mini immediately
-        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);}
+        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i); }
 
         accStatus.textContent = 'Saved to party!';
         setTimeout(()=> accStatus.textContent = '', 1500);
@@ -370,7 +370,6 @@ export default function renderCharacter(viewEl) {
       }
     });
   })();
-();
 
 // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
