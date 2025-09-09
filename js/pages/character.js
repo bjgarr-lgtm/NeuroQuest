@@ -278,7 +278,58 @@ export default function renderCharacter(viewEl) {
     accStatus.textContent = 'Accessory added. Drag to move, wheel to resize, Shift+wheel to rotate.';
   });
 
-  // ===== Change hero portrait (keeps editor visible)
+  
+  // ===== SAVE: composite hero + accessories and write to party =====
+  (function(){
+    const saveBtn = $('#saveAcc', wrap);
+    if(!saveBtn) return;
+    saveBtn.addEventListener('click', async ()=>{
+      try{
+        // Canvas size based on portrait box (fallback to 360x460)
+        const rect = portraitWrap.getBoundingClientRect();
+        const W = Math.max(360, Math.round(rect.width || 360));
+        const H = Math.max(460, Math.round(rect.height || 460));
+        const can = document.createElement('canvas'); can.width = W; can.height = H;
+        const ctx = can.getContext('2d');
+
+        // Draw base portrait
+        const base = new Image(); base.src = heroBase.src; await base.decode();
+        ctx.drawImage(base, 0, 0, W, H);
+
+        // Draw accessories in Z order
+        const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
+        for(const a of sorted){
+          const img = new Image(); img.src = a.data; await img.decode();
+          ctx.save();
+          ctx.translate(W/2, H/2);
+          ctx.translate(a.x||0, a.y||0);
+          ctx.rotate(((a.rot||0) * Math.PI) / 180);
+          const s = a.scale || 1;
+          ctx.scale(s, s);
+          ctx.drawImage(img, -img.width/2, -img.height/2);
+          ctx.restore();
+        }
+
+        const merged = can.toDataURL('image/png', 0.95);
+
+        // Persist to the same state key the dashboard reads
+        const st = getState();
+        st.party ||= { hero:null, companions:[] };
+        st.party.hero = { src: merged };
+        // keep existing companions if present
+        st.party.companions = st.party.companions || [];
+        setState(st);
+
+        accStatus.textContent = 'Saved to party!';
+        setTimeout(()=> accStatus.textContent = '', 1500);
+      }catch(err){
+        console.warn('Save failed', err);
+        accStatus.textContent = 'Save failed.';
+        setTimeout(()=> accStatus.textContent = '', 1800);
+      }
+    });
+  })();
+// ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
     const f = heroFile.files?.[0];
     if (!f) return;
