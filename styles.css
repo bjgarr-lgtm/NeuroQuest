@@ -41,7 +41,7 @@ h1,h2,h3{letter-spacing:1px}
 .party-title{color:#111; background:#f2e7ff; padding:4px 8px; border-radius:8px}
 .party{display:flex; align-items:flex-end; gap:20px}
 .party .hero{display:flex; flex-direction:column; align-items:center}
-.party .hero img{width:360px; height:460px; object-fit:contain; border-radius:12px; box-shadow:0 0 12px rgba(255,255,255,.15)}
+.party .hero img{width:306px; height:391px; object-fit:contain; border-radius:12px; box-shadow:0 0 12px rgba(255,255,255,.15)}
 .party .hero .name{margin-top:6px; color:#000; background:#fff; padding:2px 6px; border-radius:8px}
 
 .breathe{display:flex; flex-direction:column; align-items:center; gap:8px}
