@@ -302,7 +302,7 @@ export default function renderCharacter(viewEl) {
           const a = state.hero.acc.find(x=> String(x.id)===String(id));
           if(a){
             const tf = node.style.transform || '';
-            const v = parseTransform(tf);
+            const v = parseTransform(tf, node);
             a.x = v.x; a.y = v.y; a.rot = v.rot; a.scale = v.scale;
           }
         });
@@ -334,6 +334,8 @@ export default function renderCharacter(viewEl) {
         const st = getState(); st.party ||= { hero:null, companions:[] };
         st.party.hero = { src: merged };
         setState(st);
+        // update HUD mini immediately
+        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);} 
 
         accStatus.textContent = 'Saved to party!';
         setTimeout(()=> accStatus.textContent = '', 1500);
