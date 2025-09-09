@@ -20,26 +20,41 @@ export default function renderHome(root){
     </section>
   `;
 
+  // Party render
   const row=document.getElementById('partyRow');
-  function heroCard(imgSrc, name){
+  function card(src, name){
     const d=document.createElement('div'); d.className='hero';
-    const img=document.createElement('img'); img.src=imgSrc||'assets/icon.svg'; img.alt=name;
-    const cap=document.createElement('div'); cap.className='name'; cap.textContent=name;
+    const img=document.createElement('img'); img.src=src||'assets/icon.svg'; img.alt=name||'Member';
+    const cap=document.createElement('div'); cap.className='name'; cap.textContent=name||'Companion';
     d.appendChild(img); d.appendChild(cap); return d;
   }
-  if(s.party.hero) row.appendChild(heroCard(s.party.hero.src, 'You'));
-  (s.party.companions||[]).forEach(c=> row.appendChild(heroCard(c.src, c.name||'Companion')));
+  if(s.party?.hero?.src) row.appendChild(card(s.party.hero.src,'You'));
+  (s.party?.companions||[]).forEach(c=> row.appendChild(card(c.src, c.name||'Companion')));
 
-  // Breathe logic (simple phase timer)
-  const ring=document.querySelector('.ring');
-  const phase=document.getElementById('phase');
+  // Breathe ring
+  const ring = document.querySelector('.ring');
+  const core = document.querySelector('.ring .core');
+  const phase = document.getElementById('phase');
   let timer=null, step=0, running=false;
-  const seq=[{t:4000,txt:'Inhale'}, {t:2000,txt:'Hold'}, {t:4000,txt:'Exhale'}, {t:2000,txt:'Hold'}];
+  const seq=[{t:4000,txt:'Inhale', scale:1.0},{t:2000,txt:'Hold',scale:1.0},{t:4000,txt:'Exhale',scale:0.6},{t:2000,txt:'Hold',scale:0.6}];
+
+  core.style.transformOrigin='center center';
+  core.style.transition='transform 4s linear';
+
   function tick(){
-    const p=seq[step%seq.length]; phase.textContent=p.txt;
+    const p=seq[step%seq.length];
+    phase.textContent=p.txt;
+    // adjust transition for holds vs breaths
+    const next = seq[(step+1)%seq.length];
+    core.style.transition = (p.txt==='Hold') ? 'transform 0s linear' :
+                            (p.txt==='Inhale' || p.txt==='Exhale') ? `transform ${p.t/1000}s ease-in-out` : core.style.transition;
+    core.style.transform = `scale(${p.scale})`;
     timer=setTimeout(()=>{ step++; tick(); }, p.t);
   }
-  ring.onclick=()=>{ if(running){ clearTimeout(timer); running=false; phase.textContent='Paused'; return; } running=true; tick(); };
+  ring.onclick=()=>{
+    if(running){ clearTimeout(timer); running=false; phase.textContent='Paused'; return; }
+    running=true; step=0; tick();
+  };
 
   // HUD update
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);

@@ -279,24 +279,44 @@ export default function renderCharacter(viewEl) {
   });
 
   
-  // ===== SAVE: composite hero + accessories and write to party =====
+  // ===== SAVE: composite hero + accessories and write to party (DOM-synced) =====
   (function(){
     const saveBtn = $('#saveAcc', wrap);
     if(!saveBtn) return;
+    function parseTransform(str){
+      // expecting: translate(Xpx, Ypx) rotate(Rdeg) scale(S)
+      const out = {x:0,y:0,rot:0,scale:1};
+      const mT = /translate\(([-0-9.]+)px,\s*([-0-9.]+)px\)/.exec(str||'');
+      if(mT){ out.x=parseFloat(mT[1]); out.y=parseFloat(mT[2]); }
+      const mR = /rotate\(([-0-9.]+)deg\)/.exec(str||'');
+      if(mR){ out.rot=parseFloat(mR[1]); }
+      const mS = /scale\(([-0-9.]+)\)/.exec(str||'');
+      if(mS){ out.scale=parseFloat(mS[1]); }
+      return out;
+    }
     saveBtn.addEventListener('click', async ()=>{
       try{
-        // Canvas size based on portrait box (fallback to 360x460)
+        // sync from DOM so we capture EXACT on-screen alignment
+        accLayer.querySelectorAll('.acc-img').forEach(node=>{
+          const id = node.dataset.id;
+          const a = state.hero.acc.find(x=> String(x.id)===String(id));
+          if(a){
+            const tf = node.style.transform || '';
+            const v = parseTransform(tf);
+            a.x = v.x; a.y = v.y; a.rot = v.rot; a.scale = v.scale;
+          }
+        });
+
+        // composite
         const rect = portraitWrap.getBoundingClientRect();
         const W = Math.max(360, Math.round(rect.width || 360));
         const H = Math.max(460, Math.round(rect.height || 460));
         const can = document.createElement('canvas'); can.width = W; can.height = H;
         const ctx = can.getContext('2d');
 
-        // Draw base portrait
         const base = new Image(); base.src = heroBase.src; await base.decode();
         ctx.drawImage(base, 0, 0, W, H);
 
-        // Draw accessories in Z order
         const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
         for(const a of sorted){
           const img = new Image(); img.src = a.data; await img.decode();
@@ -311,13 +331,8 @@ export default function renderCharacter(viewEl) {
         }
 
         const merged = can.toDataURL('image/png', 0.95);
-
-        // Persist to the same state key the dashboard reads
-        const st = getState();
-        st.party ||= { hero:null, companions:[] };
+        const st = getState(); st.party ||= { hero:null, companions:[] };
         st.party.hero = { src: merged };
-        // keep existing companions if present
-        st.party.companions = st.party.companions || [];
         setState(st);
 
         accStatus.textContent = 'Saved to party!';
@@ -329,6 +344,7 @@ export default function renderCharacter(viewEl) {
       }
     });
   })();
+
 // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
     const f = heroFile.files?.[0];
