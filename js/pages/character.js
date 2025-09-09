@@ -280,41 +280,32 @@ export default function renderCharacter(viewEl) {
 
   
   
-// ===== SAVE: composite hero + accessories and write to party (DOM-synced) =====
+// ===== SAVE: composite hero + accessories and write to party (clean) =====
   (function(){
     const saveBtn = $('#saveAcc', wrap);
     if(!saveBtn) return;
 
     function readTransformFrom(node){
-      // prefer computed matrix for absolute truth
-      const m = getComputedStyle(node).transform;
       const out = {x:0,y:0,rot:0,scale:1};
-      if(m && m !== 'none'){
-        const mm = /matrix\(([-0-9.,\s]+)\)/.exec(m);
-        if(mm){
-          const parts = mm[1].split(',').map(Number);
-          const a=parts[0], b=parts[1], c=parts[2], d=parts[3], tx=parts[4], ty=parts[5];
+      const cs = getComputedStyle(node).transform;
+      if(cs && cs !== 'none'){
+        const m = /matrix\(([-0-9.,\s]+)\)/.exec(cs);
+        if(m){
+          const [a,b,c,d,tx,ty] = m[1].split(',').map(Number);
           out.x = isFinite(tx)?tx:0;
           out.y = isFinite(ty)?ty:0;
-          out.rot = Math.atan2(b, a) * 180/Math.PI;
-          out.scale = Math.sqrt(a*a + b*b) || 1;
+          const rot = Math.atan2(b, a) * 180/Math.PI;
+          out.rot = isFinite(rot)?rot:0;
+          const sc = Math.sqrt(a*a + b*b);
+          out.scale = isFinite(sc)?sc:1;
         }
-      }else{
-        // fallback to inline style
-        const s = node.style.transform || '';
-        const t = /translate\(([-0-9.]+)px,\s*([-0-9.]+)px\)/.exec(s);
-        if(t){ out.x=parseFloat(t[1]); out.y=parseFloat(t[2]); }
-        const r = /rotate\(([-0-9.]+)deg\)/.exec(s);
-        if(r){ out.rot=parseFloat(r[1]); }
-        const sc = /scale\(([-0-9.]+)\)/.exec(s);
-        if(sc){ out.scale=parseFloat(sc[1]); }
       }
       return out;
     }
 
     saveBtn.addEventListener('click', async ()=>{
       try{
-        // sync from DOM so we capture EXACT on-screen alignment
+        // Sync from DOM first
         accLayer.querySelectorAll('.acc-img').forEach(node=>{
           const id = node.dataset.id;
           const a = state.hero.acc.find(x=> String(x.id)===String(id));
@@ -324,33 +315,32 @@ export default function renderCharacter(viewEl) {
           }
         });
 
-        // composite
+        // Composite at fixed 360x460
         const rect = portraitWrap.getBoundingClientRect();
-const W = 360, H = 460; // fixed target to match dashboard card
-const can = document.createElement('canvas'); can.width = W; can.height = H;
-const ctx = can.getContext('2d');
+        const W = 360, H = 460;
+        const scaleX = W / (rect.width || W);
+        const scaleY = H / (rect.height || H);
+        const can = document.createElement('canvas'); can.width = W; can.height = H;
+        const ctx = can.getContext('2d');
 
-// Draw base portrait with CSS 'contain' logic
-const base = new Image(); base.src = heroBase.src; await base.decode();
-const scale = Math.min(W / base.width, H / base.height);
-const drawW = Math.round(base.width * scale);
-const drawH = Math.round(base.height * scale);
-const offX = Math.round((W - drawW) / 2);
-const offY = Math.round((H - drawH) / 2);
-ctx.drawImage(base, offX, offY, drawW, drawH);
+        // Draw base (object-fit: contain)
+        const base = new Image(); base.src = heroBase.src; await base.decode();
+        const baseScale = Math.min(W / base.width, H / base.height);
+        const drawW = Math.round(base.width  * baseScale);
+        const drawH = Math.round(base.height * baseScale);
+        const offX = Math.round((W - drawW) / 2);
+        const offY = Math.round((H - drawH) / 2);
+        ctx.drawImage(base, offX, offY, drawW, drawH);
 
-        // Draw accessories in Z order
+        // Draw accessories in Z order, translate scaled to canvas
         const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
         for(const a of sorted){
           const img = new Image(); img.src = a.data; await img.decode();
           ctx.save();
-          // container center anchor to match CSS left:50% top:50%
           ctx.translate(W/2, H/2);
-          ctx.translate(a.x||0, a.y||0);
+          ctx.translate((a.x||0) * scaleX, (a.y||0) * scaleY);
           ctx.rotate(((a.rot||0) * Math.PI) / 180);
-          const containS = Math.min(W / img.width, H / img.height);
-          const s = (a.scale || 1) * containS;
-          ctx.scale(s, s);
+          ctx.scale(a.scale || 1, a.scale || 1);
           ctx.drawImage(img, -img.width/2, -img.height/2);
           ctx.restore();
         }
@@ -359,8 +349,10 @@ ctx.drawImage(base, offX, offY, drawW, drawH);
         const st = getState(); st.party ||= { hero:null, companions:[] };
         st.party.hero = { src: merged };
         setState(st);
-        // update HUD mini immediately
-        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i); }
+
+        // Update HUD mini immediately
+        const mini = document.getElementById('partyMini');
+        if(mini){ mini.innerHTML=''; const i = document.createElement('img'); i.src = merged; mini.appendChild(i); }
 
         accStatus.textContent = 'Saved to party!';
         setTimeout(()=> accStatus.textContent = '', 1500);
@@ -371,7 +363,6 @@ ctx.drawImage(base, offX, offY, drawW, drawH);
       }
     });
   })();
-
 // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
     const f = heroFile.files?.[0];
