@@ -41,6 +41,7 @@ export default function renderCharacter(viewEl) {
   state.hero ||= {};
   state.hero.portrait ||= state.hero.portrait || 'assets/hero-default.png';
   state.hero.acc ||= []; // {id,data,x,y,scale,rot,z}
+  state.companions ||= []; // data URLs
 
   // ===== Left column: Your Hero =====
   const wrap = el('section', 'cardish character-page');
@@ -55,6 +56,15 @@ export default function renderCharacter(viewEl) {
           <div id="accLayer" class="acc-layer"></div>
         </div>
 
+        <!-- HERO PORTRAIT FIRST -->
+        <div class="row hero-file file-row">
+          <label class="field">
+            <span>Change Hero Portrait</span>
+            <input id="heroFile" type="file" accept="image/*"/>
+          </label>
+        </div>
+
+        <!-- ACCESSORY UPLOAD SECOND -->
         <div class="row file-row">
           <label class="field">
             <span>Upload Accessory PNG</span>
@@ -65,7 +75,7 @@ export default function renderCharacter(viewEl) {
 
         <div id="accEditor" class="acc-editor cardish">
           <h4>Accessory Editor</h4>
-          <p class="hint">Tip: drag to move • mouse wheel to resize • Shift + wheel to rotate</p>
+          <p class="hint muted">Tip: drag to move • wheel = resize • Shift+wheel = rotate</p>
           <div class="toolbar">
             <button data-nudge="-10,0">←</button>
             <button data-nudge="10,0">→</button>
@@ -73,31 +83,30 @@ export default function renderCharacter(viewEl) {
             <button data-nudge="0,10">↓</button>
             <button data-scale="0.9">− size</button>
             <button data-scale="1.1">+ size</button>
-            <button data-rot="-5">⟲</button>
-            <button data-rot="5">⟳</button>
-            <button id="bringFront">Bring Front</button>
-            <button id="sendBack">Send Back</button>
+            <button data-rot="-10">↶</button>
+            <button data-rot="10">↷</button>
+            <button data-z="front">Bring Front</button>
+            <button data-z="back">Send Back</button>
             <button id="saveAcc" class="primary">Save</button>
             <button id="removeAcc" class="danger">Remove</button>
           </div>
           <small id="accStatus"></small>
         </div>
-
-        <div class="row hero-file">
-          <label class="field">
-            <span>Change Hero Portrait</span>
-            <input id="heroFile" type="file" accept="image/*"/>
-          </label>
-        </div>
       </div>
 
       <div class="companions-side">
         <h3>Companions</h3>
-        <p class="muted">Unchanged here—this panel keeps your current companions flow.</p>
-        <div id="companionsMount"></div>
+        <div class="row file-row">
+          <label class="field">
+            <span>Add Companion PNG</span>
+            <input id="cmpFile" type="file" accept="image/png,image/webp,image/*"/>
+          </label>
+          <button id="addCmpBtn" class="primary">Add Companion</button>
+        </div>
+        <div id="cmpList" class="comp-list"></div>
       </div>
     </div>
-  `;
+`;
 
   viewEl.innerHTML = '';
   viewEl.appendChild(wrap);
@@ -283,6 +292,44 @@ export default function renderCharacter(viewEl) {
     setState(state);
     heroBase.src = state.hero.portrait;
   });
+
+  
+  // ===== Companions (simple list persisted in LS) =====
+  const cmpFile = $('#cmpFile', wrap);
+  const addCmpBtn = $('#addCmpBtn', wrap);
+  const cmpList = $('#cmpList', wrap);
+
+  function renderCompanions(){
+    if(!cmpList) return;
+    cmpList.innerHTML = '';
+    for(const src of state.companions){
+      const item = el('div','comp-item');
+      item.innerHTML = `<img src="${src}" alt="Companion"><button class="tiny danger">✕</button>`;
+      item.querySelector('button').addEventListener('click', ()=>{
+        const i = state.companions.indexOf(src);
+        if(i>-1){ state.companions.splice(i,1); setState(state); renderCompanions(); }
+      });
+      cmpList.appendChild(item);
+    }
+  }
+
+  if(addCmpBtn){
+    addCmpBtn.addEventListener('click', async ()=>{
+      const f = cmpFile?.files?.[0];
+      if(!f) return;
+      const dataUrl = await new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(f); });
+      const img = new Image(); img.src = dataUrl; await img.decode();
+      const maxSide = Math.max(img.width, img.height);
+      const can = document.createElement('canvas'); const r = Math.min(1, 512/maxSide);
+      can.width = Math.round(img.width*r); can.height = Math.round(img.height*r);
+      const ctx = can.getContext('2d'); ctx.drawImage(img,0,0,can.width,can.height);
+      const small = can.toDataURL('image/png', 0.9);
+      state.companions.push(small);
+      setState(state);
+      cmpFile.value = '';
+      renderCompanions();
+    });
+  }
 
   // Initial render
   renderAccessories();
