@@ -1,6 +1,7 @@
 import {load, save} from '../util/storage.js';
 import {confetti, crownDrop} from '../ui/fx.js';
 
+import {addGold, addXP} from '../util/game.js';
 export default function renderQuests(root){
   const s=load();
   s.quests.main ??= []; s.quests.side ??= []; s.quests.bonus ??= [];
@@ -73,3 +74,56 @@ export default function renderQuests(root){
   document.getElementById('bossName').oninput=(e)=>{ s.quests.boss.name=e.target.value; save(s); };
   document.getElementById('bossTick').onclick=()=>{ s.quests.boss.progress=Math.min(100,(s.quests.boss.progress||0)+10); save(s); draw(); crownDrop(); };
 }
+
+// Rewards + progress wiring
+(function(){
+  // Delegate checkbox clicks for main/side/bonus
+  document.addEventListener('click', (e)=>{
+    const el = e.target;
+    if(!(el instanceof HTMLInputElement)) return;
+    if(el.type!=='checkbox') return;
+    // classify by container heading
+    const col = el.closest('.panel'); if(!col) return;
+    const h = (col.querySelector('h3')?.textContent||'').toLowerCase();
+    if(!el.checked) return;
+    if(h.includes('main')){ addGold(2); addXP(12); }
+    else if(h.includes('side')){ addGold(1); addXP(8); }
+    else if(h.includes('bonus')){ addGold(1); addXP(6); }
+  }, {capture:true});
+})(); 
+
+(function(){
+  const BOSSES=['Laundry Mountain','Inbox Hydra','Dishes Dragon','Bathroom Behemoth','Paperwork Lich','Floor Goblins','Car Gremlin'];
+  const RAIDS=['Whole-House Blitz','Garage Purge','Yard Recon','Pantry Reset','Closet Siege','Deep Fridge Dive','Budget Reforging'];
+  function suggestBoss(){ return BOSSES[Math.floor(Math.random()*BOSSES.length)] }
+  function suggestRaid(){ return RAIDS[Math.floor(Math.random()*RAIDS.length)] }
+  const bossBtn = document.getElementById('bossTick');
+  const bossName = document.getElementById('bossName');
+  const raidBtn = document.getElementById('raidTick') || document.querySelector('button[data-raid]');
+  const raidTitle = document.getElementById('raidTitle') || document.querySelector('#raid input, #raidTitle');
+  function fireConfetti(n=4){ import('../ui/fx.js').then(m=>{ for(let i=0;i<n;i++) setTimeout(m.confetti, i*120); }); }
+  if(bossBtn){ bossBtn.addEventListener('click',()=>{
+    const s = JSON.parse(localStorage.getItem('sb_v26_state')||'{}');
+    const cur = (s.quests?.boss?.progress||0);
+    const next = Math.min(cur+10,100);
+    if(next>=100){
+      // reset and celebrate
+      s.quests.boss.progress = 0;
+      s.quests.boss.name = suggestBoss();
+      localStorage.setItem('sb_v26_state', JSON.stringify(s));
+      import('../ui/fx.js').then(m=>{ for(let i=0;i<5;i++) setTimeout(m.crownDrop, i*100); });
+      fireConfetti(4);
+    }
+  }, {capture:true}); }
+  if(raidBtn){ raidBtn.addEventListener('click',()=>{
+    const s = JSON.parse(localStorage.getItem('sb_v26_state')||'{}');
+    s.quests = s.quests||{}; const r=s.quests.raid || (s.quests.raid={week:1,title:'Deep Clean',progress:0});
+    const next = Math.min((r.progress||0)+10,100);
+    if(next>=100){
+      r.progress = 0; r.title = suggestRaid();
+      localStorage.setItem('sb_v26_state', JSON.stringify(s));
+      import('../ui/fx.js').then(m=>{ for(let i=0;i<10;i++) setTimeout(m.crownDrop, i*80); });
+      fireConfetti(6);
+    }
+  }, {capture:true}); }
+})();

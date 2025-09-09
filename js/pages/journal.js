@@ -1,5 +1,6 @@
 import {load, save} from '../util/storage.js';
 
+import {addGold, addXP} from '../util/game.js';
 export default function renderJournal(root){
   const s=load();
   s.journal ??= {prompt:'', entries:[], moods:[]};
@@ -50,3 +51,12 @@ export default function renderJournal(root){
   }
   drawJ();
 }
+
+// Rewards for mood + entry save
+(function(){
+  document.addEventListener('click',(e)=>{
+    const el=e.target;
+    if(el.id==='saveMood'){ addGold(1); addXP(2); }
+    if(el.id==='saveEntry'){ addGold(1); addXP(3); }
+  }, {capture:true});
+})();

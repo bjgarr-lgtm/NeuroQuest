@@ -19,7 +19,7 @@ const routes=[
   {id:'character', label:'Character + Companions', view:renderCharacter},
   {id:'journal', label:'Journal + Check-In', view:renderJournal},
   {id:'toddler', label:'Toddler Hub', view:renderToddler},
-  {id:'rewards', label:'Rewards', view:renderRewards},
+  
 ];
 
 initDrawer(routes);
@@ -34,15 +34,21 @@ function render(){
 window.addEventListener('hashchange', render);
 render();
 
-function updateHud(){
-  const s=load();
-  document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
-  document.getElementById('hudXp').style.width=((s.xp||0)%100)+'%';
-  document.getElementById('hudLevel').textContent='Lv '+(s.level||1);
-  // party mini
-  const mini=document.getElementById('partyMini'); mini.innerHTML='';
-  if(s.party?.hero) { const i=document.createElement('img'); i.src=s.party.hero.src; mini.appendChild(i); }
-  (s.party?.companions||[]).forEach(c=>{ const i=document.createElement('img'); i.src=c.src; mini.appendChild(i); });
+\1
+  try{
+    const s=load();
+    const can=document.getElementById('heroCanvas');
+    if(can){
+      const ctx=can.getContext('2d'); ctx.clearRect(0,0,can.width,can.height);
+      const imgSrc = s.party?.hero || s.heroImage;
+      if(imgSrc){ const img=new Image(); img.onload=()=>{ ctx.imageSmoothingEnabled=false; ctx.drawImage(img,0,0,360,460); }; img.src=imgSrc; }
+    }
+    const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; 
+      if(s.party?.hero){ const i=document.createElement('img'); i.src=s.party.hero; mini.appendChild(i); }
+      const cmp = s.party?.companions?.[0]; if(cmp){ const j=document.createElement('img'); j.src=cmp; mini.appendChild(j); }
+    }
+  }catch(e){}
+\1
 }
 
 // export/import state

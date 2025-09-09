@@ -404,3 +404,23 @@ export default function renderCharacter(viewEl) {
   renderAccessories();
   updateEditorStatus();
 }
+
+// Ensure hero/companion save writes to party for HUD/Dashboard
+(function(){
+  document.addEventListener('click',(e)=>{
+    const b = e.target;
+    if(!(b instanceof HTMLElement)) return;
+    if(/save/i.test(b.textContent||'') || b.id==='saveHero'){
+      try{
+        const state = JSON.parse(localStorage.getItem('sb_v26_state')||'{}');
+        state.party = state.party || {};
+        if(state.heroImage) state.party.hero = state.heroImage;
+        if(Array.isArray(state.companions) && state.companions[0]){
+          state.party.companions = [state.companions[0]];
+        }
+        localStorage.setItem('sb_v26_state', JSON.stringify(state));
+        if(window.NQ_updateHud) window.NQ_updateHud();
+      }catch(_){}
+    }
+  }, {capture:true});
+})();

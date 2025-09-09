@@ -14,11 +14,11 @@ h1,h2,h3{letter-spacing:1px}
 
 .app-header{display:flex; align-items:center; justify-content:space-between; padding:8px 12px; position:sticky; top:0; background:linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,.2)); backdrop-filter: blur(6px); z-index:20}
 .brand{display:flex; align-items:center; gap:10px}
-.logo{width:40px; height:40px; image-rendering: pixelated; filter:drop-shadow(0 0 8px #7cf)}
+.logo{width:44px;height:44px;image-rendering:pixelated;filter:drop-shadow(0 0 8px #7cf)}
 .hud{display:flex; align-items:center; gap:12px}
 .hamb{border:1px solid #555; background:#111; color:#9fe; border-radius:10px; padding:6px 10px; cursor:pointer}
 .hamb:active{transform:translateY(1px)}
-.party-mini img{height:55px; border-radius:12px; margin-right:6px}
+.party-mini img{height:56px;border-radius:12px;margin-right:6px}
 .gold{background:rgba(255,215,0,.12); border:1px solid rgba(255,215,0,.35); padding:3px 8px; border-radius:10px}
 .xp .bar{width:160px; height:8px; border:1px solid #6cf; border-radius:6px; overflow:hidden; display:inline-block; vertical-align:middle; margin-left:6px}
 #hudXp{height:100%; width:0%; background:linear-gradient(90deg, #7cf, #e7a7ff)}
@@ -190,14 +190,26 @@ button:disabled{opacity:.55}
 /* nuke any legacy overlay toolbars just in case */
 .sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}
 
-/* NeuroQuest compact layout tweaks */
-.view{max-width:1100px; margin:0 auto; padding:10px;}
+
+/* NeuroQuest compact layout */
+.view{max-width:1120px;margin:0 auto;padding:10px}
 .grid{gap:10px}
 .panel{padding:10px}
 .party-banner .party{gap:8px}
-.panel.card{max-width:520px}
-/* Prevent meal planner overflow */
-.meal-grid{display:grid; grid-template-columns: repeat(3, 1fr); gap:8px}
-.meal-grid input{min-width:0}
-/* Larger crowns */
-.crown{font-size:64px; top:-80px; animation:drop 1.2s ease-out forwards}
+.panel.card{max-width:560px}
+
+/* Meal planner compress & prevent overflow */
+.meal-outer{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.meal-day{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-width:280px;flex:1}
+.meal-day input{min-width:0}
+
+/* Bigger crown drop */
+.crown{font-size:64px;top:-80px;animation:drop 1.2s ease-out forwards}
+
+/* Theme tokens */
+body[data-theme="forest"]{ --bg:#08140d; --panel:#10241a; --accent:#6cd9a8; --accent2:#6abf7a; }
+body[data-theme="rose"]{ --bg:#1a0d13; --panel:#2b1420; --accent:#ff77aa; --accent2:#ffaaee; }
+body[data-theme="ocean"]{ --bg:#07141b; --panel:#0f2633; --accent:#6cd1ff; --accent2:#a0c7ff; }
+body[data-theme="amber"]{ --bg:#181005; --panel:#2a1a08; --accent:#ffcc66; --accent2:#ff9966; }
+body[data-theme="mono"]{ filter:grayscale(1) contrast(1.1) }
+body[data-theme="punk"]{ --accent:#ff5ca0; --accent2:#8aff00; }

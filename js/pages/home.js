@@ -6,7 +6,10 @@ export default function renderHome(root){
   root.innerHTML = `
     <section class="party-banner">
       <div class="party-title">Your Party</div>
+      <canvas id="heroCanvas" width="360" height="460" style="border-radius:12px;image-rendering:pixelated"></canvas>
       <div class="party" id="partyRow"></div>
+    </section>
+    <section class="panel card"><h3>Upcoming Rewards</h3><div id="upcomingStrip" style="display:flex;gap:8px;overflow:auto"></div>
     </section>
     <section class="grid two">
       <div class="panel breathe">
@@ -85,7 +88,20 @@ export default function renderHome(root){
   const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
 }
 
-// Award gold at end of one full breathing cycle
-// Hook into existing animatePhase stop
 
-// monkey-patch: when breath session stops after last phase, give 1 gold
+import {addGold, addXP} from '../util/game.js';
+// Hook: single-session reward for breathing
+(function(){
+  const rootEl = document.currentScript?.closest('.view') || document;
+  const ring = document.querySelector('.breathe .ring');
+  const phase = document.getElementById('phase');
+  if(!ring||!phase) return;
+  let cycle=0;
+  const obs=new MutationObserver(()=>{
+    if(phase.textContent && /Session complete/i.test(phase.textContent)){
+      addGold(1); addXP(5);
+      try{ obs.disconnect(); }catch(_){}
+    }
+  });
+  obs.observe(phase,{childList:true,subtree:true});
+})();

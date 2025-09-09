@@ -1,13 +1,12 @@
 
-// js/ui/sfx.js — lightweight synthesized UI sounds + music player
+// js/ui/sfx.js
 let _ctx=null, _music=null, _musicURL=null;
 function ctx(){ if(!_ctx) _ctx=new (window.AudioContext||window.webkitAudioContext)(); return _ctx; }
-
 export function clickBlip(){
   const c=ctx(), o=c.createOscillator(), g=c.createGain();
   o.type='square'; o.frequency.setValueAtTime(880,c.currentTime);
   g.gain.setValueAtTime(0.12,c.currentTime); g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.08);
-  o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+0.09);
+  o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+0.1);
 }
 export function rewardChime(){
   const c=ctx(), g=c.createGain(); g.connect(c.destination);
@@ -25,7 +24,6 @@ export function partyHorn(){
 export function attachGlobalClicks(){
   document.addEventListener('click', ()=>{ try{ ctx().resume(); }catch(_){} clickBlip(); }, {capture:true});
 }
-
 export function setupMusicControls(){
   const btn=document.getElementById('musicBtn'); const file=document.getElementById('musicFile');
   if(!btn||!file) return;
