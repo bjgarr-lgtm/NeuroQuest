@@ -99,7 +99,33 @@
       }
     };
   })();
-  </script>
+  
+    function anchorLayerToPortrait(layer, portrait){
+      const wrap = portrait.parentElement;
+      // ensure relative parent
+      if(getComputedStyle(wrap).position==='static'){ wrap.style.position='relative'; }
+      // compute offset box
+      const left = portrait.offsetLeft;
+      const top  = portrait.offsetTop;
+      const w    = portrait.clientWidth  || portrait.naturalWidth  || portrait.width  || 0;
+      const h    = portrait.clientHeight || portrait.naturalHeight || portrait.height || 0;
+      Object.assign(layer.style, {
+        position:'absolute',
+        left:left+'px',
+        top:top+'px',
+        width:w+'px',
+        height:h+'px',
+        pointerEvents:'auto',
+        zIndex: 2
+      });
+      // keep synced on resize/zoom
+      if(!layer._ro){
+        layer._ro = new ResizeObserver(()=>anchorLayerToPortrait(layer, portrait));
+        layer._ro.observe(wrap);
+      }
+    }
+
+</script>
 
   <!-- 1) YOUR APP (unchanged) -->
   <script type="module" src="js/app.js"></script>
@@ -362,10 +388,12 @@ if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory tran
       // ensure layer anchored to the IMG box, not the whole wrap
       let layer=wrap.querySelector('.sb-acc-layer');
       if(!layer){ layer=document.createElement('div'); layer.className='sb-acc-layer'; wrap.appendChild(layer) }
+      anchorLayerToPortrait(layer, portrait);
       function sizeLayer(){ const r=portrait.getBoundingClientRect(); const w=wrap.getBoundingClientRect(); layer.style.position='absolute'; layer.style.left=(r.left-w.left)+'px'; layer.style.top=(r.top-w.top)+'px'; layer.style.width=r.width+'px'; layer.style.height=r.height+'px'; layer.style.zIndex=1; }
       sizeLayer(); new ResizeObserver(()=>sizeLayer()).observe(wrap);
 
       const mgr=new OverlayMgr(layer);
+      anchorLayerToPortrait(layer, portrait);
       await mgr.load(leaderId());
 
       // wire buttons if present
