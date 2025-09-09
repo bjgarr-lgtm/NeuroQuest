@@ -27,10 +27,6 @@ export default function renderSettings(root){
         <input id="nameSel" placeholder="Your name" value="${s.user?.name||'You'}"/>
       </div>
       <div class="panel">
-        <h3>Toddler Mode</h3>
-        <label><input type="checkbox" id="toggleToddler" ${s.toddler?'checked':''}/> Enable toddler hub</label>
-      </div>
-      <div class="panel">
         <h3>Music</h3>
         <button id="uploadSong" class="secondary">Upload Song</button>
       </div>
@@ -39,6 +35,6 @@ export default function renderSettings(root){
   document.getElementById('themeSel').onchange=(e)=>{ s.settings.theme=e.target.value; save(s); };
   document.getElementById('fontSel').oninput=(e)=>{ s.settings.font=e.target.value; save(s); };
   document.getElementById('nameSel').oninput=(e)=>{ s.user=s.user||{}; s.user.name=e.target.value; save(s); document.getElementById('hud').querySelector('#hudLevel').previousSibling && 0; };
-  document.getElementById('toggleToddler').onchange=(e)=>{ s.toddler=e.target.checked; save(s); };
+  
   document.getElementById('uploadSong').onclick=()=> document.getElementById('musicFile').click();
 }

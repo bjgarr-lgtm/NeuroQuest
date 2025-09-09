@@ -5,7 +5,7 @@ export default function renderJournal(root){
   s.journal ??= {prompt:'', entries:[], moods:[]};
 
   root.innerHTML = `
-    <h2>Journal + Check-In</h2>
+    <h2>Adventure Journal</h2>
     <section class="grid two">
       <div class="panel">
         <h3>Mood</h3><small>Add a note, then tap mood.</small>

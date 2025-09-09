@@ -14,17 +14,19 @@ import renderShop from './pages/shop.js';
 
 const routes=[
   {id:'home', label:'Dashboard', view:renderHome},
-  {id:'quests', label:'Quests + Cleaning', view:renderQuests},
+  {id:'quests', label:'Quests', view:renderQuests},
   {id:'life', label:'Life Hub', view:renderLife},
+  {id:'character', label:'Party', view:renderCharacter},
+  {id:'journal', label:'Adventure Journal', view:renderJournal},
   {id:'settings', label:'Settings', view:renderSettings},
-  {id:'shop', label:'Wardrobe + Shop', view:renderShop},
-  {id:'character', label:'Character + Companions', view:renderCharacter},
-  {id:'journal', label:'Journal + Check-In', view:renderJournal},
-  {id:'toddler', label:'Toddler Hub', view:renderToddler},
-  {id:'rewards', label:'Rewards', view:renderRewards},
+
+  // Hidden routes (accessible via buttons/toggles only)
+  {id:'toddler', label:'Toddler Hub', view:renderToddler, hideInNav:true},
+  {id:'shop', label:'Wardrobe + Shop', view:renderShop, hideInNav:true},
+  {id:'rewards', label:'Rewards', view:renderRewards, hideInNav:true},
 ];
 
-initDrawer(routes);
+initDrawer(routes.filter(r=>!r.hideInNav));
 cursorTrail();
 
 function render(){
