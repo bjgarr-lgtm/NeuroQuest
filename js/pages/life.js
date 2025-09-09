@@ -53,12 +53,13 @@ export default function renderLife(root){
 
   // meals
   const days=['SUN','MON','TUE','WED','THU','FRI','SAT']; const slots=['breakfast','lunch','dinner'];
-  const mg=document.getElementById('mealGrid');
+  const mg=document.getElementById('mealGrid'); mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
   days.forEach((d,di)=>{
     slots.forEach(sl=>{
       const id=d+'-'+sl; const box=document.createElement('div'); box.className='box'; box.contentEditable=true;
       box.dataset.key=id; box.innerText=s.meals[id]||sl; mg.appendChild(box);
-      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); };
+      box.onfocus=()=>{ if(box.innerText===sl) box.innerText=''; };
+      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); };
     });
   });
 

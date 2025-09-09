@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SootheBirb — v2.6 single-file align hotfix</title>
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
+  <title>NeuroQuest — v2.6 single-file align hotfix</title>
+  <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml"/>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
   <style>
@@ -23,8 +23,8 @@
 <body class="crt">
   <header class="app-header">
     <div class="brand" id="brand">
-      <img src="assets/icon.svg" class="logo" alt=""/>
-      <h1>SootheBirb</h1>
+      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest logo"/>
+      <h1>NeuroQuest</h1>
     </div>
     <div class="hud" id="hud">
       <div id="partyMini" class="party-mini"></div>
@@ -33,6 +33,8 @@
         <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
         <div class="bar"><div id="hudXp"></div></div>
       </div>
+      <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
+      <input type="file" id="musicFile" accept="audio/*" style="display:none"/>
       <button id="hamb" class="hamb" aria-label="Menu">☰</button>
     </div>
   </header>

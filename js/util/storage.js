@@ -13,5 +13,11 @@ export const DEF = {
 
 const K='sb_v26_state';
 export function load(){ try{ return JSON.parse(localStorage.getItem(K)) || structuredClone(DEF) }catch(e){ return structuredClone(DEF) } }
-export function save(s){ localStorage.setItem(K, JSON.stringify(s)); }
+export function save(s){
+  const prev = load(); const prevLvl=Math.floor((prev.xp||0)/100); const newLvl=Math.floor((s.xp||0)/100);
+  localStorage.setItem(K, JSON.stringify(s));
+  if(newLvl>prevLvl){ s.level=(s.level||1)+(newLvl-prevLvl); s.gold=(s.gold||0)+10; localStorage.setItem(K, JSON.stringify(s));
+    document.dispatchEvent(new CustomEvent('nq:levelup'));
+  }
+}
 export function reset(){ localStorage.removeItem(K); }
