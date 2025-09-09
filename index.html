@@ -134,9 +134,14 @@
       _spawn(o){
         const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=o.url; img.alt='overlay';
         img.className='sb-acc-ov';
+        // normalize + defaults
         const _nx=(o.x>1? o.x/100 : (o.x??0.5));
         const _ny=(o.y>1? o.y/100 : (o.y??0.5));
-        img.dataset.x=_nx; img.dataset.y=_ny; img.dataset.s=o.s??1; img.dataset.r=o.r??0;
+        const _nw=(o.w? (o.w>1? o.w : o.w*100) : 40);
+        img.dataset.x=Math.max(0.05, Math.min(0.95, _nx));
+        img.dataset.y=Math.max(0.05, Math.min(0.95, _ny));
+        img.dataset.s=o.s??1; img.dataset.r=o.r??0;
+        img.style.width = _nw + '%';
         this._apply(img); this.layer.appendChild(img)
       }
       _apply(el){
@@ -154,7 +159,8 @@
           x: parseFloat(last.dataset.x),
           y: parseFloat(last.dataset.y),
           s: parseFloat(last.dataset.s),
-          r: parseFloat(last.dataset.r)
+          r: parseFloat(last.dataset.r),
+          w: (function(){ const w = parseFloat(last.style.width); return isNaN(w)?40:w; })()
         };
         this.save();
       }
