@@ -23,16 +23,18 @@
 <body class="crt">
   <header class="app-header">
     <div class="brand" id="brand">
-      <img src="assets/neuroquest-shield.svg" class="logo" alt=""/>
+      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest logo"/>
       <h1>NeuroQuest</h1>
     </div>
-    <div class="hud" id="hud"><button id="musicBtn" class="hamb" title="Play/Pause Music">♫</button><input type="file" id="musicFile" accept="audio/*" style="display:none"/>
+    <div class="hud" id="hud">
       <div id="partyMini" class="party-mini"></div>
       <div class="gold" id="hudGold">🪙 0</div>
       <div class="xp">
         <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
         <div class="bar"><div id="hudXp"></div></div>
       </div>
+      <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
+      <input type="file" id="musicFile" accept="audio/*" style="display:none"/>
       <button id="hamb" class="hamb" aria-label="Menu">☰</button>
     </div>
   </header>
@@ -283,6 +285,7 @@
     setTimeout(onRoute, 200);
   })();
 </script>
-<script type="module">import {attachGlobalClicks, setupMusicControls} from "./js/ui/sfx.js"; attachGlobalClicks(); setupMusicControls();</script>
+
+
 </body>
 </html>

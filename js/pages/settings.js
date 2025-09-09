@@ -1,37 +1,44 @@
-
 import {load, save} from '../util/storage.js';
 
-const THEMES=[
-  {id:'default', name:'Neon Night'},
-  {id:'forest', name:'Forest'},
-  {id:'rose', name:'Rose'},
-  {id:'ocean', name:'Ocean'},
-  {id:'amber', name:'Amber'},
-  {id:'mono', name:'Mono CRT'},
-  {id:'punk', name:'Anarch Punk'}
-];
-const FONTS=['Press Start 2P','Inter','Atkinson Hyperlegible','Nunito','VT323','IBM Plex Mono','Courier New'];
-
 export default function renderSettings(root){
-  const s=load(); s.user ??= {name:'You'}; s.theme ??= 'default'; s.font ??= 'Press Start 2P'; save(s);
-  root.innerHTML=`
+  const s=load();
+  s.settings ??= { theme: 'default', font: 'Press Start 2P', toddler:false };
+  root.innerHTML = `
     <h2>Settings</h2>
-    <div class="panel">
-      <label>Display Name <input id="name" value="${s.user.name||''}" /></label>
-      <label>Theme
-        <select id="theme">${THEMES.map(t=>`<option value="${t.id}" ${s.theme===t.id?'selected':''}>${t.name}</option>`).join('')}</select>
-      </label>
-      <label>Font
-        <select id="font">${FONTS.map(f=>`<option value="${f}" ${s.font===f?'selected':''}>${f}</option>`).join('')}</select>
-      </label>
-      <label><input type="checkbox" id="toddlermode" ${s.toddler?'checked':''}/> Toddler Mode (toggle Toddler Hub)</label>
-      <div class="row"><button id="chooseSong" class="secondary">Upload Music</button><span id="songName">${s.music?.name||''}</span></div>
-    </div>
+    <section class="grid two">
+      <div class="panel">
+        <h3>Theme</h3>
+        <select id="themeSel">
+          <option value="default">Default</option>
+          <option value="midnight">Midnight</option>
+          <option value="forest">Forest</option>
+          <option value="sunset">Sunset</option>
+          <option value="ocean">Ocean</option>
+          <option value="pastel">Pastel</option>
+          <option value="mono">Mono</option>
+        </select>
+      </div>
+      <div class="panel">
+        <h3>Font</h3>
+        <input id="fontSel" placeholder="Font name" value="${s.settings.font||'Press Start 2P'}"/>
+      </div>
+      <div class="panel">
+        <h3>Display Name</h3>
+        <input id="nameSel" placeholder="Your name" value="${s.user?.name||'You'}"/>
+      </div>
+      <div class="panel">
+        <h3>Toddler Mode</h3>
+        <label><input type="checkbox" id="toggleToddler" ${s.toddler?'checked':''}/> Enable toddler hub</label>
+      </div>
+      <div class="panel">
+        <h3>Music</h3>
+        <button id="uploadSong" class="secondary">Upload Song</button>
+      </div>
+    </section>
   `;
-  document.getElementById('name').oninput=e=>{ s.user.name=e.target.value; save(s); };
-  document.getElementById('theme').onchange=e=>{ s.theme=e.target.value; save(s); document.body.dataset.theme=s.theme; };
-  document.getElementById('font').onchange=e=>{ s.font=e.target.value; save(s);
-    document.documentElement.style.setProperty('--pix', s.font+', system-ui, sans-serif'); };
-  document.getElementById('toddlermode').onchange=e=>{ s.toddler=e.target.checked; save(s); };
-  document.getElementById('chooseSong').onclick=()=> document.getElementById('musicFile').click();
+  document.getElementById('themeSel').onchange=(e)=>{ s.settings.theme=e.target.value; save(s); };
+  document.getElementById('fontSel').oninput=(e)=>{ s.settings.font=e.target.value; save(s); };
+  document.getElementById('nameSel').oninput=(e)=>{ s.user=s.user||{}; s.user.name=e.target.value; save(s); document.getElementById('hud').querySelector('#hudLevel').previousSibling && 0; };
+  document.getElementById('toggleToddler').onchange=(e)=>{ s.toddler=e.target.checked; save(s); };
+  document.getElementById('uploadSong').onclick=()=> document.getElementById('musicFile').click();
 }

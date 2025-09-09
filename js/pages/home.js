@@ -6,10 +6,7 @@ export default function renderHome(root){
   root.innerHTML = `
     <section class="party-banner">
       <div class="party-title">Your Party</div>
-      <canvas id="heroCanvas" width="360" height="460" style="border-radius:12px;image-rendering:pixelated"></canvas>
       <div class="party" id="partyRow"></div>
-    </section>
-    <section class="panel card"><h3>Upcoming Rewards</h3><div id="upcomingStrip" style="display:flex;gap:8px;overflow:auto"></div>
     </section>
     <section class="grid two">
       <div class="panel breathe">
@@ -27,9 +24,11 @@ export default function renderHome(root){
   const row=document.getElementById('partyRow');
   function card(src, name){
     const d=document.createElement('div'); d.className='hero';
-    const img=document.createElement('img'); img.src=src||'assets/icon.svg'; img.alt=name||'Member';
+    const frame=document.createElement('div'); frame.style.width='360px'; frame.style.height='460px'; frame.style.borderRadius='12px'; frame.style.overflow='hidden';
+    const img=new Image(); img.src=src||'assets/neuroquest-shield.svg'; img.alt=name||'Member'; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='contain';
+    frame.appendChild(img);
     const cap=document.createElement('div'); cap.className='name'; cap.textContent=name||'Companion';
-    d.appendChild(img); d.appendChild(cap); return d;
+    d.appendChild(frame); d.appendChild(cap); return d;
   }
   if(s.party?.hero?.src) row.appendChild(card(s.party.hero.src,'You'));
   (s.party?.companions||[]).forEach(c=> row.appendChild(card(c.src, c.name||'Companion')));
@@ -87,21 +86,3 @@ export default function renderHome(root){
   const xpEl=document.getElementById('hudXp'); const lvl=document.getElementById('hudLevel');
   const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
 }
-
-
-import {addGold, addXP} from '../util/game.js';
-// Hook: single-session reward for breathing
-(function(){
-  const rootEl = document.currentScript?.closest('.view') || document;
-  const ring = document.querySelector('.breathe .ring');
-  const phase = document.getElementById('phase');
-  if(!ring||!phase) return;
-  let cycle=0;
-  const obs=new MutationObserver(()=>{
-    if(phase.textContent && /Session complete/i.test(phase.textContent)){
-      addGold(1); addXP(5);
-      try{ obs.disconnect(); }catch(_){}
-    }
-  });
-  obs.observe(phase,{childList:true,subtree:true});
-})();

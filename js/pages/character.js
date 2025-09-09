@@ -93,6 +93,7 @@ export default function renderCharacter(viewEl) {
           <small id="accStatus"></small>
         </div>
       </div>
+      <div class="row"><button id="openShop" class="secondary">Wardrobe / Shop</button></div>
 
       <div class="companions-side">
         <h3>Companions</h3>
@@ -331,9 +332,7 @@ export default function renderCharacter(viewEl) {
         }
 
         const merged = can.toDataURL('image/png', 0.95);
-        const st = getState(); st.party ||= { hero:null, companions:[] };
-        st.party.hero = { src: merged };
-        setState(st);
+        const st = getState(); st.party ||= { hero:null, companions:[] }; st.party.hero = { src: merged }; st.party.companions = (state.companions||[]).map(src=>({src})); setState(st);
         // update HUD mini immediately
         const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);} 
 
@@ -394,6 +393,7 @@ export default function renderCharacter(viewEl) {
       const ctx = can.getContext('2d'); ctx.drawImage(img,0,0,can.width,can.height);
       const small = can.toDataURL('image/png', 0.9);
       state.companions.push(small);
+      const st=getState(); st.party ||= {hero:null, companions:[]}; st.party.companions.push({src:small}); setState(st);
       setState(state);
       cmpFile.value = '';
       renderCompanions();
@@ -403,24 +403,5 @@ export default function renderCharacter(viewEl) {
   // Initial render
   renderAccessories();
   updateEditorStatus();
+  document.getElementById('openShop').onclick=()=>{ location.hash='#shop'; };
 }
-
-// Ensure hero/companion save writes to party for HUD/Dashboard
-(function(){
-  document.addEventListener('click',(e)=>{
-    const b = e.target;
-    if(!(b instanceof HTMLElement)) return;
-    if(/save/i.test(b.textContent||'') || b.id==='saveHero'){
-      try{
-        const state = JSON.parse(localStorage.getItem('sb_v26_state')||'{}');
-        state.party = state.party || {};
-        if(state.heroImage) state.party.hero = state.heroImage;
-        if(Array.isArray(state.companions) && state.companions[0]){
-          state.party.companions = [state.companions[0]];
-        }
-        localStorage.setItem('sb_v26_state', JSON.stringify(state));
-        if(window.NQ_updateHud) window.NQ_updateHud();
-      }catch(_){}
-    }
-  }, {capture:true});
-})();

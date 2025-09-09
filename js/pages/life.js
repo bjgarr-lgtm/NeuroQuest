@@ -11,7 +11,6 @@ function sanitizeGcal(v){
   try{ const u=new URL(v); if(!u.hostname.includes('calendar.google.com')) return def; return u.href }catch(_){ return def }
 }
 
-import {addGold, addXP} from '../util/game.js';
 export default function renderLife(root){
   const s=load();
   s.meals ??= {};
@@ -54,12 +53,13 @@ export default function renderLife(root){
 
   // meals
   const days=['SUN','MON','TUE','WED','THU','FRI','SAT']; const slots=['breakfast','lunch','dinner'];
-  const mg=document.getElementById('mealGrid');
+  const mg=document.getElementById('mealGrid'); mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
   days.forEach((d,di)=>{
     slots.forEach(sl=>{
       const id=d+'-'+sl; const box=document.createElement('div'); box.className='box'; box.contentEditable=true;
       box.dataset.key=id; box.innerText=s.meals[id]||sl; mg.appendChild(box);
-      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); };
+      box.onfocus=()=>{ if(box.innerText===sl) box.innerText=''; };
+      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); };
     });
   });
 
@@ -96,22 +96,3 @@ export default function renderLife(root){
   // calendar
   document.getElementById('saveCal').onclick=()=>{ const v=document.getElementById('gcal').value; s.gcal=v; save(s); document.getElementById('calFrame').src=sanitizeGcal(v); };
 }
-
-// Hooks: grocery check, budget add, meal add
-(function(){
-  document.addEventListener('click',(e)=>{
-    const el=e.target;
-    if(el.matches && el.matches('.grocery input[type=checkbox]')){
-      if(el.checked){ addGold(1); addXP(3); }
-    }
-    if(el.matches && el.matches('#addTx,#budgetAdd,#saveBudget')){
-      addGold(1); addXP(3);
-    }
-    if(el.matches && el.matches('.meal-day input')){
-      // award on blur after change
-      el.addEventListener('change', ()=>{ addGold(1); addXP(2); }, {once:true});
-      el.addEventListener('focus', ()=>{ if(el.placeholder) el.dataset._ph=el.placeholder; el.placeholder=''; });
-      el.addEventListener('blur', ()=>{ if(el.dataset._ph && !el.value) el.placeholder=el.dataset._ph; });
-    }
-  }, {capture:true});
-})();
