@@ -20,7 +20,7 @@ export default function renderLife(root){
   root.innerHTML = `
     <h2>Life Hub</h2>
     <section class="panel">
-      <h3>Meals</h3><div class="row"><label><input type="checkbox" id="dayMode"/> Day view</label><select id="dayPick"><option value="0">Sun</option><option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option><option value="6">Sat</option></select></div>
+      <h3>Meals</h3>
       <div id="mealGrid" class="meal-grid"></div>
     </section>
 
@@ -52,54 +52,17 @@ export default function renderLife(root){
   `;
 
   // meals
-  const days=['SUN','MON','TUE','WED','THU','FRI','SAT'];
-  const slots=['breakfast','lunch','dinner'];
+  const days=['SUN','MON','TUE','WED','THU','FRI','SAT']; const slots=['breakfast','lunch','dinner'];
   const mg=document.getElementById('mealGrid');
-  const dayMode=document.getElementById('dayMode');
-  const dayPick=document.getElementById('dayPick');
-
-  function cell(id, placeholder){
-    const box=document.createElement('div');
-    box.className='box';
-    box.contentEditable=true;
-    box.dataset.key=id;
-    box.innerText = (s.meals[id]||'').trim() || placeholder;
-    box.onfocus=()=>{ if(box.innerText===placeholder) box.innerText=''; };
-    box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); try{ sfx && sfx(880,100);}catch(_){ } };
-    return box;
-  }
-
-  function buildWeekly(){
-    mg.innerHTML='';
-    mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
-    days.forEach((d)=>{
-      slots.forEach((sl)=>{
-        mg.appendChild(cell(d+'-'+sl, sl));
-      });
+  days.forEach((d,di)=>{
+    slots.forEach(sl=>{
+      const id=d+'-'+sl; const box=document.createElement('div'); box.className='box'; box.contentEditable=true;
+      box.dataset.key=id; box.innerText=s.meals[id]||sl; mg.appendChild(box);
+      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); };
     });
-  }
+  });
 
-  function buildDaily(dayIndex){
-    const di = Number(dayIndex)||0;
-    mg.innerHTML='';
-    mg.style.gridTemplateColumns='repeat(3, minmax(120px,1fr))';
-    slots.forEach((sl)=>{
-      mg.appendChild(cell(days[di]+'-'+sl, sl));
-    });
-  }
-
-  function applyMealLayout(){
-    if(dayMode && dayMode.checked){
-      buildDaily(dayPick ? dayPick.value : 0);
-    }else{
-      buildWeekly();
-    }
-  }
-
-  if(dayMode){ dayMode.onchange = applyMealLayout; }
-  if(dayPick){ dayPick.onchange = applyMealLayout; }
-  applyMealLayout();
-// shopping
+  // shopping
   function drawShop(){
     const list=document.getElementById('shopList'); list.innerHTML='';
     s.shop.forEach((it,i)=>{
@@ -130,41 +93,5 @@ export default function renderLife(root){
   document.getElementById('addExp').onclick=()=>{ const amt=parseFloat(document.getElementById('expAmt').value||'0'); const label=document.getElementById('expLabel').value||'Expense'; if(amt>0){ s.budget.tx.push({type:'exp',amt,label}); save(s); recalc(); } };
 
   // calendar
-  
-  function applyMealLayout(){
-    if(dayMode.checked){
-      mg.style.gridTemplateColumns='repeat(3, minmax(120px,1fr))';
-      // hide all cells not in selected day
-      Array.from(mg.children).forEach((cell, idx)=>{
-        const day = Math.floor((idx)/3); // after headers already added earlier? This is approximate; keep simple by toggling vis by dataset day if present.
-      });
-      // Simple approach: hide columns via CSS width:0 for others
-      const d=dayPick.value|0;
-      // We'll just filter innerHTML each time for simplicity (non-destructive): rebuild 1x3
-      mg.innerHTML=''; slots.forEach(sl=>{
-        const id=days[d]+'-'+sl;
-        const box=document.createElement('div'); box.className='meal-cell'; box.contentEditable=true; const ph=sl; box.innerText=s.meals[id]||ph;
-        box.onfocus=()=>{ if(box.innerText===ph) box.innerText=''; };
-        box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); try{ sfx && sfx(880,100);}catch(_){ } };
-        mg.appendChild(box);
-      });
-    }else{
-      // rebuild 7x3
-      mg.innerHTML='';
-      days.forEach(d=>{
-        slots.forEach(sl=>{
-          const id=d+'-'+sl;
-          const box=document.createElement('div'); box.className='meal-cell'; box.contentEditable=true; const ph=sl; box.innerText=s.meals[id]||ph;
-          box.onfocus=()=>{ if(box.innerText===ph) box.innerText=''; };
-          box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); try{ sfx && sfx(880,100);}catch(_){ } };
-          mg.appendChild(box);
-        });
-      });
-      mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
-    }
-  }
-  dayMode.onchange=applyMealLayout; dayPick.onchange=()=>{ if(dayMode.checked) applyMealLayout(); };
-  applyMealLayout();
-
-document.getElementById('saveCal').onclick=()=>{ const v=document.getElementById('gcal').value; s.gcal=v; save(s); document.getElementById('calFrame').src=sanitizeGcal(v); };
+  document.getElementById('saveCal').onclick=()=>{ const v=document.getElementById('gcal').value; s.gcal=v; save(s); document.getElementById('calFrame').src=sanitizeGcal(v); };
 }

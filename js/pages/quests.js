@@ -5,7 +5,7 @@ export default function renderQuests(root){
   const s=load();
   s.quests.main ??= []; s.quests.side ??= []; s.quests.bonus ??= [];
   s.quests.boss ??= {name:'Bathroom', progress:0};
-  s.quests.raid ??= {week:1, title:'Deep Clean'};
+  s.quests.raid ??= {week:1, title:'Deep Clean', progress:0};
 
   root.innerHTML = `
     <h2>Quest + Clean</h2>
@@ -49,7 +49,7 @@ export default function renderQuests(root){
       (s.quests[key]||[]).forEach((q,i)=>{
         const row=document.createElement('div'); row.className='row';
         const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!q.done;
-        chk.onchange=()=>{ q.done=chk.checked; if(q.done){ s.xp=(s.xp||0)+10; s.gold=(s.gold||0)+2; try{ sfx && sfx(880,100);}catch(_){ } confetti(); } save(s); draw(); };
+        chk.onchange=()=>{ q.done=chk.checked; if(q.done){ s.xp=(s.xp||0)+10; s.gold=(s.gold||0)+1; confetti(); } save(s); draw(); };
         const t=document.createElement('span'); t.textContent=q.title;
         const rm=document.createElement('button'); rm.className='danger'; rm.textContent='✕'; rm.onclick=()=>{ s.quests[key].splice(i,1); save(s); draw(); };
         row.append(chk,t,rm); el.appendChild(row);
@@ -71,15 +71,5 @@ export default function renderQuests(root){
   document.getElementById('btnBonus').onclick=()=>{ const v=document.getElementById('addBonus').value.trim(); if(!v) return; s.quests.bonus.push({title:v,done:false}); save(s); draw(); };
 
   document.getElementById('bossName').oninput=(e)=>{ s.quests.boss.name=e.target.value; save(s); };
-  document.getElementById('bossTick').onclick=()=>{
-  s.quests.boss.progress=Math.min(100,(s.quests.boss.progress||0)+10);
-  save(s); draw(); crownDrop();
-  if(s.quests.boss.progress>=100){
-    for(let i=0;i<5;i++) setTimeout(()=>crownDrop(), i*120);
-    for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
-    // suggest a new boss
-    const ideas=['Fridge scrub','Car wash','Paper declutter','Laundry mountain','Closet reset','Desk zen','Windows shine'];
-    s.quests.boss={name:ideas[Math.floor(Math.random()*ideas.length)], progress:0}; save(s); draw();
-  }
-};
+  document.getElementById('bossTick').onclick=()=>{ s.quests.boss.progress=Math.min(100,(s.quests.boss.progress||0)+10); save(s); draw(); crownDrop(); };
 }

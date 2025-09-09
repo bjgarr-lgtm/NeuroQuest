@@ -13,7 +13,7 @@ export default function renderHome(root){
         <div class="ring"><div class="core"></div></div>
         <div id="phase">Tap the ring</div>
       </div>
-      <div class="panel card"><h3>Rewards</h3><div id="upcoming"></div>
+      <div class="panel card">
         <h3>Rewards</h3>
         <div id="rew">Complete quests to unlock!</div>
       </div>
@@ -24,11 +24,9 @@ export default function renderHome(root){
   const row=document.getElementById('partyRow');
   function card(src, name){
     const d=document.createElement('div'); d.className='hero';
-    const frame=document.createElement('div'); frame.style.width='360px'; frame.style.height='460px'; frame.style.borderRadius='12px'; frame.style.overflow='hidden';
-    const img=new Image(); img.src=src||'assets/neuroquest-shield.svg'; img.alt=name||'Member'; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='contain';
-    frame.appendChild(img);
+    const img=document.createElement('img'); img.src=src||'assets/icon.svg'; img.alt=name||'Member';
     const cap=document.createElement('div'); cap.className='name'; cap.textContent=name||'Companion';
-    d.appendChild(frame); d.appendChild(cap); return d;
+    d.appendChild(img); d.appendChild(cap); return d;
   }
   if(s.party?.hero?.src) row.appendChild(card(s.party.hero.src,'You'));
   (s.party?.companions||[]).forEach(c=> row.appendChild(card(c.src, c.name||'Companion')));
@@ -79,18 +77,15 @@ export default function renderHome(root){
 
   function tick(){ animatePhase(); }
 
-  ring.onclick=()=>{
-    if(running){ running=false; cancelAnimationFrame(raf); phase.textContent='Paused'; return; }
-    running=true; step=0;
-    const giveReward=()=>{ const st=load(); st.gold=(st.gold||0)+1; save(st); try{ confetti(); }catch(_){ } try{ sfx && sfx(880,100); }catch(_){ } document.getElementById('hudGold').textContent='🪙 '+(st.gold||0); running=false; };
-    let phasesLeft=4; const origTick=tick;
-    tick=function(){ if(phasesLeft--<=0){ tick=origTick; giveReward(); return; } animatePhase(); };
-    tick();
-  };
+  ring.onclick=()=>{ if(running){ running=false; cancelAnimationFrame(raf); clearTimeout(timer); phase.textContent='Paused'; return; } running=true; step=0; tick(); };
 
   // HUD update
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
   const xpEl=document.getElementById('hudXp'); const lvl=document.getElementById('hudLevel');
   const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
-  const up=document.getElementById('upcoming'); if(up){ const items=(s.rewardsUpcoming||['New avatar frame','Bonus chest','Secret theme','XP boost','Coin pack']).slice(0,5); up.innerHTML=items.map(x=>`<div class="muted">• ${x}</div>`).join(''); }
 }
+
+// Award gold at end of one full breathing cycle
+// Hook into existing animatePhase stop
+
+// monkey-patch: when breath session stops after last phase, give 1 gold

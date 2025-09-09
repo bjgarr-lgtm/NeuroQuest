@@ -93,7 +93,6 @@ export default function renderCharacter(viewEl) {
           <small id="accStatus"></small>
         </div>
       </div>
-      <div class="row"><button id="openShop" class="secondary">Wardrobe / Shop</button></div>
 
       <div class="companions-side">
         <h3>Companions</h3>
@@ -332,7 +331,9 @@ export default function renderCharacter(viewEl) {
         }
 
         const merged = can.toDataURL('image/png', 0.95);
-        const st = getState(); st.party ||= { hero:null, companions:[] }; st.party.hero = { src: merged }; st.party.companions = (state.companions||[]).map(src=>({src})); setState(st);
+        const st = getState(); st.party ||= { hero:null, companions:[] };
+        st.party.hero = { src: merged };
+        setState(st);
         // update HUD mini immediately
         const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);} 
 
@@ -393,7 +394,6 @@ export default function renderCharacter(viewEl) {
       const ctx = can.getContext('2d'); ctx.drawImage(img,0,0,can.width,can.height);
       const small = can.toDataURL('image/png', 0.9);
       state.companions.push(small);
-      const st=getState(); st.party ||= {hero:null, companions:[]}; st.party.companions.push({src:small}); setState(st);
       setState(state);
       cmpFile.value = '';
       renderCompanions();
@@ -403,5 +403,4 @@ export default function renderCharacter(viewEl) {
   // Initial render
   renderAccessories();
   updateEditorStatus();
-  document.getElementById('openShop').onclick=()=>{ location.hash='#shop'; };
 }

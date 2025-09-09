@@ -14,11 +14,11 @@ h1,h2,h3{letter-spacing:1px}
 
 .app-header{display:flex; align-items:center; justify-content:space-between; padding:8px 12px; position:sticky; top:0; background:linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,.2)); backdrop-filter: blur(6px); z-index:20}
 .brand{display:flex; align-items:center; gap:10px}
-.logo{width:48px; height:48px; filter:drop-shadow(0 0 6px #7cf)}
+.logo{width:40px; height:40px; image-rendering: pixelated; filter:drop-shadow(0 0 8px #7cf)}
 .hud{display:flex; align-items:center; gap:12px}
 .hamb{border:1px solid #555; background:#111; color:#9fe; border-radius:10px; padding:6px 10px; cursor:pointer}
 .hamb:active{transform:translateY(1px)}
-.party-mini img{height:72px; border-radius:10px; margin-right:8px}
+.party-mini img{height:55px; border-radius:12px; margin-right:6px}
 .gold{background:rgba(255,215,0,.12); border:1px solid rgba(255,215,0,.35); padding:3px 8px; border-radius:10px}
 .xp .bar{width:160px; height:8px; border:1px solid #6cf; border-radius:6px; overflow:hidden; display:inline-block; vertical-align:middle; margin-left:6px}
 #hudXp{height:100%; width:0%; background:linear-gradient(90deg, #7cf, #e7a7ff)}
@@ -30,18 +30,18 @@ h1,h2,h3{letter-spacing:1px}
 .drawer nav button{width:100%; text-align:left; margin:6px 0; border:1px solid #445; border-radius:12px; padding:10px 12px; background:#0f1322; color:#cfe6ff; cursor:pointer}
 .drawer nav button.active{border-color:#7bdcff; box-shadow:0 0 0 2px rgba(123,220,255,.2) inset}
 
-.view{padding:16px; max-width:1200px; margin:0 auto}
+.view{padding:14px}
 .panel{background:var(--panel); border:1px solid #2a2d50; border-radius:18px; padding:12px; margin:10px 0; box-shadow:0 0 25px rgba(123,220,255,.06) inset}
 .grid{display:grid; gap:12px}
-.grid.two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-.grid.three{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.grid.two{grid-template-columns:repeat(2,1fr)}
+.grid.three{grid-template-columns:repeat(3,1fr)}
 .card{background:#11162a; border:1px solid #3a3f68; border-radius:16px; padding:12px}
 
-.party-banner{background:linear-gradient(180deg,#2a2338,#1a1825); border:1px solid #2a2d50; border-radius:16px; padding:12px; display:flex; align-items:center; gap:12px; overflow:hidden; max-width:1200px;}
+.party-banner{background:linear-gradient(180deg, #2a2338, #1a182a); border:1px solid #3a3562; border-radius:18px; padding:16px; display:flex; align-items:center; gap:14px; overflow:auto}
 .party-title{color:#111; background:#f2e7ff; padding:4px 8px; border-radius:8px}
 .party{display:flex; align-items:flex-end; gap:20px}
 .party .hero{display:flex; flex-direction:column; align-items:center}
-.party .hero img{width:360px; height:460px; object-fit:contain; border-radius:12px}
+.party .hero img{height:110px; border-radius:10px; box-shadow:0 0 12px rgba(255,255,255,.15)}
 .party .hero .name{margin-top:6px; color:#000; background:#fff; padding:2px 6px; border-radius:8px}
 
 .breathe{display:flex; flex-direction:column; align-items:center; gap:8px}
@@ -189,3 +189,15 @@ button:disabled{opacity:.55}
 .comp-item button{position:absolute; top:4px; right:4px; border-radius:8px; padding:2px 6px; font-size:.8rem}
 /* nuke any legacy overlay toolbars just in case */
 .sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}
+
+/* NeuroQuest compact layout tweaks */
+.view{max-width:1100px; margin:0 auto; padding:10px;}
+.grid{gap:10px}
+.panel{padding:10px}
+.party-banner .party{gap:8px}
+.panel.card{max-width:520px}
+/* Prevent meal planner overflow */
+.meal-grid{display:grid; grid-template-columns: repeat(3, 1fr); gap:8px}
+.meal-grid input{min-width:0}
+/* Larger crowns */
+.crown{font-size:64px; top:-80px; animation:drop 1.2s ease-out forwards}
