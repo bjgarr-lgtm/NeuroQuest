@@ -52,19 +52,54 @@ export default function renderLife(root){
   `;
 
   // meals
-  const days=['SUN','MON','TUE','WED','THU','FRI','SAT']; const slots=['breakfast','lunch','dinner'];
+  const days=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const slots=['breakfast','lunch','dinner'];
   const mg=document.getElementById('mealGrid');
-  const dayMode=document.getElementById('dayMode'); const dayPick=document.getElementById('dayPick'); mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
-  days.forEach((d,di)=>{
-    slots.forEach(sl=>{
-      const id=d+'-'+sl; const box=document.createElement('div'); box.className='box'; box.contentEditable=true;
-      box.dataset.key=id; box.innerText=s.meals[id]||sl; mg.appendChild(box);
-      box.onfocus=()=>{ if(box.innerText===sl) box.innerText=''; };
-      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); try{ sfx && sfx(880,100);}catch(_){ };
-    });
-  });
+  const dayMode=document.getElementById('dayMode');
+  const dayPick=document.getElementById('dayPick');
 
-  // shopping
+  function cell(id, placeholder){
+    const box=document.createElement('div');
+    box.className='box';
+    box.contentEditable=true;
+    box.dataset.key=id;
+    box.innerText = (s.meals[id]||'').trim() || placeholder;
+    box.onfocus=()=>{ if(box.innerText===placeholder) box.innerText=''; };
+    box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); try{ sfx && sfx(880,100);}catch(_){ } };
+    return box;
+  }
+
+  function buildWeekly(){
+    mg.innerHTML='';
+    mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
+    days.forEach((d)=>{
+      slots.forEach((sl)=>{
+        mg.appendChild(cell(d+'-'+sl, sl));
+      });
+    });
+  }
+
+  function buildDaily(dayIndex){
+    const di = Number(dayIndex)||0;
+    mg.innerHTML='';
+    mg.style.gridTemplateColumns='repeat(3, minmax(120px,1fr))';
+    slots.forEach((sl)=>{
+      mg.appendChild(cell(days[di]+'-'+sl, sl));
+    });
+  }
+
+  function applyMealLayout(){
+    if(dayMode && dayMode.checked){
+      buildDaily(dayPick ? dayPick.value : 0);
+    }else{
+      buildWeekly();
+    }
+  }
+
+  if(dayMode){ dayMode.onchange = applyMealLayout; }
+  if(dayPick){ dayPick.onchange = applyMealLayout; }
+  applyMealLayout();
+// shopping
   function drawShop(){
     const list=document.getElementById('shopList'); list.innerHTML='';
     s.shop.forEach((it,i)=>{
