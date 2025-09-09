@@ -33,8 +33,8 @@ function render(){
 }
 window.addEventListener('hashchange', render);
 render();
-
-\1
+// ===== Change hero portrait (keeps editor visible)
+const heroFile = document.getElementById('heroFile'); 
   try{
     const s=load();
     const can=document.getElementById('heroCanvas');
@@ -48,8 +48,6 @@ render();
       const cmp = s.party?.companions?.[0]; if(cmp){ const j=document.createElement('img'); j.src=cmp; mini.appendChild(j); }
     }
   }catch(e){}
-\1
-}
 
 // export/import state
 document.getElementById('exportBtn').onclick=()=>{
