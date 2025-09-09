@@ -46,7 +46,8 @@ export default function renderCharacter(viewEl) {
   // ===== Left column: Your Hero =====
   const wrap = el('section', 'cardish character-page');
 
-  wrap.innerHTML = `<h2 class="dash">Character & Companions</h2>
+  wrap.innerHTML = `
+    <h2 class="dash">Character & Companions</h2>
     <div class="character-grid">
       <div class="hero-side">
         <h3>Your Hero</h3>
@@ -55,6 +56,7 @@ export default function renderCharacter(viewEl) {
           <div id="accLayer" class="acc-layer"></div>
         </div>
 
+        <!-- HERO PORTRAIT FIRST -->
         <div class="row hero-file file-row">
           <label class="field">
             <span>Change Hero Portrait</span>
@@ -62,6 +64,7 @@ export default function renderCharacter(viewEl) {
           </label>
         </div>
 
+        <!-- ACCESSORY UPLOAD SECOND -->
         <div class="row file-row">
           <label class="field">
             <span>Upload Accessory PNG</span>
@@ -102,7 +105,8 @@ export default function renderCharacter(viewEl) {
         </div>
         <div id="cmpList" class="comp-list"></div>
       </div>
-    </div>`;
+    </div>
+`;
 
   viewEl.innerHTML = '';
   viewEl.appendChild(wrap);
@@ -274,53 +278,6 @@ export default function renderCharacter(viewEl) {
     accStatus.textContent = 'Accessory added. Drag to move, wheel to resize, Shift+wheel to rotate.';
   });
 
-  
-  // ===== SAVE: composite hero + accessories and write to party
-  const saveBtn = $('#saveAcc', wrap);
-  if (saveBtn) saveBtn.addEventListener('click', async ()=>{
-    try{
-      const rect = portraitWrap.getBoundingClientRect();
-      const w = Math.max(360, Math.round(rect.width));
-      const h = Math.max(460, Math.round(rect.height));
-      const can = document.createElement('canvas'); can.width=w; can.height=h;
-      const ctx = can.getContext('2d');
-
-      // Base
-      const baseImg = new Image(); baseImg.src = heroBase.src; await baseImg.decode();
-      ctx.drawImage(baseImg, 0, 0, w, h);
-
-      // Accessories in Z-order
-      const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
-      for (const a of sorted){
-        const img = new Image(); img.src = a.data; await img.decode();
-        ctx.save();
-        ctx.translate(w/2, h/2);
-        ctx.translate(a.x, a.y);
-        ctx.rotate((a.rot||0) * Math.PI / 180);
-        const sc = a.scale || 1;
-        ctx.scale(sc, sc);
-        ctx.drawImage(img, -img.width/2, -img.height/2);
-        ctx.restore();
-      }
-
-      const merged = can.toDataURL('image/png', 0.95);
-
-      // Persist to the same app state key that Home reads
-      const st = getState();
-      st.party ||= { hero:null, companions:[] };
-      st.party.hero = { src: merged };
-      st.party.companions = (st.companions||[]).map(u=>({src:u, name:'Companion'}));
-      setState(st);
-
-      accStatus.textContent = 'Saved to party!';
-      setTimeout(()=> accStatus.textContent = '', 1500);
-    }catch(e){
-      console.warn('Save failed', e);
-      accStatus.textContent = 'Save failed.';
-      setTimeout(()=> accStatus.textContent = '', 1500);
-    }
-  });
-
   // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
     const f = heroFile.files?.[0];
@@ -335,6 +292,44 @@ export default function renderCharacter(viewEl) {
     setState(state);
     heroBase.src = state.hero.portrait;
   });
+
+  
+  // ===== Companions (simple list persisted in LS) =====
+  const cmpFile = $('#cmpFile', wrap);
+  const addCmpBtn = $('#addCmpBtn', wrap);
+  const cmpList = $('#cmpList', wrap);
+
+  function renderCompanions(){
+    if(!cmpList) return;
+    cmpList.innerHTML = '';
+    for(const src of state.companions){
+      const item = el('div','comp-item');
+      item.innerHTML = `<img src="${src}" alt="Companion"><button class="tiny danger">✕</button>`;
+      item.querySelector('button').addEventListener('click', ()=>{
+        const i = state.companions.indexOf(src);
+        if(i>-1){ state.companions.splice(i,1); setState(state); renderCompanions(); }
+      });
+      cmpList.appendChild(item);
+    }
+  }
+
+  if(addCmpBtn){
+    addCmpBtn.addEventListener('click', async ()=>{
+      const f = cmpFile?.files?.[0];
+      if(!f) return;
+      const dataUrl = await new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(f); });
+      const img = new Image(); img.src = dataUrl; await img.decode();
+      const maxSide = Math.max(img.width, img.height);
+      const can = document.createElement('canvas'); const r = Math.min(1, 512/maxSide);
+      can.width = Math.round(img.width*r); can.height = Math.round(img.height*r);
+      const ctx = can.getContext('2d'); ctx.drawImage(img,0,0,can.width,can.height);
+      const small = can.toDataURL('image/png', 0.9);
+      state.companions.push(small);
+      setState(state);
+      cmpFile.value = '';
+      renderCompanions();
+    });
+  }
 
   // Initial render
   renderAccessories();
