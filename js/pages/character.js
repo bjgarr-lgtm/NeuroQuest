@@ -279,68 +279,53 @@ export default function renderCharacter(viewEl) {
   });
 
   
-  
-// ===== SAVE: composite hero + accessories and write to party (clean) =====
+  // ===== SAVE: composite hero + accessories and write to party (DOM-synced) =====
   (function(){
     const saveBtn = $('#saveAcc', wrap);
     if(!saveBtn) return;
-
-    function readTransformFrom(node){
+    function parseTransform(str){
+      // expecting: translate(Xpx, Ypx) rotate(Rdeg) scale(S)
       const out = {x:0,y:0,rot:0,scale:1};
-      const cs = getComputedStyle(node).transform;
-      if(cs && cs !== 'none'){
-        const m = /matrix\(([-0-9.,\s]+)\)/.exec(cs);
-        if(m){
-          const [a,b,c,d,tx,ty] = m[1].split(',').map(Number);
-          out.x = isFinite(tx)?tx:0;
-          out.y = isFinite(ty)?ty:0;
-          const rot = Math.atan2(b, a) * 180/Math.PI;
-          out.rot = isFinite(rot)?rot:0;
-          const sc = Math.sqrt(a*a + b*b);
-          out.scale = isFinite(sc)?sc:1;
-        }
-      }
+      const mT = /translate\(([-0-9.]+)px,\s*([-0-9.]+)px\)/.exec(str||'');
+      if(mT){ out.x=parseFloat(mT[1]); out.y=parseFloat(mT[2]); }
+      const mR = /rotate\(([-0-9.]+)deg\)/.exec(str||'');
+      if(mR){ out.rot=parseFloat(mR[1]); }
+      const mS = /scale\(([-0-9.]+)\)/.exec(str||'');
+      if(mS){ out.scale=parseFloat(mS[1]); }
       return out;
     }
-
     saveBtn.addEventListener('click', async ()=>{
       try{
-        // Sync from DOM first
+        // sync from DOM so we capture EXACT on-screen alignment
         accLayer.querySelectorAll('.acc-img').forEach(node=>{
           const id = node.dataset.id;
           const a = state.hero.acc.find(x=> String(x.id)===String(id));
           if(a){
-            const v = readTransformFrom(node);
+            const tf = node.style.transform || '';
+            const v = parseTransform(tf, node);
             a.x = v.x; a.y = v.y; a.rot = v.rot; a.scale = v.scale;
           }
         });
 
-        // Composite at fixed 360x460
+        // composite
         const rect = portraitWrap.getBoundingClientRect();
-        const W = 360, H = 460;
-        const scaleX = W / (rect.width || W);
-        const scaleY = H / (rect.height || H);
+        const W = Math.max(360, Math.round(rect.width || 360));
+        const H = Math.max(460, Math.round(rect.height || 460));
         const can = document.createElement('canvas'); can.width = W; can.height = H;
         const ctx = can.getContext('2d');
 
-        // Draw base (object-fit: contain)
         const base = new Image(); base.src = heroBase.src; await base.decode();
-        const baseScale = Math.min(W / base.width, H / base.height);
-        const drawW = Math.round(base.width  * baseScale);
-        const drawH = Math.round(base.height * baseScale);
-        const offX = Math.round((W - drawW) / 2);
-        const offY = Math.round((H - drawH) / 2);
-        ctx.drawImage(base, offX, offY, drawW, drawH);
+        ctx.drawImage(base, 0, 0, W, H);
 
-        // Draw accessories in Z order, translate scaled to canvas
         const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
         for(const a of sorted){
           const img = new Image(); img.src = a.data; await img.decode();
           ctx.save();
           ctx.translate(W/2, H/2);
-          ctx.translate((a.x||0) * scaleX, (a.y||0) * scaleY);
+          ctx.translate(a.x||0, a.y||0);
           ctx.rotate(((a.rot||0) * Math.PI) / 180);
-          ctx.scale(a.scale || 1, a.scale || 1);
+          const s = a.scale || 1;
+          ctx.scale(s, s);
           ctx.drawImage(img, -img.width/2, -img.height/2);
           ctx.restore();
         }
@@ -349,10 +334,8 @@ export default function renderCharacter(viewEl) {
         const st = getState(); st.party ||= { hero:null, companions:[] };
         st.party.hero = { src: merged };
         setState(st);
-
-        // Update HUD mini immediately
-        const mini = document.getElementById('partyMini');
-        if(mini){ mini.innerHTML=''; const i = document.createElement('img'); i.src = merged; mini.appendChild(i); }
+        // update HUD mini immediately
+        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);} 
 
         accStatus.textContent = 'Saved to party!';
         setTimeout(()=> accStatus.textContent = '', 1500);
@@ -363,6 +346,7 @@ export default function renderCharacter(viewEl) {
       }
     });
   })();
+
 // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
     const f = heroFile.files?.[0];

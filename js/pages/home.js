@@ -24,16 +24,9 @@ export default function renderHome(root){
   const row=document.getElementById('partyRow');
   function card(src, name){
     const d=document.createElement('div'); d.className='hero';
-    const frame=document.createElement('div');
-    frame.style.width='360px'; frame.style.height='460px'; frame.style.borderRadius='12px';
-    frame.style.overflow='hidden'; frame.style.display='inline-flex';
-    frame.style.alignItems='center'; frame.style.justifyContent='center';
-    frame.style.background='rgba(255,255,255,0.04)';
-    const img=new Image(); img.src=src||'assets/icon.svg'; img.alt=name||'Member';
-    img.style.width='100%'; img.style.height='100%'; img.style.objectFit='contain';
-    frame.appendChild(img);
+    const img=document.createElement('img'); img.src=src||'assets/icon.svg'; img.alt=name||'Member';
     const cap=document.createElement('div'); cap.className='name'; cap.textContent=name||'Companion';
-    d.appendChild(frame); d.appendChild(cap); return d;
+    d.appendChild(img); d.appendChild(cap); return d;
   }
   if(s.party?.hero?.src) row.appendChild(card(s.party.hero.src,'You'));
   (s.party?.companions||[]).forEach(c=> row.appendChild(card(c.src, c.name||'Companion')));
