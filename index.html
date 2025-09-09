@@ -17,6 +17,24 @@
     .sb-acc-layer{position:absolute; left:0; top:0; width:100%; height:100%}
     .sb-acc-ov{position:absolute; transform:translate(-50%,-50%) scale(1) rotate(0deg); cursor:grab; user-select:none}
     .sb-acc-ov:active{cursor:grabbing}
+
+/* === Canva-like editor helpers === */
+.sb-grid{position:absolute; inset:0; background-image:
+  linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px; pointer-events:none; display:none}
+.sb-grid.show{display:block}
+
+.sb-acc-ov.selected{outline:2px dashed #7cf; outline-offset:2px}
+.sb-handle{position:absolute; width:14px; height:14px; border:2px solid #7cf; background:#0b2238; border-radius:3px; pointer-events:auto; cursor:nwse-resize}
+.sb-handle.ne{right:-7px; top:-7px}
+.sb-handle.nw{left:-7px; top:-7px}
+.sb-handle.se{right:-7px; bottom:-7px}
+.sb-handle.sw{left:-7px; bottom:-7px}
+
+.sb-rotate{position:absolute; top:-28px; left:50%; transform:translateX(-50%); width:14px; height:14px; border:2px solid #7cf; background:#0b2238; border-radius:50%; cursor:grab}
+.sb-rotate:active{cursor:grabbing}
+/* === end helpers === */
   </style>
 <style id="patch-hide-toolbar">.sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}</style>
 </head>
@@ -140,6 +158,7 @@
         };
         this.save();
       }
+      removeLast(id){ const arr=this._arr(id); if(!arr.length) return; arr.pop(); this.save(); }
     }
 
     // Build a visible align toolbar inside the portrait wrapper
@@ -149,15 +168,10 @@
       wrap.querySelector('.sb-align-hint')?.remove();
 
       const bar=document.createElement('div'); bar.className='sb-align-bar';
-      bar.innerHTML = `
-        <button data-act="align">Enable Align</button>
-        <button data-act="save">Save</button>
-        <button data-act="clear">Clear</button>
-        <button data-act="exit">Exit</button>
-      `;
+      bar.innerHTML = `        <button data-act="align">Align</button>        <button data-act="snap-center">Center</button>        <button data-act="left">Left</button>        <button data-act="right">Right</button>        <button data-act="top">Top</button>        <button data-act="bottom">Bottom</button>        <button data-act="flip">Flip</button>        <button data-act="front">Front</button>        <button data-act="back">Back</button>        <button data-act="dup">Duplicate</button>        <button data-act="grid">Grid</button>        <button data-act="save">Save</button>        <button data-act="clear">Clear</button>        <button data-act="exit">Exit</button>`;
       const hint=document.createElement('div'); hint.className='sb-align-hint';
       hint.textContent='Drag to move · Wheel to scale · Q/E to rotate';
-      wrap.appendChild(bar); wrap.appendChild(hint);
+      wrap.appendChild(bar); wrap.appendChild(hint); const grid=document.createElement('div'); grid.className='sb-grid'; wrap.appendChild(grid);
 
       let active=null, dragging=false, lastPos=null;
 
@@ -166,6 +180,7 @@
         return !!active;
       }
       function enableAlign(){
+        select();
         if(!pickLast()){ alert('Add an accessory first.'); return; }
         // allow interaction
         active.style.pointerEvents='auto';
@@ -186,6 +201,7 @@
         active=null; dragging=false; lastPos=null;
       }
       function onDown(ev){
+        select(ev.target);
         ev.preventDefault(); dragging=true;
         const r=wrap.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
         window.addEventListener('mousemove', onMove);
@@ -216,6 +232,18 @@
       }
       function onKey(ev){
         if(!active) return;
+        const step = ev.shiftKey ? 0.2 : 1;
+        if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(ev.key)) ev.preventDefault();
+        let x=parseFloat(active.dataset.x)||0.5, y=parseFloat(active.dataset.y)||0.5;
+        if(ev.key==='ArrowLeft') x-=step/100;
+        if(ev.key==='ArrowRight') x+=step/100;
+        if(ev.key==='ArrowUp') y-=step/100;
+        if(ev.key==='ArrowDown') y+=step/100;
+        x=Math.max(0,Math.min(1,x)); y=Math.max(0,Math.min(1,y));
+        active.dataset.x=x; active.dataset.y=y; active.style.left=(x*100)+'%'; active.style.top=(y*100)+'%';
+        if(ev.key==='Delete' || ev.key==='Backspace'){ active.remove(); mgr.removeLast(leaderId); active=null; }
+        positionHandles();
+        if(!active) return;
         if(ev.key==='q' || ev.key==='Q'){ rotate(-4) }
         else if(ev.key==='e' || ev.key==='E'){ rotate(4) }
       }
@@ -224,6 +252,71 @@
         active.dataset.r=(r+d).toFixed(2);
         applyTRS();
       }
+      
+      // selection + handles
+      function select(el){
+        wrap.querySelectorAll('.sb-acc-ov').forEach(e=>e.classList.remove('selected'));
+        active = el || wrap.querySelector('.sb-acc-ov:last-of-type');
+        if(!active) return false;
+        active.classList.add('selected');
+        ensureHandles();
+        return true;
+      }
+      function ensureHandles(){
+        // remove old
+        wrap.querySelectorAll('.sb-handle,.sb-rotate').forEach(n=>n.remove());
+        if(!active) return;
+        const mk=(cls)=>{ const h=document.createElement('div'); h.className='sb-handle '+cls; wrap.appendChild(h); return h; };
+        const ne=mk('ne'), nw=mk('nw'), se=mk('se'), sw=mk('sw');
+        const rot=document.createElement('div'); rot.className='sb-rotate'; wrap.appendChild(rot);
+        positionHandles();
+        [ne,nw,se,sw].forEach(h=>h.addEventListener('mousedown', onResize));
+        rot.addEventListener('mousedown', onRotate);
+      }
+      function positionHandles(){
+        if(!active) return;
+        const r=active.getBoundingClientRect(); const w=wrap.getBoundingClientRect();
+        const toWrap = (x,y)=>({ left:(x-w.left)+'px', top:(y-w.top)+'px' });
+        const hh=(sel, x, y)=>{ const el=wrap.querySelector(sel); if(el){ const p=toWrap(x,y); el.style.left=p.left; el.style.top=p.top; } };
+        hh('.sb-handle.ne', r.right, r.top);
+        hh('.sb-handle.nw', r.left, r.top);
+        hh('.sb-handle.se', r.right, r.bottom);
+        hh('.sb-handle.sw', r.left, r.bottom);
+        hh('.sb-rotate', r.left + r.width/2, r.top-14);
+      }
+      new ResizeObserver(()=>positionHandles()).observe(wrap);
+
+      function onResize(ev){
+        ev.preventDefault();
+        const r=wrap.getBoundingClientRect();
+        const start={x:ev.clientX, y:ev.clientY, w:active.offsetWidth, h:active.offsetHeight};
+        function mm(e){
+          const dx=e.clientX-start.x, dy=e.clientY-start.y;
+          const bigger = (ev.target.classList.contains('ne')||ev.target.classList.contains('se')) ? dx : -dx;
+          const newW = Math.max(10, start.w + bigger);
+          // convert to percentage of wrap width
+          const wPct = (newW / r.width) * 100;
+          active.style.width = wPct + '%';
+          active.dataset.s = (wPct/ (parseFloat(active.style.width)||wPct)).toFixed(3); // maintain dataset s approx
+          positionHandles();
+        }
+        function up(){ window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', up); mgr.updateLastTransform(leaderId); }
+        window.addEventListener('mousemove', mm); window.addEventListener('mouseup', up);
+      }
+      function onRotate(ev){
+        ev.preventDefault();
+        const center = active.getBoundingClientRect();
+        const cx = center.left + center.width/2, cy = center.top + center.height/2;
+        function mm(e){
+          const ang = Math.atan2(e.clientY-cy, e.clientX-cx) * 180/Math.PI + 90;
+          active.dataset.r = ang.toFixed(1);
+          applyTRS();
+          positionHandles();
+        }
+        function up(){ window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', up); mgr.updateLastTransform(leaderId); }
+        window.addEventListener('mousemove', mm); window.addEventListener('mouseup', up);
+      }
+
       function applyTRS(){
         const s=parseFloat(active.dataset.s)||1;
         const r=parseFloat(active.dataset.r)||0;
@@ -234,7 +327,18 @@
         const act = e.target.getAttribute('data-act');
         if(!act) return;
         if(act==='align'){ enableAlign(); }
-        if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory transform.'); }
+        
+        if(act==='snap-center'){ if(select()){ active.dataset.x=0.5; active.dataset.y=0.5; active.style.left='50%'; active.style.top='50%'; applyTRS(); positionHandles(); mgr.updateLastTransform(leaderId);} }
+        if(act==='left'){ if(select()){ active.dataset.x=0.0; active.style.left='0%'; mgr.updateLastTransform(leaderId); positionHandles(); } }
+        if(act==='right'){ if(select()){ active.dataset.x=1.0; active.style.left='100%'; mgr.updateLastTransform(leaderId); positionHandles(); } }
+        if(act==='top'){ if(select()){ active.dataset.y=0.0; active.style.top='0%'; mgr.updateLastTransform(leaderId); positionHandles(); } }
+        if(act==='bottom'){ if(select()){ active.dataset.y=1.0; active.style.top='100%'; mgr.updateLastTransform(leaderId); positionHandles(); } }
+        if(act==='flip'){ if(select()){ const cur=active.style.transform.includes('scaleX(-1)'); active.style.transform = active.style.transform.replace(/scaleX\((?:-?1)\)/,'') + ` scaleX(${cur?1:-1})`; mgr.updateLastTransform(leaderId); } }
+        if(act==='front'){ if(select()){ active.parentElement.appendChild(active); positionHandles(); mgr.updateLastTransform(leaderId);} }
+        if(act==='back'){ if(select()){ active.parentElement.insertBefore(active, active.parentElement.firstChild); positionHandles(); mgr.updateLastTransform(leaderId);} }
+        if(act==='dup'){ if(select()){ const clone=active.cloneNode(true); clone.style.pointerEvents='auto'; wrap.querySelector('.sb-acc-layer').appendChild(clone); select(clone); mgr.add(leaderId, {url: clone.src, x: parseFloat(clone.dataset.x)||0.5, y: parseFloat(clone.dataset.y)||0.5, s: parseFloat(clone.dataset.s)||1, r: parseFloat(clone.dataset.r)||0}); } }
+        if(act==='grid'){ grid.classList.toggle('show'); }
+if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory transform.'); }
         if(act==='clear'){ disableAlign(); mgr.clear(leaderId); }
         if(act==='exit'){ disableAlign(); bar.remove(); hint.remove(); }
       });
