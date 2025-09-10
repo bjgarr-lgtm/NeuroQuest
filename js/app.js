@@ -14,19 +14,17 @@ import renderShop from './pages/shop.js';
 
 const routes=[
   {id:'home', label:'Dashboard', view:renderHome},
-  {id:'quests', label:'Quests', view:renderQuests},
+  {id:'quests', label:'Quests + Cleaning', view:renderQuests},
   {id:'life', label:'Life Hub', view:renderLife},
-  {id:'character', label:'Party', view:renderCharacter},
-  {id:'journal', label:'Adventure Journal', view:renderJournal},
   {id:'settings', label:'Settings', view:renderSettings},
-
-  // Hidden routes (accessible via buttons/toggles only)
-  {id:'toddler', label:'Toddler Hub', view:renderToddler, hideInNav:true},
-  {id:'shop', label:'Wardrobe + Shop', view:renderShop, hideInNav:true},
-  {id:'rewards', label:'Rewards', view:renderRewards, hideInNav:true},
+  {id:'shop', label:'Wardrobe + Shop', view:renderShop},
+  {id:'character', label:'Character + Companions', view:renderCharacter},
+  {id:'journal', label:'Journal + Check-In', view:renderJournal},
+  {id:'toddler', label:'Toddler Hub', view:renderToddler},
+  {id:'rewards', label:'Rewards', view:renderRewards},
 ];
 
-initDrawer(routes.filter(r=>!r.hideInNav));
+initDrawer(routes);
 cursorTrail();
 
 function render(){
@@ -38,13 +36,6 @@ function render(){
 window.addEventListener('hashchange', render);
 render();
 
-// Make the header brand clickable → go to Dashboard
-try{
-  const brand = document.getElementById('brand');
-  if (brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ location.hash='#home'; }; }
-}catch(_){}
-
-
 function updateHud(){
   const s=load();
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
@@ -52,6 +43,7 @@ function updateHud(){
   document.getElementById('hudLevel').textContent='Lv '+(s.level||1);
   // party mini
   const mini=document.getElementById('partyMini'); mini.innerHTML='';
+  const tok=document.getElementById('hudTokens'); if(tok){ tok.innerHTML=''; (s.tokens||[]).slice(-8).forEach(t=>{ const span=document.createElement('span'); span.className='token'; span.textContent=t; tok.appendChild(span); }); }
   if(s.party?.hero) { const i=document.createElement('img'); i.src=s.party.hero.src; mini.appendChild(i); }
   (s.party?.companions||[]).forEach(c=>{ const i=document.createElement('img'); i.src=c.src; mini.appendChild(i); });
 }

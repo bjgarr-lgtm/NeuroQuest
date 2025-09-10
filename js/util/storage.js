@@ -8,6 +8,7 @@ export const DEF = {
   quests:{ main:[], side:[], bonus:[], boss:{name:'Bathroom', progress:0}, raid:{week:2, title:'Deep Clean'} },
   meals:{}, shop:[], budget:{ tx:[], goal:100, income:0, expense:0 },
   journal:{ prompt:'', entries:[], moods:[] },
+  tokens:[], ach:{},
   gcal:'https://calendar.google.com/calendar/embed?src=en.usa%23holiday%40group.v.calendar.google.com&ctz=America%2FLos_Angeles'
 };
 
