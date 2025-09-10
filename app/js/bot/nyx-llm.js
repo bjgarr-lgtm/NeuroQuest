@@ -1,5 +1,7 @@
 
 export async function nyxAskLLM(userText, opts={}){
+  const ac = new AbortController();
+  const t = setTimeout(()=>ac.abort(), opts.timeoutMs||15000);
   const endpoint = localStorage.getItem('nyx_llm_endpoint') || (window.NYX_LLM_ENDPOINT||"");
   if(!endpoint){ throw new Error("NYX LLM endpoint not set"); }
   const history = (window.__nyx_history ||= []);

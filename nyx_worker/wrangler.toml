@@ -1,0 +1,6 @@
+
+name = "nyx-llm-proxy"
+main = "worker.js"
+compatibility_date = "2024-10-01"
+[vars]
+# set in dashboard or via wrangler secret put OPENAI_API_KEY

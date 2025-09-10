@@ -104,6 +104,18 @@ class Nyx {
       const msg = 'top quests: ' + main;
       this.pushBot(msg); return msg;
     }
+    if(lc.startsWith('/llm test')){
+      const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '(unset)';
+      this.pushBot('pinging llm…');
+      fetch((ep||'') + '/health').then(r=>r.json()).then(j=>{
+        this.pushBot('llm ok • ' + (j.model||'model') + ' • endpoint set');
+      }).catch(e=>{
+        this.pushBot('llm error: ' + e);
+      });
+      return 'testing';
+    }
+    if(lc.startsWith('/llm off')){ this._llmOff=true; const m='llm disabled; using local hints only.'; this.pushBot(m); return m; }
+    if(lc.startsWith('/llm on')){ this._llmOff=false; const m='llm enabled.'; this.pushBot(m); return m; }
     if(lc.startsWith('/help') || lc.includes('help')){
       const msg = 'try /stats /tips /quests. ask me to add a micro‑quest like “drink water” or “3min stretch”.';
       this.pushBot(msg); return msg;
