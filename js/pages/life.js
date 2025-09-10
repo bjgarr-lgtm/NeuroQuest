@@ -152,84 +152,100 @@ document.getElementById('mealMode').onclick=()=>{
   const qbtn=document.getElementById('logQuick');
   if(qbtn) qbtn.onclick=()=>{ const k=qa.value; logAction(k); };
 
-  
-  // Shopping
-  const shopList=document.getElementById('shopList');
-  const renderShop=()=>{
-    shopList.innerHTML='';
-    (s.shop||[]).forEach((item,i)=>{
-      // Support legacy string items; migrate to {text, done:false}
-      const obj = (typeof item === 'string') ? {text:item, done:false} : (item||{text:'',done:false});
-      if (typeof item === 'string') { s.shop[i] = obj; }
+// Shopping
+const shopList=document.getElementById('shopList');
+function renderShop(){
+  shopList.innerHTML='';
+  (s.shop||[]).forEach((item,i)=>{
+    const obj = (typeof item==='string') ? {text:item, done:false} : item;
+    if(typeof item==='string'){ s.shop[i]=obj; }
 
-      const row=document.createElement('div'); row.className='row';
-      const left=document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; left.style.gap='8px'; left.style.flex='1';
+    const row=document.createElement('div'); row.className='row';
 
-      const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!obj.done;
-      chk.onchange=()=>{
-        const wasDone = !!obj.done;
-        obj.done = chk.checked;
-        s.shop[i] = obj; // persist
-        if(!wasDone && obj.done){
-          // reward only when checking something off
-          s.gold = (s.gold||0) + 1;
-          try{ crownDrop(); }catch(e){} 
-          confetti();
-        }
-        save(s); renderShop();
-      };
+    const left=document.createElement('div');
+    left.style.display='flex';
+    left.style.alignItems='center';
+    left.style.gap='8px';
+    left.style.flex='1';
 
-      const label=document.createElement('span'); 
-      label.textContent = obj.text;
-      if(obj.done){ label.style.textDecoration='line-through'; label.style.opacity='0.6'; }
+    const chk=document.createElement('input');
+    chk.type='checkbox'; chk.checked=!!obj.done;
+    chk.onchange=()=>{
+      const wasDone=!!obj.done;
+      obj.done=chk.checked;
+      s.shop[i]=obj;
+      if(!wasDone && obj.done){
+        s.gold=(s.gold||0)+1;
+        try{ crownDrop(); }catch(e){}
+        confetti();
+      }
+      save(s); renderShop();
+    };
 
-      left.append(chk, label);
+    const label=document.createElement('span');
+    label.textContent=obj.text;
+    if(obj.done){ label.style.textDecoration='line-through'; label.style.opacity='0.6'; }
 
-      const del=document.createElement('button'); 
-      del.className='danger'; 
-      del.textContent='Delete';
-      del.onclick=()=>{ s.shop.splice(i,1); save(s); renderShop(); };
+    left.append(chk,label);
 
-      row.append(left, del); 
-      shopList.appendChild(row);
-    });
-  };
-  document.getElementById('addShop').onclick=()=>{
-    const v=document.getElementById('shopItem').value.trim(); if(!v) return;
-    (s.shop ||= []).push({text:v, done:false}); 
-    save(s); 
-    document.getElementById('shopItem').value=''; 
-    renderShop();
-  };
+    const del=document.createElement('button');
+    del.className='danger'; del.textContent='Delete';
+    del.onclick=()=>{ s.shop.splice(i,1); save(s); renderShop(); };
+
+    row.append(left,del);
+    shopList.appendChild(row);
+  });
+}
+document.getElementById('addShop').onclick=()=>{
+  const v=document.getElementById('shopItem').value.trim();
+  if(!v) return;
+  (s.shop ||= []).push({text:v, done:false});
+  save(s);
+  document.getElementById('shopItem').value='';
   renderShop();
+};
+renderShop();
 
-  };
-  renderShop();
+// Budget
+function recalc(){
+  const tx = (s.budget.tx||[]);
+  const inc = tx.filter(t=>t.type==='inc').reduce((a,b)=>a+(+b.amt||0),0);
+  const exp = tx.filter(t=>t.type==='exp').reduce((a,b)=>a+(+b.amt||0),0);
+  const remaining = inc - exp;
 
-  // Budget
-  function recalc(){
-    const inc = (s.budget.tx||[]).filter(t=>t.type==='inc').reduce((a,b)=>a+b.amt,0);
-    const exp = (s.budget.tx||[]).filter(t=>t.type==='exp').reduce((a,b)=>a+b.amt,0);
-    document.getElementById('goldPouch').textContent='$'+inc.toFixed(2);
-    document.getElementById('spend').textContent='$'+exp.toFixed(2);
-    const list=document.getElementById('txnList'); list.innerHTML='';
-    (s.budget.tx||[]).slice().reverse().forEach(t=>{
-      const row=document.createElement('div'); row.className='row';
-      row.innerHTML = `<span>${t.type==='inc'?'+':''}$${t.amt.toFixed(2)}</span> <span>${t.label}</span>`;
-      list.appendChild(row);
-    });
+  document.getElementById('goldPouch').textContent = '$'+remaining.toFixed(2);
+  document.getElementById('spend').textContent = '$'+exp.toFixed(2);
+
+  const list=document.getElementById('txnList');
+  list.innerHTML='';
+  tx.slice().reverse().forEach(t=>{
+    const row=document.createElement('div'); row.className='row';
+    const sign=t.type==='inc'?'+':'−';
+    row.innerHTML=`<span>${sign}$${(+t.amt||0).toFixed(2)}</span> <span>${t.label}</span>`;
+    list.appendChild(row);
+  });
+}
+document.getElementById('addInc').onclick=()=>{
+  const amt=parseFloat(document.getElementById('incAmount').value)||0;
+  const label=document.getElementById('incLabel').value||'Income';
+  if(amt>0){
+    s.budget.tx.push({type:'inc', amt, label});
+    s.gold=(s.gold||0)+1;
+    save(s); recalc();
+    try{ crownDrop(); }catch(e){} confetti();
   }
-  document.getElementById('addInc').onclick=()=>{
-    const amt=parseFloat(document.getElementById('incAmount').value)||0;
-    const label=document.getElementById('incLabel').value||'Income';
-    if(amt>0){ s.budget.tx.push({type:'inc', amt, label}); s.gold=(s.gold||0)+1; save(s); recalc(); try{ crownDrop(); }catch{} confetti(); }
-  };
-  document.getElementById('addExp').onclick=()=>{
-    const amt=parseFloat(document.getElementById('expAmount').value)||0;
-    const label=document.getElementById('expLabel').value||'Expense';
-    if(amt>0){ s.budget.tx.push({type:'exp', amt, label}); s.gold=(s.gold||0)+1; save(s); recalc(); try{ crownDrop(); }catch{} confetti(); }
-  };
-  recalc();
+};
+document.getElementById('addExp').onclick=()=>{
+  const amt=parseFloat(document.getElementById('expAmount').value)||0;
+  const label=document.getElementById('expLabel').value||'Expense';
+  if(amt>0){
+    s.budget.tx.push({type:'exp', amt, label});
+    s.gold=(s.gold||0)+1;
+    save(s); recalc();
+    try{ crownDrop(); }catch(e){} confetti();
+  }
+};
+recalc();
 
   // Calendar
   const savedCal = (s && s.gcal) ? s.gcal : '';
