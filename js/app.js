@@ -82,3 +82,91 @@ function tracker(ev, payload){
   catch(e){ console.warn('[NQ_track]', e); }
 }
 window.NQ_track = tracker;
+
+// === Music Header Bridge ===
+// Makes the header music button play/pause the currently selected library track.
+// Selection is stored in localStorage("nq_music") and maintained by Settings.
+
+(function(){
+  // Wait until DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function getList(){
+    try {
+      const raw = JSON.parse(localStorage.getItem('nq_music_list') || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch(_) { return []; }
+  }
+
+  function pickInitial(){
+    // prefer explicit selection; fallback to first in library
+    const stored = localStorage.getItem('nq_music');
+    if (stored) return stored;
+    const list = getList();
+    return list[0]?.url || '';
+  }
+
+  function ensureAudio(){
+    // If your layout already has <audio id="music">, this uses it.
+    // If not, it creates one silently.
+    let audio = document.getElementById('music');
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = 'music';
+      audio.style.display = 'none';
+      document.body.appendChild(audio);
+    }
+    return audio;
+  }
+
+  function init(){
+    const btn = document.getElementById('musicBtn');
+    const audio = ensureAudio();
+
+    // Load initial selection (if none set yet)
+    if (!audio.src) {
+      const url = pickInitial();
+      if (url) audio.src = url;
+    }
+
+    // Respond when Settings selects a new track
+    document.addEventListener('nq:music', (e)=>{
+      const url = e?.detail?.url;
+      if (!url) return;
+      localStorage.setItem('nq_music', url);
+      audio.src = url;
+      // keep button UI "on" but don't force-play; let user use header toggle
+      btn && btn.classList.add('on');
+    });
+
+    // Header toggle: play/pause the currently selected source
+    if (btn) {
+      btn.addEventListener('click', async ()=>{
+        // Ensure we have a source
+        if (!audio.src) {
+          const url = pickInitial();
+          if (url) {
+            audio.src = url;
+            localStorage.setItem('nq_music', url);
+          }
+        }
+        try {
+          if (audio.paused) {
+            audio.loop = true;
+            audio.volume = 0.6;
+            await audio.play();
+            btn.classList.add('on');
+          } else {
+            audio.pause();
+            btn.classList.remove('on');
+          }
+        } catch(_){}
+      });
+    }
+  }
+})();
+
