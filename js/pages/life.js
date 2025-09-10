@@ -172,16 +172,21 @@ document.getElementById('mealMode').onclick=()=>{
 
   // Budget
   function recalc(){
-    const inc = (s.budget.tx||[]).filter(t=>t.type==='inc').reduce((a,b)=>a+b.amt,0);
-    const exp = (s.budget.tx||[]).filter(t=>t.type==='exp').reduce((a,b)=>a+b.amt,0);
-    document.getElementById('goldPouch').textContent='$'+inc.toFixed(2);
-    document.getElementById('spend').textContent='$'+exp.toFixed(2);
-    const list=document.getElementById('txnList'); list.innerHTML='';
-    (s.budget.tx||[]).slice().reverse().forEach(t=>{
-      const row=document.createElement('div'); row.className='row';
-      row.innerHTML = `<span>${t.type==='inc'?'+':''}$${t.amt.toFixed(2)}</span> <span>${t.label}</span>`;
-      list.appendChild(row);
-    });
+  const inc = (s.budget.tx||[]).filter(t=>t.type==='inc').reduce((a,b)=>a+b.amt,0);
+  const exp = (s.budget.tx||[]).filter(t=>t.type==='exp').reduce((a,b)=>a+b.amt,0);
+
+  // show net balance instead of just income
+  document.getElementById('goldPouch').textContent = '$' + (inc - exp).toFixed(2);
+
+  // still show expenses separately
+  document.getElementById('spend').textContent = '$' + exp.toFixed(2);
+
+  const list=document.getElementById('txnList'); list.innerHTML='';
+  (s.budget.tx||[]).slice().reverse().forEach(t=>{
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML = `<span>${t.type==='inc'?'+':'−'}$${t.amt.toFixed(2)}</span> <span>${t.label}</span>`;
+    list.appendChild(row);
+  });
   }
   document.getElementById('addInc').onclick=()=>{
     const amt=parseFloat(document.getElementById('incAmount').value)||0;
