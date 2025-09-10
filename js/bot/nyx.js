@@ -1,28 +1,29 @@
-
-import {load, save} from '../util/storage.js';
-import {nyxAskLLM} from './nyx-llm.js';
+// NYX Assistant — syntaxfix2
+console.log('[NYX] build syntaxfix2 loaded');
+import { load, save } from '../util/storage.js';
+import { nyxAskLLM } from './nyx-llm.js';
 
 const VOICE_NAME = 'Google US English';
 
-/** Global tracker + assistant **/
 class Nyx {
   constructor(){
     this.name = 'NYX';
-    this.version = '1.0';
+    this.version = '1.0.2';
     this.voice = null;
-    this.ctx = new (window.AudioContext || window.webkitAudioContext || function(){})();
     this.state = load();
     window.NQ = window.NQ || {};
     window.NQ.track = this.track.bind(this);
     window.NQ.ask = (q)=>this.reply(q);
     window.NQ.nyx = this;
   }
+
   init(){
     this.mountUI();
     this.wireAutoHooks();
-    this.speak('hey, i\'m nyx. i\'ll track your wins and keep the gold flowing.');
+    this.speak("hey, i'm nyx. i'll track your wins and keep the gold flowing.");
     console.log('[NYX] initialized');
   }
+
   mountUI(){
     // css
     const link = document.createElement('link');
@@ -34,47 +35,48 @@ class Nyx {
     document.body.appendChild(btn);
 
     // panel
-    const panel = document.createElement("div")
+    const panel = document.createElement('div');
     panel.id='nyx-panel';
-    panel.innerHTML = `
-      <div id="nyx-head">
-        <img src="assets/neuroquest-shield.svg" alt="nyx"/>
-        <div id="nyx-title"><b>NYX</b><br/><small>quest sprite & economy keeper</small></div>
-      </div>
-      <div id="nyx-body"></div>
-      <div id="nyx-input">
-        <input id="nyx-text" placeholder="ask for help, type /tips, /stats, /quests"/>
-        <button id="nyx-send">send</button>
-      </div>`;
+    panel.innerHTML = [
+      '<div id="nyx-head">',
+      '  <div id="nyx-title"><b>NYX</b><br/><small>quest sprite & economy keeper</small></div>',
+      '</div>',
+      '<div id="nyx-body"></div>',
+      '<div id="nyx-input">',
+      '  <input id="nyx-text" placeholder="ask for help, type /tips, /stats, /quests"/>',
+      '  <button id="nyx-send">send</button>',
+      '</div>'
+    ].join('');
     document.body.appendChild(panel);
 
     // behavior
     btn.addEventListener('click', ()=>{
       panel.style.display = panel.style.display==='block' ? 'none' : 'block';
-      if(panel.style.display==='block'){ this.pushBot('what\'s up? need a nudge, a quest, or a hug?'); }
+      if(panel.style.display==='block'){ this.pushBot("what's up? need a nudge, a quest, or a hug?"); }
     });
-    panel.querySelector('#nyx-send').addEventListener('click', ()=>this.onSend());
-    panel.querySelector('#nyx-text').addEventListener('keydown', e=>{
-      if(e.key==='Enter') this.onSend();
-    });
+    panel.querySelector('#nyx-send')?.addEventListener('click', ()=>this.onSend());
+    panel.querySelector('#nyx-text')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') this.onSend(); });
   }
+
   speak(text){
     try{
       if(!('speechSynthesis' in window)) return;
-      const u = new SpeechSynthesisUtterance(text);
-      const pick = window.speechSynthesis.getVoices().find(v=>v.name.includes('English')) || window.speechSynthesis.getVoices()[0];
+      const u = new SpeechSynthesisUtterance(String(text||''));
+      const voices = window.speechSynthesis.getVoices();
+      const pick = voices.find(v=>v.name.includes('English')) || voices[0];
       if(pick) u.voice = pick;
       window.speechSynthesis.speak(u);
-    }catch(e){/*no-op*/}
+    }catch(_){}
   }
+
   pushBot(text){
     const box = document.getElementById('nyx-body'); if(!box) return;
-    const div = document.createElement('div'); div.className='nyx-msg nyx-bot'; div.textContent=text;
+    const div = document.createElement('div'); div.className='nyx-msg nyx-bot'; div.textContent=String(text||'');
     box.appendChild(div); box.scrollTop = box.scrollHeight;
   }
   pushUser(text){
     const box = document.getElementById('nyx-body'); if(!box) return;
-    const div = document.createElement('div'); div.className='nyx-msg nyx-user'; div.textContent=text;
+    const div = document.createElement('div'); div.className='nyx-msg nyx-user'; div.textContent=String(text||'');
     box.appendChild(div); box.scrollTop = box.scrollHeight;
   }
   onSend(){
@@ -83,16 +85,19 @@ class Nyx {
     input.value=''; this.pushUser(q);
     this.reply(q);
   }
+
   reply(q){
     const s = this.state = load();
-    const lc = q.toLowerCase();
+    const lc = (q||'').toLowerCase();
+
+    // commands
     if(lc.startsWith('/stats')){
       const msg = `lvl ${s.level||1} • xp ${s.xp||0} • gold ${s.gold||0} • streak ${s.streak||0}`;
       this.pushBot(msg); this.speak(msg); return msg;
     }
     if(lc.startsWith('/tips')){
       const tips = [
-        'tiny quests > huge promises. pick a 5‑minute win.',
+        'tiny quests > huge promises. pick a 5-minute win.',
         'hydrate, move, breathe. i’ll track and reward it.',
         'open your journal and vent. you\'ll get xp for honesty.'
       ];
@@ -100,107 +105,113 @@ class Nyx {
       this.pushBot(t); this.speak(t); return t;
     }
     if(lc.startsWith('/quests')){
-      const main = (s.quests?.main||[]).map(q=>q.title||q.name||'quest').slice(0,3).join(' • ') || 'none yet'; 
+      const main = (s.quests?.main||[]).map(q=>q.title||q.name||'quest').slice(0,3).join(' • ') || 'none yet';
       const msg = 'top quests: ' + main;
       this.pushBot(msg); return msg;
     }
+    if(lc.startsWith('/llm off')){ this._llmOff = true; const m='llm disabled; using local hints only.'; this.pushBot(m); return m; }
+    if(lc.startsWith('/llm on')){ this._llmOff = false; const m='llm enabled.'; this.pushBot(m); return m; }
     if(lc.startsWith('/llm test')){
       const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '';
       if(!ep){ const m='no endpoint set. run: localStorage.setItem("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
       this.pushBot('pinging llm…');
-      fetch(ep, {
+      return fetch(ep, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ messages:[{role:'user', content:'ping'}] })
-      })
-      .then(r=>r.json())
-      .then(j=>{
-        if(j && j.text) this.pushBot('llm ok • reply: '+j.text.slice(0,60)+'…');
-        else this.pushBot('llm replied but no text field: '+JSON.stringify(j).slice(0,80));
-      })
-      .catch(e=>{ this.pushBot('llm error: '+e); });
-      return 'testing';
-    }).catch(e=>{
-        this.pushBot('llm error: ' + e);
+      }).then(r=>r.json()).then(j=>{
+        if(j && j.text){ const m='llm ok • reply: '+String(j.text).slice(0,60)+'…'; this.pushBot(m); return m; }
+        const m='llm replied but no text field: '+JSON.stringify(j).slice(0,80); this.pushBot(m); return m;
+      }).catch(e=>{
+        const m='llm error: '+e; this.pushBot(m); return m;
       });
-      return 'testing';
     }
-    if(lc.startsWith('/llm off')){ this._llmOff=true; const m='llm disabled; using local hints only.'; this.pushBot(m); return m; }
-    if(lc.startsWith('/llm on')){ this._llmOff=false; const m='llm enabled.'; this.pushBot(m); return m; }
     if(lc.startsWith('/help') || lc.includes('help')){
-      const msg = 'try /stats /tips /quests. ask me to add a micro‑quest like “drink water” or “3min stretch”.';
+      const msg = 'try /stats /tips /quests. ask me to add a micro-quest like “drink water” or “3min stretch”.';
       this.pushBot(msg); return msg;
     }
-    // fallback supportive
-    const msg = 'i\'m here. what\'s one small action we can do in the next 2 minutes? i\'ll turn it into a quest and reward you.';
-    this.pushBot(msg); return msg;
+
+    // LLM fallback (or local supportive)
+    const sys = [
+      'You are NYX, a supportive ADHD-friendly guide inside the NeuroQuest app.',
+      'Tone: warm, brief, non-judgmental, practical; prefer bullet points and a single tiny next step.',
+      `Player: level ${s.level||1}, xp ${s.xp||0}, gold ${s.gold||0}, streak ${s.streak||0}.`,
+      'If the user asks for app help, reference in-app features (quests, journal, breathe ring). Keep replies under 100 words.'
+    ].join(' ');
+
+    if(this._llmOff){
+      const msg = 'llm is off. try /llm on to enable, or ask me for /tips.';
+      this.pushBot(msg); return msg;
+    }
+
+    const box = document.getElementById('nyx-body');
+    const stub = document.createElement('div'); stub.className='nyx-msg nyx-bot'; stub.textContent='typing…';
+    if(box){ box.appendChild(stub); box.scrollTop = box.scrollHeight; }
+
+    return nyxAskLLM(q, { system: sys }).then(text=>{
+      const t = String(text||'').trim() || '(no reply)';
+      if(box && stub){ stub.textContent = t; } else { this.pushBot(t); }
+      this.speak(t);
+      return t;
+    }).catch(err=>{
+      const m = 'connection hiccup—try /tips or ask again in a sec.';
+      if(box && stub){ stub.textContent = m; } else { this.pushBot(m); }
+      console.error('[NYX LLM]', err);
+      return m;
+    });
   }
 
   // ECONOMY
   grant(xp=5, gold=1, reason=''){
     const s = this.state = load();
-    s.xp = (s.xp||0) + xp;
-    s.gold = (s.gold||0) + gold;
+    s.xp = (s.xp||0) + Number(xp||0);
+    s.gold = (s.gold||0) + Number(gold||0);
     save(s);
-    this.pushBot(`+${xp}xp +${gold}g ${reason?('— '+reason):''}`);
+    this.pushBot(`+${Number(xp||0)}xp +${Number(gold||0)}g ${reason?('— '+reason):''}`);
     this.sparkCelebrate();
   }
-  sparkCelebrate(){
-    document.dispatchEvent(new CustomEvent('nq:reward'));
-  }
+  sparkCelebrate(){ document.dispatchEvent(new CustomEvent('nq:reward')); }
 
-  // TRACKER: unified events
   track(event, payload={}){
-    const e = (event||'').toLowerCase();
+    const e = String(event||'').toLowerCase();
+    const d = payload || {};
     if(e==='quest:complete'){
-      const tier = payload.tier || payload.type || 'main';
+      const tier = d.tier || d.type || 'main';
       const bonus = tier==='main'? {xp:30,gold:8} : tier==='side'? {xp:15,gold:4} : {xp:8,gold:2};
-      this.grant(bonus.xp, bonus.gold, `quest complete: ${payload.title||payload.id||tier}`);
-      return;
+      this.grant(bonus.xp, bonus.gold, `quest complete: ${d.title||d.id||tier}`); return;
     }
-    if(e==='journal:entry'){
-      this.grant(6,2,'journaled');
-      return;
-    }
+    if(e==='journal:entry'){ this.grant(6,2,'journaled'); return; }
     if(e==='hydrate:log'){ this.grant(2,1,'hydrated'); return; }
     if(e==='breathe:ring'){ this.grant(3,1,'breathing done'); return; }
     if(e==='streak:day'){ this.grant(12,4,'daily streak'); return; }
-
-    // generic fallback
-    const xp = Number(payload.xp||3), gold = Number(payload.gold||1);
-    this.grant(xp,gold, payload.reason||e);
+    const xp = Number(d.xp||3), gold = Number(d.gold||1);
+    this.grant(xp, gold, d.reason||e);
   }
 
-  // AUTO HOOKS: try to listen to app
   wireAutoHooks(){
-    // listen to custom app events if they exist
-    document.addEventListener('nq:quest-complete', (ev)=>{
-      const d = ev.detail || {}; this.track('quest:complete', d);
-    });
+    document.addEventListener('nq:quest-complete', (ev)=>{ const dt = ev.detail||{}; this.track('quest:complete', dt); });
     document.addEventListener('nq:journal-saved', ()=>this.track('journal:entry',{}));
-    document.addEventListener('nq:hydrate', ()=>this.track('hydrate:log',{}));
-    document.addEventListener('nq:breathe', ()=>this.track('breathe:ring',{}));
-    document.addEventListener('nq:levelup', ()=>{ this.pushBot('level up! +10 gold bonus. keep rolling.'); this.speak('level up'); });
+    document.addEventListener('nq:hydrate',      ()=>this.track('hydrate:log',{}));
+    document.addEventListener('nq:breathe',      ()=>this.track('breathe:ring',{}));
+    document.addEventListener('nq:levelup',      ()=>{ this.pushBot('level up! +10 gold bonus. keep rolling.'); this.speak('level up'); });
 
-    // auto-claim buttons by attribute hints
+    // attribute-based auto-claim
     document.body.addEventListener('click', (e)=>{
       const el = e.target.closest('[data-quest-complete],[data-journal-save],[data-hydrate]');
       if(!el) return;
-      if(el.hasAttribute('data-quest-complete')) this.track('quest:complete', {title: el.getAttribute('data-quest-complete')});
-      if(el.hasAttribute('data-journal-save')) this.track('journal:entry', {});
-      if(el.hasAttribute('data-hydrate')) this.track('hydrate:log', {});
+      if(el.hasAttribute('data-quest-complete')) this.track('quest:complete', { title: el.getAttribute('data-quest-complete') });
+      if(el.hasAttribute('data-journal-save'))   this.track('journal:entry', {});
+      if(el.hasAttribute('data-hydrate'))        this.track('hydrate:log', {});
     });
 
-    // observe DOM for quest lists; clicking checkboxes rewards
+    // checkbox auto-claim
     const mo = new MutationObserver((muts)=>{
       muts.forEach(m=>{
         m.addedNodes && m.addedNodes.forEach(node=>{
-          if(node.querySelectorAll){
+          if(node && node.querySelectorAll){
             node.querySelectorAll('input[type="checkbox"][data-quest-id]').forEach(cb=>{
               if(cb._nyx) return; cb._nyx=true;
-              cb.addEventListener('change', ()=>{
-                if(cb.checked){ this.track('quest:complete', { id: cb.getAttribute('data-quest-id') }); }
-              });
+              cb.addEventListener('change', ()=>{ if(cb.checked){ this.track('quest:complete', { id: cb.getAttribute('data-quest-id') }); } });
             });
           }
         });
