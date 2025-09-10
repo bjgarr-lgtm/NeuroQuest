@@ -1,4 +1,5 @@
 import {load, save} from '../util/storage.js';
+import {logAction} from '../util/game.js';
 import {confetti, crownDrop} from '../ui/fx.js';
 
 export default function renderQuests(root){
@@ -74,7 +75,7 @@ export default function renderQuests(root){
   document.getElementById('bossTick').onclick=()=>{
   s.quests.boss.progress=Math.min(100,(s.quests.boss.progress||0)+10);
   save(s); draw(); crownDrop();
-  if(s.quests.boss.progress>=100){
+  if(s.quests.boss.progress>=100){ logAction('deep_clean');
     for(let i=0;i<5;i++) setTimeout(()=>crownDrop(), i*120);
     for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
     // suggest a new boss

@@ -1,11 +1,12 @@
 import {load, save} from '../util/storage.js';
+import {logAction} from '../util/game.js';
 
 export default function renderJournal(root){
   const s=load();
   s.journal ??= {prompt:'', entries:[], moods:[]};
 
   root.innerHTML = `
-    <h2>Adventure Journal</h2>
+    <h2>Journal + Check-In</h2>
     <section class="grid two">
       <div class="panel">
         <h3>Mood</h3><small>Add a note, then tap mood.</small>
@@ -42,7 +43,7 @@ export default function renderJournal(root){
   document.getElementById('p3').onclick=()=>{ document.getElementById('jText').value='One thing I\'m grateful for:\n'; };
   document.getElementById('saveJ').onclick=()=>{
     const v=document.getElementById('jText').value.trim(); if(!v) return;
-    s.journal.entries.push({t:Date.now(),text:v}); save(s); const st=load(); st.gold=(st.gold||0)+1; save(st); document.getElementById('jText').value=''; drawJ();
+    s.journal.entries.push({t:Date.now(),text:v}); logAction('journal_entry'); save(s); const st=load(); st.gold=(st.gold||0)+1; save(st); document.getElementById('jText').value=''; drawJ();
   };
   function drawJ(){
     const list=document.getElementById('jList'); list.innerHTML='';

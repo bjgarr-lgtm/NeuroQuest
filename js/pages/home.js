@@ -9,7 +9,7 @@ export default function renderHome(root){
       <div class="party-title">Your Party</div>
       <div class="party" id="partyRow"></div>
     </section>
-    <section class="grid two">
+    <section class="home-breath">
       <div class="panel breathe">
         <div class="ring"><div class="core"></div></div>
         <div id="phase">Tap the ring</div>
@@ -85,7 +85,7 @@ export default function renderHome(root){
   const phase = document.getElementById('phase');
 
   // Build an SVG progress ring inside .ring
-  ring.innerHTML = `<svg viewBox="0 0 100 100" width="180" height="180" style="display:block;margin:auto">
+  ring.innerHTML = `<svg viewBox="0 0 100 100" width="200" height="200" style="display:block;margin:auto; overflow:visible">
     <g id="scaleGroup" transform="scale(1)" transform-origin="50 50">
       <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"></circle>
       <circle id="progArc" cx="50" cy="50" r="46" fill="none" stroke="white" stroke-linecap="round" stroke-width="6" transform="rotate(-90 50 50)" stroke-dasharray="289" stroke-dashoffset="289"></circle>

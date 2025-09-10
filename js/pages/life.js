@@ -1,4 +1,5 @@
 import {load, save} from '../util/storage.js';
+import {logAction} from '../util/game.js';
 
 function sanitizeGcal(v){
   const def='https://calendar.google.com/calendar/embed?src=en.usa%23holiday%40group.v.calendar.google.com&ctz=America%2FLos_Angeles';
@@ -90,7 +91,7 @@ export default function renderLife(root){
     });
   }
   recalc();
-  document.getElementById('addInc').onclick=()=>{ const amt=parseFloat(document.getElementById('incAmt').value||'0'); const label=document.getElementById('incLabel').value||'Income'; if(amt>0){ s.budget.tx.push({type:'inc',amt,label}); save(s); recalc(); } };
+  document.getElementById('addInc').onclick=function(){ logAction('budget_setup'); ()=>{ const amt=parseFloat(document.getElementById('incAmt').value||'0'); const label=document.getElementById('incLabel').value||'Income'; if(amt>0){ s.budget.tx.push({type:'inc',amt,label}); save(s); recalc(); } };
   document.getElementById('addExp').onclick=()=>{ const amt=parseFloat(document.getElementById('expAmt').value||'0'); const label=document.getElementById('expLabel').value||'Expense'; if(amt>0){ s.budget.tx.push({type:'exp',amt,label}); save(s); recalc(); } };
 
   // calendar
