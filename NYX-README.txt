@@ -57,3 +57,7 @@ Events emitted (modules can listen and update their UIs):
 - nq:budget-add    (detail: {item,amount,category})
 - nq:action        (detail: audit entry)
 - nq:state:reloaded (after state save/undo)
+
+Voice commands:
+- /voice list — show available voices
+- /voice set <exact voice name> — pick voice (saved in localStorage)
