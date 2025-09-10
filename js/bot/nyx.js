@@ -33,7 +33,7 @@ class Nyx {
     document.body.appendChild(btn);
 
     // panel
-    const panel = document.createElement('div");
+    const panel = document.createElement("div");
     panel.id='nyx-panel';
     panel.innerHTML = `
       <div id="nyx-head">
