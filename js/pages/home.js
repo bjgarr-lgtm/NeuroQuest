@@ -119,7 +119,7 @@ export default function renderHome(root){
         if(rounds>=3){
           running=false;
           phase.textContent='Nice work!';
-          try{ logAction('breath_session'); }catch(e){}
+          try{ window.NQ_track && window.NQ_track('breath_session'); }catch(e){}
           try{ addGold(1); }catch(e){}
           try{ confetti(); }catch(e){}
           return;

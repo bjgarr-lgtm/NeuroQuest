@@ -72,3 +72,5 @@ document.getElementById('musicFile').onchange=(e)=>{ const f=e.target.files[0]; 
 document.addEventListener('click', (e)=>{ const el=e.target.closest('button'); if(!el) return; if(el.classList.contains('primary')) sfx(880,80); else if(el.classList.contains('secondary')) sfx(660,80); }, {capture:true});
 // Level-up confetti + bonus gold (listen to custom event from save())
 document.addEventListener('nq:levelup', ()=>{ try{ import('./ui/fx.js').then(m=>{ m.confetti(); setTimeout(m.confetti,150); setTimeout(m.confetti,300); }); }catch(_){}});
+
+window.NQ_track = tracker;
