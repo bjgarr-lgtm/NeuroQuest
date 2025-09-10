@@ -1,5 +1,6 @@
 import {load, save} from '../util/storage.js';
 import {confetti} from '../ui/fx.js';
+import {addGold, logAction} from '../util/game.js';
 
 export default function renderHome(root){
   const s=load();
@@ -75,13 +76,7 @@ export default function renderHome(root){
     toShow.forEach(r=>{
       const row = document.createElement('div'); row.className='reward-row';
       row.innerHTML = `<span class="tok">${r.token}</span> <span class="nm">${r.name}</span>`;
-      const btn = document.createElement('button'); btn.className='secondary'; btn.textContent='Claim';
-      btn.onclick=()=>{
-        s.ach[r.id]=true; s.tokens.push(r.token); save(s);
-        if(window.NQ_updateHud) window.NQ_updateHud();
-        row.classList.add('done'); btn.remove();
-      };
-      row.appendChild(btn); rewHost.appendChild(row);
+      rewHost.appendChild(row);
     });
   }
   renderRewards();
@@ -98,15 +93,15 @@ export default function renderHome(root){
   </svg>
   <div class="core" style="position:absolute;inset:0;margin:auto;width:120px;height:120px;border-radius:999px;background:radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1), rgba(255,255,255,0) 70%);"></div>`;
   ring.style.position='relative';
-  ring.style.width='180px'; ring.style.height='180px';
+  ring.style.width='200px'; ring.style.height='200px'; ring.style.overflow='visible';
 
   const arc = document.getElementById('progArc');
-  let timer=null, raf=null, running=false, step=0, startT=0;
+  let timer=null, raf=null, running=false, step=0, startT=0, rounds=0;
   const CIRC = 2*Math.PI*46; // dasharray length
-  const seq=[{t:4000,txt:'Inhale', scale:1.0, ring:1.08},
-             {t:2000,txt:'Hold',  scale:1.0, ring:1.08},
-             {t:4000,txt:'Exhale', scale:0.6, ring:0.92},
-             {t:2000,txt:'Hold',  scale:0.6, ring:0.92}];
+  const seq=[{t:4000,txt:'Inhale', scale:1.12, ring:1.18},
+             {t:2000,txt:'Hold',  scale:1.12, ring:1.18},
+             {t:4000,txt:'Exhale', scale:0.52, ring:0.82},
+             {t:2000,txt:'Hold',  scale:0.52, ring:0.82}];
 
   function animatePhase(){
     const p=seq[step%seq.length];

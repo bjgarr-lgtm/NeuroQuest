@@ -45,7 +45,7 @@ h1,h2,h3{letter-spacing:1px}
 .party .hero .name{margin-top:6px; color:#000; background:#fff; padding:2px 6px; border-radius:8px}
 
 .breathe{display:flex; flex-direction:column; align-items:center; gap:8px}
-.breathe .ring{width:140px; height:140px; border-radius:50%; background:conic-gradient(var(--ring), var(--ring2), var(--ring3)); animation:pulse 3s linear infinite; box-shadow:0 0 22px #89f}
+.breathe .ring{width:200px; height:200px; overflow:visible; border-radius:50%; background:conic-gradient(var(--ring), var(--ring2), var(--ring3)); animation:pulse 3s linear infinite; box-shadow:0 0 28px #89f, 0 0 60px rgba(137,153,255,.25)}
 .breathe .core{position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center}
 .breathe .core::after{content:''; position:absolute; inset:22px; border-radius:50%; background:#0b0b12}
 @keyframes pulse{0%{filter:hue-rotate(0)}100%{filter:hue-rotate(360deg)}}
@@ -201,3 +201,5 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 
 .hud .tokens{display:flex;gap:6px;margin-right:8px}
 .hud .token{font-size:1.1rem;filter:drop-shadow(0 0 4px rgba(0,0,0,.4))}
+
+.panel.breathe{max-width:360px; padding:12px; align-items:center}
