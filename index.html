@@ -81,66 +81,7 @@
       }
     };
   })();
-  
-    // ===== Portrait wrapper + layer anchoring (robust) =====
-    function ensurePortraitWrap(portrait){
-      let wrap = portrait.closest('.sb-portrait-wrap');
-      if (wrap) return wrap;
-      wrap = document.createElement('div');
-      wrap.className = 'sb-portrait-wrap';
-      const parent = portrait.parentElement;
-      parent.insertBefore(wrap, portrait);
-      wrap.appendChild(portrait);
-      portrait.style.display = 'block';
-      if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
-      return wrap;
-    }
-    function ensureAccLayer(wrap){
-      let layer = wrap.querySelector('.sb-acc-layer');
-      if (!layer){
-        layer = document.createElement('div');
-        layer.className = 'sb-acc-layer';
-        layer.style.position = 'absolute';
-        layer.style.inset = '0';
-        layer.style.pointerEvents = 'auto';
-        layer.style.zIndex = '3';
-        wrap.appendChild(layer);
-      }
-      return layer;
-    }
-    function bindDebugToggle(){
-      const set = (on)=> document.body.classList.toggle('sb-debug', !!on);
-      if (location.hash.includes('debug-align')) set(true);
-      window.addEventListener('keydown', (e)=>{
-        if (e.key.toLowerCase()==='d' && (e.ctrlKey || e.metaKey || !e.shiftKey)){
-          set(!document.body.classList.contains('sb-debug'));
-        }
-      });
-    }
-
-
-    // --- Safe anchor: size/position layer to portrait WITHOUT reparenting ---
-    function ensureAccLayerWithin(wrap){
-      let layer = wrap.querySelector('.sb-acc-layer');
-      if(!layer){
-        layer = document.createElement('div');
-        layer.className = 'sb-acc-layer';
-        wrap.appendChild(layer);
-      }
-      return layer;
-    }
-    function anchorLayerToPortrait_NoWrap(wrap, portrait, layer){
-      // keep wrap relative
-      const cs = getComputedStyle(wrap);
-      if (cs.position === 'static') wrap.style.position = 'relative';
-      const left = portrait.offsetLeft;
-      const top  = portrait.offsetTop;
-      const w    = portrait.clientWidth  || portrait.naturalWidth  || portrait.width  || 0;
-      const h    = portrait.clientHeight || portrait.naturalHeight || portrait.height || 0;
-      Object.assign(layer.style, { position:'absolute', left:left+'px', top:top+'px', width:w+'px', height:h+'px' });
-    }
-
-</script>
+  </script>
 
   <!-- 1) YOUR APP (unchanged) -->
   <script type="module" src="js/app.js"></script>
@@ -244,7 +185,7 @@
       }
       function onDown(ev){
         ev.preventDefault(); dragging=true;
-        const r=layer.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
+        const r=wrap.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
       }
@@ -303,10 +244,11 @@
       return sel?.value || 'bambi';
     }
     async function patchCharacter(){
-      const portrait=document.querySelector('#portrait, #heroBase, #charPortrait, .char-portrait img, .portrait-wrap img'); if(!portrait) return;
-      const wrap=ensurePortraitWrap(portrait);
+      const portrait=document.querySelector('#portrait'); if(!portrait) return;
+      const wrap=portrait.parentElement;
       // ensure layer
-      let layer = ensureAccLayer(wrap);
+      let layer=wrap.querySelector('.sb-acc-layer');
+      if(!layer){ layer=document.createElement('div'); layer.className='sb-acc-layer'; wrap.appendChild(layer) }
 
       const mgr=new OverlayMgr(layer);
       await mgr.load(leaderId());
