@@ -1,5 +1,5 @@
-// === NYX/App reactive render hooks ===
-(function attachReactiveRenders(){
+// nyx-render-hook.js — auto re-render app on actions
+(function(){
   try{
     const rerender = ()=>{ try{ render(); }catch(e){ console.warn('[render hook] render() failed', e); } };
     ['nq:state:reloaded','nq:action','nq:quest-create','nq:quest-complete','nq:journal-saved','nq:shopping-add','nq:budget-add','nq:hydrate','nq:breathe']

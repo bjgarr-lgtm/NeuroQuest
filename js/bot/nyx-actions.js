@@ -7,18 +7,16 @@ export const Actions = {
   _undo: [],
 
   register(name, fn, opts={}){ this._handlers[name] = {fn, opts}; },
-  has(name){ return !!this._handlers[name]; },
   list(){ return Object.keys(this._handlers); },
 
   async run(name, params={}){
     const h = this._handlers[name];
     if(!h) throw new Error('Unknown action: '+name);
-    const before = load(); // snapshot for undo (shallow)
+    const before = load();
     const res = await h.fn(params);
-    const after = load();
     const entry = { t: Date.now(), name, params, res };
     this._audit.push(entry);
-    this._undo.push({ before, after });
+    this._undo.push({ before, after: load() });
     try{ localStorage.setItem('nyx_audit', JSON.stringify(this._audit).slice(0,50000)); }catch(_){}
     document.dispatchEvent(new CustomEvent('nq:action', { detail: entry }));
     return res;

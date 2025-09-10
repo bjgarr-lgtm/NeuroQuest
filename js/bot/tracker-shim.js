@@ -1,4 +1,4 @@
-// tracker-shim.js — defines window.tracker safely before app.js runs
+// tracker-shim.js — define tracker() before app.js loads
 (function(){
   try{
     window.NQ_track = window.NQ_track || function (ev, payload) {
