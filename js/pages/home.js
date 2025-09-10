@@ -15,7 +15,7 @@ export default function renderHome(root){
     <section class="home-breath">
       <div class="panel breathe">
         <div class="ring" id="breathRing">
-          <svg viewBox="0 0 100 100" width="200" height="200" style="display:block;margin:auto;overflow:visible">
+          <svg viewBox="0 0 100 100" width="220" height="220" style="display:block;margin:auto;overflow:visible">
             <g id="scaleGroup" transform-origin="50 50">
               <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"></circle>
               <circle id="progArc" cx="50" cy="50" r="46" fill="none" stroke="#89f" stroke-width="6"
@@ -33,7 +33,7 @@ export default function renderHome(root){
     </section>
   `;
 
-  // Rewards rendering (list first five available)
+  // Rewards rendering (first five available)
   const REWARDS_DEF = [
     {id:'first-quest', name:'Finish your first quest', token:'⭐'},
     {id:'streak-3', name:'Maintain a 3‑day streak', token:'🔥'},
@@ -60,8 +60,8 @@ export default function renderHome(root){
     {id:'hydrate-30', name:'Hydration streak 30 days', token:'💦'},
     {id:'level-5', name:'Reach Level 5', token:'🏆'}
   ];
-  if(!s.tokens) s.tokens=[];
-  if(!s.ach) s.ach={};
+  s.tokens ??= [];
+  s.ach ??= {};
   const rewHost = document.getElementById('rew');
   function renderRewards(){
     rewHost.innerHTML='';
@@ -84,11 +84,12 @@ export default function renderHome(root){
   const scaleGroup = ringEl.querySelector('#scaleGroup');
   const core = ringEl.querySelector('.core');
 
+  // Bigger contrast between inhale and exhale
   const seq=[
-    {t:4000,txt:'Inhale', coreScale:1.12, ringScale:1.18},
-    {t:2000,txt:'Hold',   coreScale:1.12, ringScale:1.18},
-    {t:4000,txt:'Exhale', coreScale:0.52, ringScale:0.82},
-    {t:2000,txt:'Hold',   coreScale:0.52, ringScale:0.82},
+    {t:4000,txt:'Inhale', coreScale:1.18, ringScale:1.25},
+    {t:2000,txt:'Hold',   coreScale:1.18, ringScale:1.25},
+    {t:4000,txt:'Exhale', coreScale:0.45, ringScale:0.78},
+    {t:2000,txt:'Hold',   coreScale:0.45, ringScale:0.78},
   ];
 
   let running=false, step=0, rounds=0, timeoutId=null;
@@ -97,22 +98,23 @@ export default function renderHome(root){
     const p = seq[step];
     const dur = p.t;
     phase.textContent = p.txt;
-    // animate arc
-    progArc.style.transition = `stroke-dashoffset ${dur/1000}s linear`;
+
+    // arc anim
     const dashTotal = 2*Math.PI*46;
-    if(p.txt==='Inhale' || p.txt==='Exhale'){
-      progArc.style.strokeDashoffset = (p.txt==='Inhale') ? 0 : dashTotal;
-    }
-    // scale both core & ring
+    progArc.style.strokeDasharray = String(dashTotal);
+    progArc.style.transition = `stroke-dashoffset ${dur/1000}s linear`;
+    if(p.txt==='Inhale'){ progArc.style.strokeDashoffset = 0; }
+    if(p.txt==='Exhale'){ progArc.style.strokeDashoffset = dashTotal; }
+
+    // scale core + ring
     core.style.transition = `transform ${dur/1000}s ease-in-out`;
     core.style.transform = `scale(${p.coreScale})`;
     scaleGroup.style.transition = `transform ${dur/1000}s ease-in-out`;
     scaleGroup.setAttribute('transform', `scale(${p.ringScale})`);
 
     timeoutId = setTimeout(()=>{
-      // step finished
       step = (step + 1) % seq.length;
-      if(step===0){ // completed one full cycle
+      if(step===0){ // one full cycle finished
         rounds += 1;
         if(rounds>=3){
           running=false;
@@ -129,20 +131,20 @@ export default function renderHome(root){
 
   ringEl.onclick = ()=>{
     if(running){
-      running=false;
-      clearTimeout(timeoutId);
-      phase.textContent='Paused';
-      return;
+      running=false; clearTimeout(timeoutId); phase.textContent='Paused'; return;
     }
     // start fresh
     running=true; step=0; rounds=0;
-    // reset arc
-    const dashTotal = 2*Math.PI*46; progArc.style.strokeDasharray = String(dashTotal); progArc.style.strokeDashoffset = dashTotal;
+    const dashTotal = 2*Math.PI*46; progArc.style.strokeDasharray=String(dashTotal); progArc.style.strokeDashoffset=dashTotal;
     playStep();
   };
 
-  // HUD update — keep as-is
-  document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
-  const xpEl=document.getElementById('hudXp'); const lvl=document.getElementById('hudLevel');
-  const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
+  // Minimal party mini render
+  const row=document.getElementById('partyRow');
+  (s.party||[]).forEach(p=>{
+    const img=document.createElement('img'); img.src=p; img.style.width='88px'; img.style.borderRadius='12px';
+    row.appendChild(img);
+  });
+
+  if(window.NQ_updateHud) window.NQ_updateHud();
 }

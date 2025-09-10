@@ -210,3 +210,13 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .breathe .ring svg{overflow:visible}
 
 .panel.breathe,.breathe .ring,.breathe .ring svg{overflow:visible}
+
+/* --- Party banner centered label --- */
+.party-banner{display:block;margin-bottom:8px}
+.party-banner .party-title{display:block;text-align:center;margin:4px auto 8px auto;width:fit-content;padding:6px 12px;border:1px solid #2a2d50;border-radius:12px;background:rgba(30,25,55,.45)}
+.party{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px}
+/* --- Breathe ring fixes --- */
+.panel.breathe{max-width:340px;padding:12px;overflow:visible}
+.breathe .ring{position:relative;width:220px;height:220px;margin:0 auto;overflow:visible}
+.breathe .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;background:#000000;box-shadow:0 0 40px rgba(137,153,255,.35) inset}
+#phase{text-align:center;margin-top:8px}
