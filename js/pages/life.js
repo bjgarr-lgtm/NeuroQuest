@@ -153,64 +153,58 @@ document.getElementById('mealMode').onclick=()=>{
   if(qbtn) qbtn.onclick=()=>{ const k=qa.value; logAction(k); };
 
   
-// Shopping
-const shopList=document.getElementById('shopList');
-const renderShop=()=>{
-  shopList.innerHTML='';
-  (s.shop||[]).forEach((item,i)=>{
-    // migrate legacy string → {text,done}
-    const obj = (typeof item==='string') ? {text:item, done:false} : item;
-    if(typeof item==='string'){ s.shop[i]=obj; }
+  // Shopping
+  const shopList=document.getElementById('shopList');
+  const renderShop=()=>{
+    shopList.innerHTML='';
+    (s.shop||[]).forEach((item,i)=>{
+      // Support legacy string items; migrate to {text, done:false}
+      const obj = (typeof item === 'string') ? {text:item, done:false} : (item||{text:'',done:false});
+      if (typeof item === 'string') { s.shop[i] = obj; }
 
-    const row=document.createElement('div'); row.className='row';
+      const row=document.createElement('div'); row.className='row';
+      const left=document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; left.style.gap='8px'; left.style.flex='1';
 
-    const left=document.createElement('div');
-    left.style.display='flex';
-    left.style.alignItems='center';
-    left.style.gap='8px';
-    left.style.flex='1';
+      const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!obj.done;
+      chk.onchange=()=>{
+        const wasDone = !!obj.done;
+        obj.done = chk.checked;
+        s.shop[i] = obj; // persist
+        if(!wasDone && obj.done){
+          // reward only when checking something off
+          s.gold = (s.gold||0) + 1;
+          try{ crownDrop(); }catch(e){} 
+          confetti();
+        }
+        save(s); renderShop();
+      };
 
-    const chk=document.createElement('input');
-    chk.type='checkbox';
-    chk.checked=!!obj.done;
-    chk.onchange=()=>{
-      const wasDone=!!obj.done;
-      obj.done=chk.checked;
-      s.shop[i]=obj;
-      if(!wasDone && obj.done){
-        s.gold=(s.gold||0)+1;
-        try{ crownDrop(); }catch(e){}
-        confetti();
-      }
-      save(s); renderShop();
-    };
+      const label=document.createElement('span'); 
+      label.textContent = obj.text;
+      if(obj.done){ label.style.textDecoration='line-through'; label.style.opacity='0.6'; }
 
-    const label=document.createElement('span');
-    label.textContent=obj.text;
-    if(obj.done){ label.style.textDecoration='line-through'; label.style.opacity='0.6'; }
+      left.append(chk, label);
 
-    left.append(chk,label);
+      const del=document.createElement('button'); 
+      del.className='danger'; 
+      del.textContent='Delete';
+      del.onclick=()=>{ s.shop.splice(i,1); save(s); renderShop(); };
 
-    const del=document.createElement('button');
-    del.className='danger';
-    del.textContent='Delete';
-    del.onclick=()=>{ s.shop.splice(i,1); save(s); renderShop(); };
-
-    row.append(left,del);
-    shopList.appendChild(row);
-  });
-};
-
-document.getElementById('addShop').onclick=()=>{
-  const v=document.getElementById('shopItem').value.trim();
-  if(!v) return;
-  (s.shop ||= []).push({text:v,done:false});
-  save(s);
-  document.getElementById('shopItem').value='';
+      row.append(left, del); 
+      shopList.appendChild(row);
+    });
+  };
+  document.getElementById('addShop').onclick=()=>{
+    const v=document.getElementById('shopItem').value.trim(); if(!v) return;
+    (s.shop ||= []).push({text:v, done:false}); 
+    save(s); 
+    document.getElementById('shopItem').value=''; 
+    renderShop();
+  };
   renderShop();
-};
 
-renderShop();
+  };
+  renderShop();
 
   // Budget
   function recalc(){
@@ -246,4 +240,3 @@ renderShop();
     document.getElementById('calFrame').src = sanitizeGcal(v);
   };
 }
-
