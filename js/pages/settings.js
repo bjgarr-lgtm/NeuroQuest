@@ -21,7 +21,7 @@ export default function renderSettings(root){
     'System UI'
   ];
 
-  // --- helpers ---
+  // ---------- helpers ----------
   function applyTheme(name){
     const p = THEMES[name] || THEMES.default;
     Object.entries(p).forEach(([k,v])=> document.documentElement.style.setProperty(k, v));
@@ -36,29 +36,30 @@ export default function renderSettings(root){
     };
     if(!map[family]) return;
     const id='nq-font-link';
-    let link=document.getElementById(id);
     const href=`https://fonts.googleapis.com/css2?${map[family]}&display=swap`;
+    let link=document.getElementById(id);
     if(!link){
-      link=document.createElement('link');
-      link.id=id; link.rel='stylesheet'; link.href=href;
+      link=document.createElement('link'); link.id=id; link.rel='stylesheet'; link.href=href;
       document.head.appendChild(link);
-    }else{
-      if(link.href!==href) link.href=href;
-    }
+    }else if(link.href!==href){ link.href=href; }
   }
   function applyFont(name){
     ensureFontLink(name);
     const fam = name==='System UI' ? 'system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif'
                                    : `'${name}', system-ui, sans-serif`;
-    // set both CSS var and body to guarantee immediate effect even if styles.css doesn't use --pix
     document.documentElement.style.setProperty('--pix', fam);
-    document.body && (document.body.style.fontFamily = fam);
+    if(document.body) document.body.style.fontFamily = fam;
   }
-  function updateHudName(){
+  function updateDisplayName(){
     const nm = (s.user?.name || 'You');
+    // window title
     try{ document.title = 'NeuroQuest — ' + nm; }catch(_){}
-    const titleEl = document.getElementById('title');
-    if(titleEl){ titleEl.textContent = 'NeuroQuest — ' + nm; }
+    // header H1 if present
+    const titleEl = document.getElementById('title') || document.querySelector('header h1');
+    if(titleEl) titleEl.textContent = 'NeuroQuest — ' + nm;
+    // optional HUD slot
+    const hud = document.getElementById('hudUser');
+    if(hud) hud.textContent = nm;
   }
   function toast(msg){
     let t=document.getElementById('nq-toast');
@@ -66,11 +67,48 @@ export default function renderSettings(root){
     t.textContent=msg; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0', 1600);
   }
 
+  // music helpers
+  function safeList(){
+    try{
+      const raw = JSON.parse(localStorage.getItem('nq_music_list')||'[]');
+      return Array.isArray(raw) ? raw : [];
+    }catch(_){ return []; }
+  }
+  function saveList(arr){
+    localStorage.setItem('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
+  }
+  function setCurrentTrack(url){
+    try{
+      // set the key older code expects
+      localStorage.setItem('nq_music', url||'');
+      // if an <audio id="music"> exists, update and (re)play
+      const audio = document.getElementById('music');
+      if(audio && url){
+        audio.src = url;
+        audio.loop = true;
+        audio.volume = 0.6;
+        const play = audio.play?.();
+        if(play && play.catch){ play.catch(()=>{}); }
+      }
+      // toggle a music button if one exists to refresh UI state
+      const btn=document.getElementById('musicBtn');
+      if(btn){ btn.classList.add('on'); }
+    }catch(_){}
+  }
+
   // initial apply
   applyTheme(s.settings.theme||'default');
   applyFont(s.settings.font||'Press Start 2P');
-  updateHudName();
+  updateDisplayName();
 
+  // ensure hidden file input exists for uploads
+  if(!document.getElementById('musicFile')){
+    const fi=document.createElement('input');
+    fi.type='file'; fi.id='musicFile'; fi.accept='audio/*'; fi.style.display='none';
+    document.body.appendChild(fi);
+  }
+
+  // ---------- UI ----------
   root.innerHTML = `
     <h2>Settings</h2>
     <section class="grid two">
@@ -89,6 +127,7 @@ export default function renderSettings(root){
       <div class="panel">
         <h3>Display Name</h3>
         <input id="nameSel" placeholder="Your name" value="${s.user?.name||'You'}"/>
+        <div class="hint">Shown in window title (and header if available)</div>
       </div>
       <div class="panel">
         <h3>Music Library</h3>
@@ -105,11 +144,11 @@ export default function renderSettings(root){
         <button id="saveBtn" class="primary">Save Settings</button>
         <button id="resetBtn" class="secondary">Reset Defaults</button>
       </div>
-      <div class="hint">Changes apply immediately, or hit Save. Reset restores Default theme + Press Start 2P.</div>
+      <div class="hint">Changes apply immediately. Reset restores Default theme + Press Start 2P.</div>
     </section>
   `;
 
-  // handlers
+  // ---------- handlers ----------
   document.getElementById('themeSel').onchange=(e)=>{
     s.settings.theme = e.target.value; save(s); applyTheme(s.settings.theme); toast('Theme updated');
   };
@@ -117,40 +156,27 @@ export default function renderSettings(root){
     s.settings.font = e.target.value; save(s); applyFont(s.settings.font); toast('Font updated');
   };
   document.getElementById('nameSel').oninput=(e)=>{
-    s.user = s.user || {}; s.user.name = e.target.value; save(s); updateHudName();
+    s.user = s.user || {}; s.user.name = e.target.value; save(s); updateDisplayName();
   };
 
-  // --- music library (robust to bad values) ---
-  function safeList(){
-    try{
-      const raw = JSON.parse(localStorage.getItem('nq_music_list')||'[]');
-      return Array.isArray(raw) ? raw : [];
-    }catch(_){ return []; }
-  }
-  function saveList(arr){
-    localStorage.setItem('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
-  }
+  // ----- music library -----
   function renderSongs(){
     const el=document.getElementById('songList'); el.innerHTML='';
     const list = safeList();
-    if(list.length===0){ el.innerHTML = '<div class="hint">No songs yet. Upload up to 5 tracks (MP3/OGG/M4A).</div>'; return; }
+    if(list.length===0){
+      el.innerHTML = '<div class="hint">No songs yet. Upload up to 5 tracks (MP3/OGG/M4A).</div>';
+      return;
+    }
     list.forEach((it, i)=>{
       const row=document.createElement('div'); row.className='row';
       const name=document.createElement('span'); name.textContent=it.name||('Track '+(i+1));
-      const choose=document.createElement('button'); choose.className='secondary'; choose.textContent='Play';
-      choose.onclick=()=>{
-        const curList = safeList();
-        try{
-          const cur = curList.splice(i,1)[0];
-          curList.unshift(cur);
-          saveList(curList);
-          const btn=document.getElementById('musicBtn'); if(btn){ btn.click(); btn.click(); }
-          toast('Now playing: '+(cur.name||'Track'));
-        }catch(_){}
-      };
+      const play=document.createElement('button'); play.className='secondary'; play.textContent='Play';
+      play.onclick=()=>{ setCurrentTrack(it.url); toast('Now playing: '+(it.name||'Track')); };
+      const up=document.createElement('button'); up.className='secondary'; up.textContent='Top';
+      up.onclick=()=>{ const arr=safeList(); const cur=arr.splice(i,1)[0]; arr.unshift(cur); saveList(arr); renderSongs(); };
       const del=document.createElement('button'); del.className='danger'; del.textContent='Delete';
-      del.onclick=()=>{ const curList = safeList(); curList.splice(i,1); saveList(curList); renderSongs(); };
-      row.append(name, choose, del); el.appendChild(row);
+      del.onclick=()=>{ const arr=safeList(); arr.splice(i,1); saveList(arr); renderSongs(); };
+      row.append(name, play, up, del); el.appendChild(row);
     });
   }
   renderSongs();
@@ -159,13 +185,15 @@ export default function renderSettings(root){
     const input=document.getElementById('musicFile');
     if(!input){ alert('Music input not found'); return; }
     input.onchange=(e)=>{
-      const f=e.target.files[0]; if(!f) return;
+      const f=e.target.files?.[0]; if(!f) return;
       const r=new FileReader();
       r.onload=()=>{
         const arr = safeList();
         arr.unshift({name:f.name, url:r.result});
         saveList(arr);
-        renderSongs(); toast('Added to library');
+        renderSongs();
+        setCurrentTrack(r.result);
+        toast('Added to library');
       };
       r.readAsDataURL(f);
     };
@@ -178,8 +206,7 @@ export default function renderSettings(root){
   document.getElementById('resetBtn').onclick=()=>{
     s.settings = { theme:'default', font:'Press Start 2P', toddler:false };
     save(s);
-    // re-apply + reflect controls
-    applyTheme(s.settings.theme); applyFont(s.settings.font); updateHudName();
+    applyTheme(s.settings.theme); applyFont(s.settings.font); updateDisplayName();
     document.getElementById('themeSel').value=s.settings.theme;
     document.getElementById('fontSel').value=s.settings.font;
     document.getElementById('nameSel').value=s.user?.name || 'You';
