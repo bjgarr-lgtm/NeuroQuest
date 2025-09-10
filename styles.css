@@ -37,22 +37,11 @@ h1,h2,h3{letter-spacing:1px}
 .grid.three{grid-template-columns:repeat(3,1fr)}
 .card{background:#11162a; border:1px solid #3a3f68; border-radius:16px; padding:12px}
 
-.party-banner{
-  background:linear-gradient(180deg,#2a2338,#1a1825);
-  border:1px solid #2a2d50;
-  border-radius:16px;
-  padding:12px;
-  display:flex;
-  flex-direction:column;  /* stack vertically */
-  align-items:center;
-  gap:12px;
-  overflow:hidden;
-  max-width:1200px;
-}
+.party-banner{background:linear-gradient(180deg,#2a2338,#1a1825); border:1px solid #2a2d50; border-radius:16px; padding:12px; display:flex; align-items:center; gap:12px; overflow:hidden; max-width:1200px;}
 .party-title{color:#111; background:#f2e7ff; padding:4px 8px; border-radius:8px}
 .party{display:flex; align-items:flex-end; gap:20px}
 .party .hero{display:flex; flex-direction:column; align-items:center}
-.party .hero img{width:306px; height:391px; object-fit:contain; border-radius:12px; box-shadow:0 0 12px rgba(255,255,255,.15)}
+.party .hero img{width:360px; height:460px; object-fit:contain; border-radius:12px; box-shadow:0 0 12px rgba(255,255,255,.15)}
 .party .hero .name{margin-top:6px; color:#000; background:#fff; padding:2px 6px; border-radius:8px}
 
 .breathe{display:flex; flex-direction:column; align-items:center; gap:8px}
@@ -202,23 +191,6 @@ button:disabled{opacity:.55}
 .sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}
 
 
-/* Show accessory alignment overlay only on Character page */
-.sb-acc-layer{ display:none !important; pointer-events:none; }
-body.route-character .sb-acc-layer{ display:block !important; pointer-events:auto; }
-
-/* prevent double accessories on dashboard party banner */
-.party-banner .sb-acc-layer{display:none!important}
-
-
-/* --- HOTFIX: anchor accessory editor layer to portrait image --- */
-.char-portrait{ position: relative !important; }
-.char-portrait img{ display:block; width:100%; height:auto; }
-.char-portrait .sb-acc-layer{ position:absolute; inset:0; z-index:3; pointer-events:auto; }
-
-/* also support legacy wrapper */
-.portrait-wrap{ position: relative !important; }
-.portrait-wrap img{ display:block; }
-.portrait-wrap .sb-acc-layer{ position:absolute; inset:0; z-index:3; pointer-events:auto; }
-
-/* selection visibility inside bounds */
-.sb-acc-ov.selected{ outline:2px dashed #7cf; outline-offset:2px }
+/* === DEBUG ALIGNMENT MODE === */
+body.sb-debug .sb-portrait-wrap>img { outline: 2px solid rgba(255,0,0,0.85) !important; outline-offset: -2px; }
+body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important; }
