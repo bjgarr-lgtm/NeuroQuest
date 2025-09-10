@@ -1,3 +1,4 @@
+
 import {load, save} from '../util/storage.js';
 import {logAction} from '../util/game.js';
 
@@ -16,16 +17,16 @@ export default function renderLife(root){
   const s=load();
   s.meals ??= {};
   s.shop ??= [];
-  s.budget ??= {tx:[], goal:100, income:0, expense:0};
+  s.budget ??= {tx:[], income:0, expense:0};
 
   root.innerHTML = `
     <h2>Life Hub</h2>
+
     <section class="panel">
       <h3>Meals</h3>
       <div id="mealGrid" class="meal-grid"></div>
     </section>
 
-    
     <section class="panel">
       <h3>Quick Log</h3>
       <div class="row">
@@ -52,22 +53,26 @@ export default function renderLife(root){
       <div class="hint">Use this dropdown to record progress toward rewards. Auto-claims when thresholds are met.</div>
     </section>
 
-
     <section class="grid two">
       <div class="panel">
         <h3>Shopping</h3>
         <div id="shopList" class="list"></div>
         <div class="row"><input id="shopItem" placeholder="Add item…"><button id="addShop" class="primary">Add</button></div>
       </div>
+
       <div class="panel">
         <h3>Budget</h3>
         <div class="row"><div class="card">Gold Pouch: <b id="goldPouch">$0</b></div></div>
         <div class="row"><div class="card">This Week's Spend: <b id="spend">$0</b></div></div>
         <div class="row">
-          <input id="incLabel" placeholder="Income label"><input id="incAmt" type="number" placeholder="Amount"><button id="addInc" class="primary">+ Income</button>
+          <input id="incLabel" placeholder="Income label">
+          <input id="incAmount" placeholder="Amount" type="number" step="0.01">
+          <button id="addInc" class="primary">+ Income</button>
         </div>
         <div class="row">
-          <input id="expLabel" placeholder="Expense label"><input id="expAmt" type="number" placeholder="Amount"><button id="addExp" class="danger">− Expense</button>
+          <input id="expLabel" placeholder="Expense label">
+          <input id="expAmount" placeholder="Amount" type="number" step="0.01">
+          <button id="addExp" class="danger">− Expense</button>
         </div>
         <div id="txnList" class="list"></div>
       </div>
@@ -75,58 +80,88 @@ export default function renderLife(root){
 
     <section class="panel">
       <h3>Calendar</h3>
-      <div class="row"><input id="gcal" placeholder="Paste Google Calendar embed or src" value="${s.gcal||''}"><button id="saveCal" class="secondary">Set</button></div>
-      <div class="panel" style="height:60vh"><iframe id="calFrame" src="${sanitizeGcal(s.gcal)}" style="border:0; width:100%; height:100%" scrolling="no"></iframe></div>
+      <div class="row">
+        <input id="gcal" placeholder="Paste Google Calendar embed URL">
+        <button id="saveCal" class="secondary">Set</button>
+      </div>
+      <div class="panel" style="height:60vh">
+        <iframe id="calFrame" style="border:0; width:100%; height:100%" scrolling="no"></iframe>
+      </div>
     </section>
   `;
 
-  // meals
-  const days=['SUN','MON','TUE','WED','THU','FRI','SAT']; const slots=['breakfast','lunch','dinner'];
-  const mg=document.getElementById('mealGrid'); mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
+  // Meals (simple weekly grid placeholder)
+  const days=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const slots=['breakfast','lunch','dinner'];
+  const mg=document.getElementById('mealGrid');
+  mg.style.display='grid';
+  mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
   days.forEach((d,di)=>{
-    slots.forEach(sl=>{
-      const id=d+'-'+sl; const box=document.createElement('div'); box.className='box'; box.contentEditable=true;
-      box.dataset.key=id; box.innerText=s.meals[id]||sl; mg.appendChild(box);
-      box.onfocus=()=>{ if(box.innerText===sl) box.innerText=''; };
-      box.oninput=()=>{ s.meals[id]=box.innerText; save(s); try{ confetti(); }catch(_){ } const st=load(); st.gold=(st.gold||0)+1; save(st); };
+    const col=document.createElement('div'); col.className='meal-col';
+    const head=document.createElement('div'); head.className='card'; head.textContent=d; col.appendChild(head);
+    slots.forEach(slot=>{
+      const key=`${d.toLowerCase()}_${slot}`;
+      const inp=document.createElement('input'); inp.placeholder=slot; inp.value=s.meals[key]||'';
+      inp.onchange=()=>{ s.meals[key]=inp.value; save(s); };
+      col.appendChild(inp);
     });
+    mg.appendChild(col);
   });
 
-  
-  // quick log
+  // Quick Log
   const qa=document.getElementById('quickAction');
   const qbtn=document.getElementById('logQuick');
   if(qbtn) qbtn.onclick=()=>{ const k=qa.value; logAction(k); };
-// shopping
-  function drawShop(){
-    const list=document.getElementById('shopList'); list.innerHTML='';
-    s.shop.forEach((it,i)=>{
-      const row=document.createElement('div'); row.className='row';
-      const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!it.done; chk.onchange=()=>{ it.done=chk.checked; save(s); drawShop(); };
-      const txt=document.createElement('span'); txt.textContent=it.title;
-      const rm=document.createElement('button'); rm.className='danger'; rm.textContent='✕'; rm.onclick=()=>{ s.shop.splice(i,1); save(s); drawShop(); };
-      row.append(chk,txt,rm); list.appendChild(row);
-    });
-  }
-  drawShop();
-  document.getElementById('addShop').onclick=()=>{ const v=document.getElementById('shopItem').value.trim(); if(!v) return; s.shop.push({title:v,done:false}); save(s); drawShop(); };
 
-  // budget
+  // Shopping
+  const shopList=document.getElementById('shopList');
+  const renderShop=()=>{
+    shopList.innerHTML='';
+    (s.shop||[]).forEach((item,i)=>{
+      const row=document.createElement('div'); row.className='row';
+      row.innerHTML=`<span>${item}</span>`;
+      const del=document.createElement('button'); del.className='secondary'; del.textContent='Done';
+      del.onclick=()=>{ s.shop.splice(i,1); save(s); renderShop(); logAction('kindness',0); };
+      row.appendChild(del); shopList.appendChild(row);
+    });
+  };
+  document.getElementById('addShop').onclick=()=>{
+    const v=document.getElementById('shopItem').value.trim(); if(!v) return;
+    s.shop.push(v); save(s); document.getElementById('shopItem').value=''; renderShop();
+  };
+  renderShop();
+
+  // Budget
   function recalc(){
-    let income=0, expense=0; for(const t of (s.budget.tx||[])){ if(t.type==='inc') income+=t.amt; else expense+=t.amt; }
-    s.budget.income=income; s.budget.expense=expense; save(s);
-    const pouch=income-expense; document.getElementById('goldPouch').textContent='$'+pouch.toFixed(2);
-    document.getElementById('spend').textContent='$'+expense.toFixed(2);
+    const inc = (s.budget.tx||[]).filter(t=>t.type==='inc').reduce((a,b)=>a+b.amt,0);
+    const exp = (s.budget.tx||[]).filter(t=>t.type==='exp').reduce((a,b)=>a+b.amt,0);
+    document.getElementById('goldPouch').textContent='$'+inc.toFixed(2);
+    document.getElementById('spend').textContent='$'+exp.toFixed(2);
     const list=document.getElementById('txnList'); list.innerHTML='';
     (s.budget.tx||[]).slice().reverse().forEach(t=>{
       const row=document.createElement('div'); row.className='row';
-      row.innerHTML=`<span>${t.type==='inc'?'+':''}$${t.amt.toFixed(2)}</span> <span>${t.label}</span>`; list.appendChild(row);
+      row.innerHTML = `<span>${t.type==='inc'?'+':''}$${t.amt.toFixed(2)}</span> <span>${t.label}</span>`;
+      list.appendChild(row);
     });
   }
+  document.getElementById('addInc').onclick=()=>{
+    const amt=parseFloat(document.getElementById('incAmount').value)||0;
+    const label=document.getElementById('incLabel').value||'Income';
+    if(amt>0){ s.budget.tx.push({type:'inc', amt, label}); save(s); recalc(); logAction('budget_setup',1); }
+  };
+  document.getElementById('addExp').onclick=()=>{
+    const amt=parseFloat(document.getElementById('expAmount').value)||0;
+    const label=document.getElementById('expLabel').value||'Expense';
+    if(amt>0){ s.budget.tx.push({type:'exp', amt, label}); save(s); recalc(); }
+  };
   recalc();
-  document.getElementById('addInc').onclick=function(){ logAction('budget_setup'); ()=>{ const amt=parseFloat(document.getElementById('incAmt').value||'0'); const label=document.getElementById('incLabel').value||'Income'; if(amt>0){ s.budget.tx.push({type:'inc',amt,label}); save(s); recalc(); } };
-  document.getElementById('addExp').onclick=()=>{ const amt=parseFloat(document.getElementById('expAmt').value||'0'); const label=document.getElementById('expLabel').value||'Expense'; if(amt>0){ s.budget.tx.push({type:'exp',amt,label}); save(s); recalc(); } };
 
-  // calendar
-  document.getElementById('saveCal').onclick=()=>{ const v=document.getElementById('gcal').value; s.gcal=v; save(s); document.getElementById('calFrame').src=sanitizeGcal(v); };
+  // Calendar
+  const savedCal = (s && s.gcal) ? s.gcal : '';
+  document.getElementById('calFrame').src = sanitizeGcal(savedCal);
+  document.getElementById('saveCal').onclick = ()=>{
+    const v=document.getElementById('gcal').value.trim();
+    s.gcal = v; save(s);
+    document.getElementById('calFrame').src = sanitizeGcal(v);
+  };
 }
