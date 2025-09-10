@@ -33,7 +33,7 @@ class Nyx {
     document.body.appendChild(btn);
 
     // panel
-    const panel = document.createElement("div");
+    const panel = document.createElement("div")
     panel.id='nyx-panel';
     panel.innerHTML = `
       <div id="nyx-head">
@@ -187,8 +187,7 @@ class Nyx {
 }
 
 (function bootstrap(){
+  if(window.__nyx_bootstrapped) return; window.__nyx_bootstrapped=true;
   const nyx = new Nyx();
-  // Wait a tick so app pages mount first
   window.addEventListener('DOMContentLoaded', ()=> nyx.init());
-  setTimeout(()=>nyx.init(), 400);
 })();
