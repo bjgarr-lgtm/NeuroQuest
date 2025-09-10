@@ -1,48 +1,45 @@
+
 import {load, save} from '../util/storage.js';
 import {confetti} from '../ui/fx.js';
 import {addGold, logAction} from '../util/game.js';
 
 export default function renderHome(root){
   const s=load();
+
   root.innerHTML = `
     <section class="party-banner">
       <div class="party-title">Your Party</div>
       <div class="party" id="partyRow"></div>
     </section>
+
     <section class="home-breath">
       <div class="panel breathe">
-        <div class="ring"><div class="core"></div></div>
+        <div class="ring" id="breathRing">
+          <svg viewBox="0 0 100 100" width="200" height="200" style="display:block;margin:auto;overflow:visible">
+            <g id="scaleGroup" transform-origin="50 50">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"></circle>
+              <circle id="progArc" cx="50" cy="50" r="46" fill="none" stroke="#89f" stroke-width="6"
+                stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"></circle>
+            </g>
+          </svg>
+          <div class="core"></div>
+        </div>
         <div id="phase">Tap the ring</div>
       </div>
-      <div class="panel card">
+      <div class="panel">
         <h3>Rewards</h3>
-        <div id="rew">Complete quests to unlock!</div>
+        <div id="rew"></div>
       </div>
     </section>
   `;
 
-  // Party render
-  const row=document.getElementById('partyRow');
-  function card(src, name){
-    const d=document.createElement('div'); d.className='hero';
-    const frame=document.createElement('div'); frame.style.width='360px'; frame.style.height='460px'; frame.style.borderRadius='12px'; frame.style.overflow='hidden';
-    const img=new Image(); img.src=src||'assets/neuroquest-shield.svg'; img.alt=name||'Member'; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='contain';
-    frame.appendChild(img);
-    const cap=document.createElement('div'); cap.className='name'; cap.textContent=name||'Companion';
-    d.appendChild(frame); d.appendChild(cap); return d;
-  }
-  if(s.party?.hero?.src) row.appendChild(card(s.party.hero.src,'You'));
-  (s.party?.companions||[]).forEach(c=> row.appendChild(card(c.src, c.name||'Companion')));
-
-  
-  // Rewards list (first 5 shown; more unlock later)
+  // Rewards rendering (list first five available)
   const REWARDS_DEF = [
     {id:'first-quest', name:'Finish your first quest', token:'⭐'},
     {id:'streak-3', name:'Maintain a 3‑day streak', token:'🔥'},
     {id:'level-2', name:'Reach Level 2', token:'🛡️'},
     {id:'deep-clean', name:'Complete a Deep Clean raid', token:'🧽'},
     {id:'journal-3', name:'Journal 3 days this week', token:'📔'},
-    // extra ideas (unlock after initial five)
     {id:'hydrate-7', name:'Log hydration 7 days', token:'💧'},
     {id:'walk-5', name:'Take 5 walks', token:'👟'},
     {id:'cook-3', name:'Cook 3 meals at home', token:'🍳'},
@@ -63,7 +60,6 @@ export default function renderHome(root){
     {id:'hydrate-30', name:'Hydration streak 30 days', token:'💦'},
     {id:'level-5', name:'Reach Level 5', token:'🏆'}
   ];
-  // State ensure
   if(!s.tokens) s.tokens=[];
   if(!s.ach) s.ach={};
   const rewHost = document.getElementById('rew');
@@ -72,7 +68,7 @@ export default function renderHome(root){
     const earned = new Set(Object.keys(s.ach).filter(k=>s.ach[k]));
     const avail = REWARDS_DEF.filter(r=>!earned.has(r.id));
     const toShow = avail.slice(0,5);
-    if(toShow.length===0){ rewHost.textContent='All clear! More rewards unlocked as you play.'; return; }
+    if(toShow.length===0){ rewHost.textContent='All clear! More rewards unlock as you play.'; return; }
     toShow.forEach(r=>{
       const row = document.createElement('div'); row.className='reward-row';
       row.innerHTML = `<span class="tok">${r.token}</span> <span class="nm">${r.name}</span>`;
@@ -80,75 +76,73 @@ export default function renderHome(root){
     });
   }
   renderRewards();
-// Breathe ring
-  const ring = document.querySelector('.ring');
+
+  // ===== Breathe session =====
+  const ringEl = document.getElementById('breathRing');
   const phase = document.getElementById('phase');
+  const progArc = ringEl.querySelector('#progArc');
+  const scaleGroup = ringEl.querySelector('#scaleGroup');
+  const core = ringEl.querySelector('.core');
 
-  // Build an SVG progress ring inside .ring
-  ring.innerHTML = `<svg viewBox="0 0 100 100" width="200" height="200" style="display:block;margin:auto; overflow:visible">
-    <g id="scaleGroup" transform="scale(1)" transform-origin="50 50">
-      <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"></circle>
-      <circle id="progArc" cx="50" cy="50" r="46" fill="none" stroke="white" stroke-linecap="round" stroke-width="6" transform="rotate(-90 50 50)" stroke-dasharray="289" stroke-dashoffset="289"></circle>
-    </g>
-  </svg>
-  <div class="core" style="position:absolute;inset:0;margin:auto;width:120px;height:120px;border-radius:999px;background:radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1), rgba(255,255,255,0) 70%);"></div>`;
-  ring.style.position='relative';
-  ring.style.width='200px'; ring.style.height='200px'; ring.style.overflow='visible';
+  const seq=[
+    {t:4000,txt:'Inhale', coreScale:1.12, ringScale:1.18},
+    {t:2000,txt:'Hold',   coreScale:1.12, ringScale:1.18},
+    {t:4000,txt:'Exhale', coreScale:0.52, ringScale:0.82},
+    {t:2000,txt:'Hold',   coreScale:0.52, ringScale:0.82},
+  ];
 
-  const arc = document.getElementById('progArc');
-  let timer=null, raf=null, running=false, step=0, startT=0, rounds=0;
-  const CIRC = 2*Math.PI*46; // dasharray length
-  const seq=[{t:4000,txt:'Inhale', scale:1.12, ring:1.18},
-             {t:2000,txt:'Hold',  scale:1.12, ring:1.18},
-             {t:4000,txt:'Exhale', scale:0.52, ring:0.82},
-             {t:2000,txt:'Hold',  scale:0.52, ring:0.82}];
+  let running=false, step=0, rounds=0, timeoutId=null;
 
-  function animatePhase(){
-    const p=seq[step%seq.length];
-    phase.textContent=p.txt;
-    const dur=p.t;
-    const from = (p.txt==='Exhale'||p.txt==='Hold'&&seq[(step-1+seq.length)%seq.length].txt==='Exhale') ? 0 : CIRC;
-    const to   = (p.txt==='Inhale')?0 : CIRC;
-    const t0 = performance.now();
-    cancelAnimationFrame(raf);
-    function loop(now){
-      const el = Math.min(1, (now - t0)/dur);
-      // linear easing for progress arc
-      const offset = from + (to-from)*el;
-      arc.setAttribute('stroke-dashoffset', String(offset));
-      raf = requestAnimationFrame(loop);
-      if(el>=1){
-        cancelAnimationFrame(raf);
-        step++;
-        // completed a full cycle?
-        if(step % seq.length === 0){
-          rounds = (rounds||0) + 1;
-          if(rounds >= 3){
-            running=false;
-            phase.textContent='Nice work!';
-            try{ logAction('breath_session'); }catch(e){}
-            try{ addGold(1); }catch(e){}
-            try{ confetti(); }catch(e){}
-            return;
-          }
-        }
-        if(running) tick();
-      }
+  function playStep(){
+    const p = seq[step];
+    const dur = p.t;
+    phase.textContent = p.txt;
+    // animate arc
+    progArc.style.transition = `stroke-dashoffset ${dur/1000}s linear`;
+    const dashTotal = 2*Math.PI*46;
+    if(p.txt==='Inhale' || p.txt==='Exhale'){
+      progArc.style.strokeDashoffset = (p.txt==='Inhale') ? 0 : dashTotal;
     }
-    // scale the core smoothly
-    const core = ring.querySelector('.core');
+    // scale both core & ring
     core.style.transition = `transform ${dur/1000}s ease-in-out`;
-    core.style.transform = `scale(${p.scale})`;
-    const sg = ring.querySelector('#scaleGroup');
-    if(sg){ sg.setAttribute('style', `transition: transform ${dur/1000}s ease-in-out; transform-origin:50px 50px; transform: scale(${p.ring})`); }
-    raf = requestAnimationFrame(loop);
+    core.style.transform = `scale(${p.coreScale})`;
+    scaleGroup.style.transition = `transform ${dur/1000}s ease-in-out`;
+    scaleGroup.setAttribute('transform', `scale(${p.ringScale})`);
+
+    timeoutId = setTimeout(()=>{
+      // step finished
+      step = (step + 1) % seq.length;
+      if(step===0){ // completed one full cycle
+        rounds += 1;
+        if(rounds>=3){
+          running=false;
+          phase.textContent='Nice work!';
+          try{ logAction('breath_session'); }catch(e){}
+          try{ addGold(1); }catch(e){}
+          try{ confetti(); }catch(e){}
+          return;
+        }
+      }
+      if(running) playStep();
+    }, dur);
   }
 
-  function tick(){ animatePhase(); }
+  ringEl.onclick = ()=>{
+    if(running){
+      running=false;
+      clearTimeout(timeoutId);
+      phase.textContent='Paused';
+      return;
+    }
+    // start fresh
+    running=true; step=0; rounds=0;
+    // reset arc
+    const dashTotal = 2*Math.PI*46; progArc.style.strokeDasharray = String(dashTotal); progArc.style.strokeDashoffset = dashTotal;
+    playStep();
+  };
 
-  ring.onclick=()=>{ if(running){ running=false; cancelAnimationFrame(raf); phase.textContent='Paused'; return; } running=true; rounds=0; step=0; tick(); }; running=true; step=0; tick(); };
-
-  // HUD update
+  // HUD update — keep as-is
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
   const xpEl=document.getElementById('hudXp'); const lvl=document.getElementById('hudLevel');
   const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
+}
