@@ -205,6 +205,6 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .panel.breathe{max-width:360px; padding:12px; align-items:center}
 
 /* Home layout tighten */
-.home-breath{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
+.home-breath{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start;overflow:visible}
 .panel.breathe{max-width:360px;min-height:auto;padding:12px}
 .breathe .ring svg{overflow:visible}

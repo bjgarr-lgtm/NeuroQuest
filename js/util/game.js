@@ -50,5 +50,19 @@ export function logAction(kind, amount=1){
   if(kind==='hydrate' && s.progress[kind]>=7){ earn('hydrate-7','💧'); }
   if(kind==='budget_setup' && s.progress[kind]>=1){ earn('budget-setup','💰'); }
   if(kind==='journal_entry' && s.progress[kind]>=3){ earn('journal-3','📔'); }
+  if(kind==='kindness' && s.progress[kind]>=3){ earn('kindness','🌈'); }
+  if(kind==='sleep' && s.progress[kind]>=5){ earn('sleep-5','😴'); }
+  if(kind==='meditate' && s.progress[kind]>=5){ earn('meditate-5','🧘'); }
+  if(kind==='social' && s.progress[kind]>=2){ earn('social-2','💬'); }
+  if(kind==='laundry' && s.progress[kind]>=1){ earn('laundry-week','🧺'); }
+  if(kind==='dishes' && s.progress[kind]>=4){ earn('dish-streak','🍽️'); }
+  if(kind==='inbox_zero' && s.progress[kind]>=1){ earn('inbox-zero','📬'); }
+  if(kind==='garden' && s.progress[kind]>=3){ earn('garden','🪴'); }
+  if(kind==='book' && s.progress[kind]>=1){ earn('book','📚'); }
+  if(kind==='skill' && s.progress[kind]>=5){ earn('skill','🎯'); }
+  if(kind==='pet_care' && s.progress[kind]>=7){ earn('pet-care','🐾'); }
+  if(kind==='screen_down' && s.progress[kind]>=3){ earn('screen-down','📵'); }
+  if(kind==='hydrate' && s.progress[kind]>=30){ earn('hydrate-30','💦'); }
+
   save(s);
 }

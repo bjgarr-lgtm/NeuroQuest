@@ -25,6 +25,34 @@ export default function renderLife(root){
       <div id="mealGrid" class="meal-grid"></div>
     </section>
 
+    
+    <section class="panel">
+      <h3>Quick Log</h3>
+      <div class="row">
+        <select id="quickAction">
+          <option value="hydrate">Hydrate</option>
+          <option value="walk">Walk</option>
+          <option value="cook">Cook</option>
+          <option value="kindness">Kindness</option>
+          <option value="meditate">Meditate</option>
+          <option value="sleep">8h Sleep</option>
+          <option value="social">Social check-in</option>
+          <option value="laundry">Laundry done</option>
+          <option value="dishes">Dishes clear</option>
+          <option value="inbox_zero">Inbox zero</option>
+          <option value="garden">Tend plants</option>
+          <option value="book">Finish a book</option>
+          <option value="skill">Practice a skill</option>
+          <option value="pet_care">Pet care</option>
+          <option value="screen_down">1h screen-free</option>
+          <option value="budget_setup">Budget setup</option>
+        </select>
+        <button id="logQuick" class="primary">Log</button>
+      </div>
+      <div class="hint">Use this dropdown to record progress toward rewards. Auto-claims when thresholds are met.</div>
+    </section>
+
+
     <section class="grid two">
       <div class="panel">
         <h3>Shopping</h3>
@@ -64,7 +92,12 @@ export default function renderLife(root){
     });
   });
 
-  // shopping
+  
+  // quick log
+  const qa=document.getElementById('quickAction');
+  const qbtn=document.getElementById('logQuick');
+  if(qbtn) qbtn.onclick=()=>{ const k=qa.value; logAction(k); };
+// shopping
   function drawShop(){
     const list=document.getElementById('shopList'); list.innerHTML='';
     s.shop.forEach((it,i)=>{
