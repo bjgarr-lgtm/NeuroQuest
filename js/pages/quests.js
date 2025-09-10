@@ -35,10 +35,15 @@ function toast(msg){
 
 // === PATCH v1: Auto-claim + meta trackers + quick-add templates ===
 export default function renderQuests(root){
+  const bossIdeas=['Fridge scrub','Car wash','Paper declutter','Laundry mountain','Closet reset','Desk zen','Windows shine','Bathroom reset','Yard sweep'];
+  const raidIdeas=['Whole-house reset','Garage purge','Paperwork marathon','Kitchen deep-clean month','Laundry overhaul','Toy rotation & donate','Digital declutter month'];
+  const suggest=(arr)=>arr[Math.floor(Math.random()*arr.length)];
+  function scaleRecentCrowns(mult=4){ const nodes=[...document.querySelectorAll('.crown')]; nodes.slice(-12).forEach(n=>{ n.style.fontSize=''+(36*mult)+'px'; }); }
+
   const s=load();
   s.quests.main ??= []; s.quests.side ??= []; s.quests.bonus ??= [];
   s.quests.boss ??= {name:'Bathroom', progress:0};
-  s.quests.raid ??= {week:1, title:'Deep Clean'};
+  s.quests.raid ??= {week:1, title:'Deep Clean', progress:0};
 
   root.innerHTML = `
     <h2>Quest + Clean</h2>
@@ -64,12 +69,22 @@ export default function renderQuests(root){
       <div class="panel">
         <h3>Weekly Boss</h3>
         <div class="row"><span>Boss:</span><input id="bossName"></div>
-        <div class="row"><span>Progress</span><div class="bar" style="flex:1"><div id="bossProg" class="bar" style="height:8px; background:linear-gradient(90deg,#7cf,#e7a7ff)"></div></div></div>
+        <div class="row"><button id="bossSuggest" class="tiny">Suggest</button></div>
+        <div class="row"><span>Progress</span><div class="bar" style="flex:1"><div id="bossProg" style="height:10px;background:linear-gradient(90deg,#7cf,#e7a7ff)"></div></div></div>
         <div class="row"><button id="bossTick" class="secondary">+10%</button></div>
       </div>
       <div class="panel">
         <h3>Monthly Raid</h3>
-        <div>Week ${s.quests.raid.week} — ${s.quests.raid.title}</div>
+        <div class="row"><span>Week</span><input id="raidWeek" type="number" min="1" style="width:80px"></div>
+        <div class="row"><span>Title</span><input id="raidTitle"></div>
+        <div class="row"><button id="raidSuggest" class="tiny">Suggest</button></div>
+        <div class="row"><span>Progress</span><div class="bar" style="flex:1"><div id="raidProg" style="height:10px;background:linear-gradient(90deg,#7cf,#e7a7ff)"></div></div></div>
+        <div class="row"><button id="raidTick" class="secondary">+10%</button></div>
+      </div>
+    </section>
+  
+        <h3>Monthly Raid</h3>
+        <div class='row'><span>Week</span><input id='raidWeek' type='number' style='width:50px'></div><div class='row'><span>Title</span><input id='raidTitle'></div><div class='row'><span>Progress</span><div class='bar' style='flex:1'><div id='raidProg' class='bar' style='height:8px; background:linear-gradient(90deg,#fc7,#ff7)'></div></div></div><div class='row'><button id='raidTick' class='secondary'>+10%</button></div>
       </div>
     </section>
   `;
@@ -82,16 +97,21 @@ export default function renderQuests(root){
       (s.quests[key]||[]).forEach((q,i)=>{
         const row=document.createElement('div'); row.className='row';
         const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!q.done;
-        chk.onchange=()=>{ q.done=chk.checked; if(q.done){ s.xp=(s.xp||0)+10; s.gold=(s.gold||0)+2; confetti(); } save(s); draw(); };
+        chk.onchange=()=>{ q.done=chk.checked; if(q.done){ s.xp=(s.xp||0)+10; s.gold=(s.gold||0)+2; // main default confetti(); } save(s); draw(); };
         const t=document.createElement('span'); t.textContent=q.title;
         const rm=document.createElement('button'); rm.className='danger'; rm.textContent='✕'; rm.onclick=()=>{ s.quests[key].splice(i,1); save(s); draw(); };
         row.append(chk,t,rm); el.appendChild(row);
       });
     });
-    // boss
+        // boss
     document.getElementById('bossName').value=s.quests.boss.name;
     const p=Math.max(0,Math.min(100, s.quests.boss.progress||0));
     document.getElementById('bossProg').style.width=p+'%';
+    // raid
+    document.getElementById('raidWeek').value = s.quests.raid.week||1;
+    document.getElementById('raidTitle').value = s.quests.raid.title||'';
+    const rp = Math.max(0,Math.min(100, s.quests.raid.progress||0));
+    document.getElementById('raidProg').style.width=rp+'%';
     // HUD
     document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
     document.getElementById('hudXp').style.width=((s.xp||0)%100)+'%';
@@ -103,16 +123,19 @@ export default function renderQuests(root){
   document.getElementById('btnSide').onclick=()=>{ const v=document.getElementById('addSide').value.trim(); if(!v) return; s.quests.side.push({title:v,done:false}); save(s); draw(); };
   document.getElementById('btnBonus').onclick=()=>{ const v=document.getElementById('addBonus').value.trim(); if(!v) return; s.quests.bonus.push({title:v,done:false}); save(s); draw(); };
 
-  document.getElementById('bossName').oninput=(e)=>{ s.quests.boss.name=e.target.value; save(s); };
-  document.getElementById('bossTick').onclick=()=>{
+  
+document.getElementById('bossName').oninput=(e)=>{ s.quests.boss.name=e.target.value; save(s); };
+document.getElementById('bossSuggest').onclick=()=>{ s.quests.boss.name=suggest(bossIdeas); save(s); draw(); };
+document.getElementById('bossTick').onclick=()=>{
   s.quests.boss.progress=Math.min(100,(s.quests.boss.progress||0)+10);
-  save(s); draw(); crownDrop();
-  if(s.quests.boss.progress>=100){ logAction('deep_clean');
-    for(let i=0;i<5;i++) setTimeout(()=>crownDrop(), i*120);
+  save(s); draw(); crownDrop(); scaleRecentCrowns(4);
+  if(s.quests.boss.progress>=100){
+    for(let i=0;i<5;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*120);
     for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
-    // suggest a new boss
-    const ideas=['Fridge scrub','Car wash','Paper declutter','Laundry mountain','Closet reset','Desk zen','Windows shine'];
-    s.quests.boss={name:ideas[Math.floor(Math.random()*ideas.length)], progress:0}; save(s); draw();
+    s.quests.boss={name:suggest(bossIdeas), progress:0}; save(s); draw();
+  }
+};
+ save(s); draw();
   }
 
   // Quick templates
@@ -133,6 +156,46 @@ export default function renderQuests(root){
       {title:'Plan meals 3x',done:false}
     ];
     s.quests.side = [...(s.quests.side||[]), ...set]; save(s); draw(); toast('Added weekly set');
+  
+  document.getElementById('raidWeek').oninput=(e)=>{ s.quests.raid.week=parseInt(e.target.value)||1; save(s); };
+  document.getElementById('raidTitle').oninput=(e)=>{ s.quests.raid.title=e.target.value; save(s); };
+  document.getElementById('raidTick').onclick=()=>{
+    s.quests.raid.progress=Math.min(100,(s.quests.raid.progress||0)+10);
+    save(s); draw();
+    for(let i=0;i<3;i++) setTimeout(()=>crownDrop(4.0), i*100); // 3 crowns bigger scale
+    if(s.quests.raid.progress>=100){
+      for(let i=0;i<10;i++) setTimeout(()=>crownDrop(4.0), i*120);
+      for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
+      const raidIdeas=['Basement purge','Yard overhaul','Garage reset','Attic sort','Garden prep'];
+      s.quests.raid={week:1,title:raidIdeas[Math.floor(Math.random()*raidIdeas.length)],progress:0}; save(s); draw();
+    }
+    document.getElementById('raidWeek').oninput=(e)=>{ s.quests.raid.week=Math.max(1, parseInt(e.target.value||'1')); save(s); };
+  document.getElementById('raidTitle').oninput=(e)=>{ s.quests.raid.title=e.target.value; save(s); };
+  document.getElementById('raidSuggest').onclick=()=>{ s.quests.raid.title=suggest(raidIdeas); save(s); draw(); };
+  document.getElementById('raidTick').onclick=()=>{
+    s.quests.raid.progress=Math.min(100,(s.quests.raid.progress||0)+10);
+    save(s); draw();
+    for(let i=0;i<3;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*80);
+    if(s.quests.raid.progress>=100){
+      for(let i=0;i<10;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*90);
+      for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
+      s.quests.raid={week:1, title:suggest(raidIdeas), progress:0}; save(s); draw();
+    }
   };
 };
-}
+;
+  document.getElementById('raidWeek').oninput=(e)=>{ s.quests.raid.week=Math.max(1, parseInt(e.target.value||'1')); save(s); };
+  document.getElementById('raidTitle').oninput=(e)=>{ s.quests.raid.title=e.target.value; save(s); };
+  document.getElementById('raidSuggest').onclick=()=>{ s.quests.raid.title=suggest(raidIdeas); save(s); draw(); };
+  document.getElementById('raidTick').onclick=()=>{
+    s.quests.raid.progress=Math.min(100,(s.quests.raid.progress||0)+10);
+    save(s); draw();
+    for(let i=0;i<3;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*80);
+    if(s.quests.raid.progress>=100){
+      for(let i=0;i<10;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*90);
+      for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
+      s.quests.raid={week:1, title:suggest(raidIdeas), progress:0}; save(s); draw();
+    }
+  };
+};
+
