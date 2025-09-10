@@ -1,0 +1,16 @@
+
+/* NYX Assistant UI */
+#nyx-launcher{position:fixed;right:16px;bottom:16px;z-index:9999;border:none;border-radius:20px;padding:10px 14px;font-family:'Press Start 2P', monospace;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer;transition:transform .1s}
+#nyx-launcher:hover{transform:translateY(-2px)}
+#nyx-panel{position:fixed;right:16px;bottom:70px;width:320px;max-height:60vh;background:#0b0f19;color:#e7f2ff;border:1px solid #4af;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.6);display:none;z-index:9999}
+#nyx-head{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #234}
+#nyx-head img{width:28px;height:28px}
+#nyx-title{font-size:12px;line-height:1.2}
+#nyx-body{padding:8px;overflow:auto;height:40vh}
+#nyx-input{display:flex;gap:6px;padding:8px;border-top:1px solid #234}
+#nyx-input input{flex:1;border-radius:10px;border:1px solid #345;background:#101828;color:#fff;padding:8px;font-family:monospace}
+#nyx-input button{border-radius:10px;border:1px solid #4af;background:#132d55;color:#fff;padding:8px 10px;font-family:monospace;cursor:pointer}
+.nyx-msg{margin:8px 0;padding:8px 10px;border-radius:12px}
+.nyx-bot{background:#111a2e;border:1px solid #284c7b}
+.nyx-user{background:#1c2a2f;border:1px solid #2a4; text-align:right}
+.nyx-chip{display:inline-block;margin:4px 4px 0 0;padding:4px 6px;border:1px solid #345;border-radius:999px;cursor:pointer;font-size:11px}
