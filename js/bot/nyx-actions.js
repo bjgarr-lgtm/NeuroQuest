@@ -1,30 +1,53 @@
 // nyx-actions.js — capability registry + safe app control
 import { load, save } from '../util/storage.js';
 
+function ensure(obj, path, dflt){
+  const parts = path.split('.'); let cur=obj;
+  for(const p of parts){ if(!(p in cur)) cur[p] = {}; cur = cur[p]; }
+  return cur;
+}
+
 export const Actions = {
   _handlers: Object.create(null),
   _audit: [],
   _undo: [],
 
-  register(name, fn, opts={}){ this._handlers[name] = {fn, opts}; },
+  register(name, fn, opts={}){
+    this._handlers[name] = {fn, opts};
+  },
+  has(name){ return !!this._handlers[name]; },
   list(){ return Object.keys(this._handlers); },
 
   async run(name, params={}){
     const h = this._handlers[name];
     if(!h) throw new Error('Unknown action: '+name);
-    const before = load();
+    const before = load(); // snapshot for undo (shallow)
     const res = await h.fn(params);
+    const after = load();
     const entry = { t: Date.now(), name, params, res };
     this._audit.push(entry);
-    this._undo.push({ before, after: load() });
+    this._undo.push({ before, after });
     try{ localStorage.setItem('nyx_audit', JSON.stringify(this._audit).slice(0,50000)); }catch(_){}
     document.dispatchEvent(new CustomEvent('nq:action', { detail: entry }));
     return res;
   },
 
-  async runMany(list){ const results=[]; for(const step of (list||[])){ if(step && step.action) results.push(await this.run(step.action, step.params||{})); } return results; },
-  async undoLast(){ const u=this._undo.pop(); if(!u) return false; save(u.before); document.dispatchEvent(new CustomEvent('nq:state:reloaded')); return true; }
+  async runMany(list){
+    const results = [];
+    for(const step of (list||[])){
+      if(!step || !step.action) continue;
+      results.push(await this.run(step.action, step.params||{}));
+    }
+    return results;
+  },
+
+  async undoLast(){
+    const u = this._undo.pop(); if(!u) return false;
+    save(u.before); document.dispatchEvent(new CustomEvent('nq:state:reloaded')); return true;
+  }
 };
+
+// ---- Default actions (operate on storage.js state), emit app events for modules that listen ----
 
 function state(){ return load(); }
 function persist(s){ save(s); document.dispatchEvent(new CustomEvent('nq:state:reloaded')); }
@@ -50,16 +73,9 @@ Actions.register('quest.complete', async ({ id, title })=>{
   return { ok:true, id:q.id };
 });
 
-// Journal (tolerant)
+// Journal
 Actions.register('journal.add', async ({ text })=>{
-  if(!text){
-    const box = (typeof document!=='undefined') ? (document.getElementById('jText')?.value||'') : '';
-    text = (box||'').trim();
-  }
-  if(!text){
-    if(typeof prompt!=='undefined') text = (prompt('Journal entry?')||'').trim();
-  }
-  if(!text){ return { ok:false, skipped:true, reason:'empty journal' }; }
+  if(!text) throw new Error('text required');
   const s = state(); s.journal = s.journal || []; s.journal.push({ id:'j_'+Math.random().toString(36).slice(2,9), text, ts: Date.now() });
   persist(s);
   document.dispatchEvent(new CustomEvent('nq:journal-saved'));
@@ -87,4 +103,7 @@ Actions.register('budget.add', async ({ item, amount=0, category='misc' })=>{
 });
 
 // Generic reward trigger
-Actions.register('reward.grant', async ({ xp=5, gold=1, reason='' })=>{ window.NQ?.track?.('custom', { xp, gold, reason }); return { ok:true }; });
+Actions.register('reward.grant', async ({ xp=5, gold=1, reason='' })=>{
+  // let NYX economy handle UI fanfare
+  window.NQ?.track?.('custom', { xp, gold, reason }); return { ok:true };
+});
