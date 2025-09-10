@@ -82,7 +82,7 @@ export default function renderHome(root){
   const phase = document.getElementById('phase');
   const progArc = ringEl.querySelector('#progArc');
   const scaleGroup = ringEl.querySelector('#scaleGroup');
-  const core = ringEl.querySelector('.core');
+  const core = ringEl.querySelector('.core'); core.style.transform='translate(-50%,-50%) scale(1)';
 
   // Bigger contrast between inhale and exhale
   const seq=[
@@ -108,7 +108,7 @@ export default function renderHome(root){
 
     // scale core + ring
     core.style.transition = `transform ${dur/1000}s ease-in-out`;
-    core.style.transform = `scale(${p.coreScale})`;
+    core.style.transform = `translate(-50%,-50%) scale(${p.coreScale})`;
     scaleGroup.style.transition = `transform ${dur/1000}s ease-in-out`;
     scaleGroup.setAttribute('transform', `scale(${p.ringScale})`);
 

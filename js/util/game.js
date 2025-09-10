@@ -66,3 +66,34 @@ export function logAction(kind, amount=1){
 
   save(s);
 }
+
+
+export function installAutolog(){
+  const MAP=[
+    ['hydrate','hydrate'],['water','hydrate'],
+    ['walk','walk'],['run','walk'],
+    ['cook','cook'],['meal','cook'],
+    ['journal','journal_entry'],['save entry','journal_entry'],
+    ['budget','budget_setup'],['income','budget_setup'],
+    ['kind','kindness'],['kindness','kindness'],
+    ['sleep','sleep'],['meditate','meditate'],
+    ['social','social'],['laundry','laundry'],['dishes','dishes'],
+    ['inbox','inbox_zero'],['garden','garden'],['plant','garden'],
+    ['book','book'],['skill','skill'],['pet','pet_care'],
+    ['screen','screen_down']
+  ];
+  document.addEventListener('click', (e)=>{
+    try{
+      const t=e.target.closest('button, a, .btn, .primary, .secondary, .danger, [role="button"]');
+      if(!t) return;
+      const txt=(t.innerText||t.textContent||'').toLowerCase();
+      for(const [k,kind] of MAP){
+        if(txt.includes(k)){ logAction(kind,1); break; }
+      }
+    }catch(_){}
+  }, {capture:true});
+}
+
+export function ensureAutoClaim(){
+  setInterval(()=>{ try{ logAction('__tick',0); }catch(_){ } }, 2500);
+}
