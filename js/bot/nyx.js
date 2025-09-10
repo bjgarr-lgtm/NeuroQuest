@@ -89,7 +89,7 @@ class Nyx {
     this.reply(q);
   }
 
-  reply(q){
+  async reply(q){
     const s = this.state = load();
     const lc = (q||'').toLowerCase();
 
