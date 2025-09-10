@@ -34,3 +34,8 @@ Notes
 - Uses your existing storage.js with xp/gold/level; no schema changes.
 - You can programmatically award things via window.NQ.track('quest:complete',{tier:'side',title:'Stretch'}).
 - Name/voice: change the constants in js/bot/nyx.js if you prefer.
+
+
+LLM hookup:
+- Deploy the included Cloudflare Worker in /nyx_worker (wrangler publish)
+- In your app, set window.NYX_LLM_ENDPOINT = 'https://<your-worker>.workers.dev'; or run `localStorage.setItem('nyx_llm_endpoint','https://...')`
