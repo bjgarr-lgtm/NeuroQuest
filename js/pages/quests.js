@@ -2,6 +2,38 @@ import {load, save} from '../util/storage.js';
 import {logAction} from '../util/game.js';
 import {confetti, crownDrop} from '../ui/fx.js';
 
+
+function award(s, {xp=0,gold=0}={}){ s.xp=(s.xp||0)+xp; s.gold=(s.gold||0)+gold; }
+
+function ensureAch(s){ s.ach = s.ach || {}; return s.ach; }
+
+function checkMetaAchievements(s){
+  const ach = ensureAch(s);
+  // First quest complete
+  if(!ach.firstQuest){
+    const anyDone = [...(s.quests.main||[]),(s.quests.side||[]),(s.quests.bonus||[])].flat().some(q=>q && q.done);
+    if(anyDone){ ach.firstQuest = dt(); award(s,{xp:25,gold:5}); toast('🏅 First quest complete! +25xp +5g'); }
+  }
+  // Three journal entries
+  if(!ach.journal3 && (s.journal?.entries?.length||0) >= 3){
+    ach.journal3 = dt(); award(s,{xp:30,gold:5}); toast('📓 Journals x3! +30xp +5g');
+  }
+  // Hydrate streak (example)
+  if(!ach.hydrate5 && (s.tokens||[]).filter(t=>t.type==='hydrate').length>=5){
+    ach.hydrate5 = dt(); award(s,{xp:15,gold:3}); toast('💧 Hydrate x5! +15xp +3g');
+  }
+}
+
+function dt(){ try{ return new Date().toISOString(); }catch(e){ return '' } }
+
+function toast(msg){
+  try{
+    let t=document.getElementById('nq-toast'); if(!t){ t=document.createElement('div'); t.id='nq-toast'; t.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111a;border:1px solid #fff3;padding:8px 12px;border-radius:12px;backdrop-filter: blur(6px);z-index:9999;font-size:14px'; document.body.appendChild(t); }
+    t.textContent=msg; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0', 1800);
+  }catch(e){}
+}
+
+// === PATCH v1: Auto-claim + meta trackers + quick-add templates ===
 export default function renderQuests(root){
   const s=load();
   s.quests.main ??= []; s.quests.side ??= []; s.quests.bonus ??= [];
@@ -12,7 +44,7 @@ export default function renderQuests(root){
     <h2>Quest + Clean</h2>
     <section class="grid three">
       <div class="panel">
-        <h3>Main Quests</h3>
+        <h3>Main Quests</h3><div class='mini-tools'><button class='tiny' id='addDailySet'>+ Daily set</button><button class='tiny' id='addWeeklySet'>+ Weekly set</button></div>
         <div id="main"></div>
         <div class="row"><input id="addMain" placeholder="Add main quest"><button id="btnMain" class="primary">Add</button></div>
       </div>
@@ -82,5 +114,25 @@ export default function renderQuests(root){
     const ideas=['Fridge scrub','Car wash','Paper declutter','Laundry mountain','Closet reset','Desk zen','Windows shine'];
     s.quests.boss={name:ideas[Math.floor(Math.random()*ideas.length)], progress:0}; save(s); draw();
   }
+
+  // Quick templates
+  document.getElementById('addDailySet').onclick=()=>{
+    const set=[
+      {title:'Hydrate x8 cups',done:false},
+      {title:'15-min tidy sweep',done:false},
+      {title:'Inbox zero (5 emails)',done:false},
+      {title:'Move body 10 min',done:false}
+    ];
+    s.quests.main = [...(s.quests.main||[]), ...set]; save(s); draw(); toast('Added daily set');
+  };
+  document.getElementById('addWeeklySet').onclick=()=>{
+    const set=[
+      {title:'Laundry cycle + fold',done:false},
+      {title:'Fridge scan + wipe',done:false},
+      {title:'Floors sweep/mop',done:false},
+      {title:'Plan meals 3x',done:false}
+    ];
+    s.quests.side = [...(s.quests.side||[]), ...set]; save(s); draw(); toast('Added weekly set');
+  };
 };
 }
