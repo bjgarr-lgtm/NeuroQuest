@@ -1,14 +1,56 @@
-// js/bot/nyx-actions.js — v2.1 ESM compatibility
-// Provides both ESM exports (`export const Actions`) and window.NYX fallback.
+// js/bot/nyx-actions.js — v2.2 ESM
+// Fix: Quest actions now DELEGATE to host app if available, else fallback to a local quest store.
+// Still exports { Actions } and default, and exposes window.NYX.runAction(s).
 
 const KEY_LISTS = 'SBX_LISTS';
 const KEY_BUDG  = 'SBX_BUDG';
+const KEY_QSTS  = 'SBX_QUESTS';  // fallback local quest store
 
 function jget(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : (d ?? {}); } catch { return (d ?? {}); } }
 function jset(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){ console.warn('[NYX-ACTIONS] save fail', e); } }
 function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
 function num(x, def=0){ const n = Number(x); return Number.isFinite(n) ? n : def; }
 function str(x, def=''){ return (typeof x === 'string' && x.trim().length) ? x.trim() : def; }
+
+// ---------- Helper: delegate to host app if possible ----------
+async function tryDelegate(name, params){
+  // Common function entry points in your app:
+  const candidates = [
+    // explicit global functions
+    window[name],
+    window[name?.replace(/([a-z])_([a-z])/g,(m,a,b)=>a+b.toUpperCase())], // snake_case -> camelCase
+    // App namespaces seen in builds
+    window.App?.[name], window.App?.quests?.[name], window.NQ?.[name], window.NQ?.quests?.[name]
+  ].filter(Boolean);
+
+  for (const fn of candidates){
+    try{
+      const out = fn.call(window.App || window, params);
+      const val = out instanceof Promise ? await out : out;
+      if (val !== undefined) return { ok:true, delegated:true, result: val };
+    }catch(e){ console.warn('[NYX-ACTIONS] delegate error', e); }
+  }
+
+  // Event-based delegation
+  try {
+    const evName = `nyx:${name}`;
+    const detail = { params, result: undefined };
+    const res = await new Promise((resolve)=>{
+      const done = (e)=>{
+        window.removeEventListener(`${evName}:result`, done, { once:true });
+        resolve(e.detail ?? { ok:true });
+      };
+      window.addEventListener(`${evName}:result`, done, { once:true });
+      window.dispatchEvent(new CustomEvent(evName, { detail }));
+      // Failsafe timeout (no listener): resolve after 50ms with undefined
+      setTimeout(()=>resolve(undefined), 50);
+    });
+    if (res !== undefined) return { ok:true, delegated:true, result: res };
+  } catch(e) {
+    console.warn('[NYX-ACTIONS] event delegate error', e);
+  }
+  return { ok:false, delegated:false };
+}
 
 // ---------- LISTS ----------
 function ensureLists(){
@@ -60,8 +102,8 @@ export async function clear_checked_shopping(){
 function ensureBudget(){
   const B = jget(KEY_BUDG, {});
   if (!Array.isArray(B.txns)) B.txns = [];
-  if (!B.cats) B.cats = {};      // { "groceries": 300, "gas": 150 }
-  if (!B.totals) B.totals = {};  // computed spend per cat
+  if (!B.cats) B.cats = {};
+  if (!B.totals) B.totals = {};
   return B;
 }
 function recomputeTotals(B){
@@ -106,15 +148,47 @@ export async function set_budget_category(p={}){
   return { ok:true, budget:B };
 }
 
+// ---------- QUESTS ----------
+function ensureQuests(){
+  const Q = jget(KEY_QSTS, {});
+  if (!Array.isArray(Q.items)) Q.items = [];
+  return Q;
+}
+
+export async function add_quest(p={}){
+  // 1) Try to hand off to host app (keeps your existing working behavior)
+  const d = await tryDelegate('add_quest', p);
+  if (d.delegated) return d.result || { ok:true, delegated:true };
+
+  // 2) Fallback local store
+  const text = str(p.text || p.title || p.name || p.quest, '');
+  if (!text) return { ok:false, error:'missing quest text' };
+  const Q = ensureQuests();
+  const q = { id: uid(), text, done: !!p.done, created: Date.now() };
+  Q.items.push(q);
+  jset(KEY_QSTS, Q);
+  return { ok:true, quest:q, quests:Q, delegated:false };
+}
+
+export async function complete_quest(p={}){
+  const d = await tryDelegate('complete_quest', p);
+  if (d.delegated) return d.result || { ok:true, delegated:true };
+
+  const id = str(p.id, '');
+  if (!id) return { ok:false, error:'missing id' };
+  const Q = ensureQuests();
+  const it = Q.items.find(x=>x.id===id);
+  if (!it) return { ok:false, error:'not found' };
+  it.done = true;
+  jset(KEY_QSTS, Q);
+  return { ok:true, quest: it, quests: Q, delegated:false };
+}
+
 export async function get_state(){
   const B = ensureBudget();
   recomputeTotals(B);
-  return { ok:true, lists: ensureLists(), budget: B };
+  return { ok:true, lists: ensureLists(), budget: B, quests: ensureQuests() };
 }
-
-// ---------- QUEST (compat shim) ----------
-export async function add_quest(p={}){ return { ok:true, note:'handled elsewhere or ignored' }; }
-export async function complete_quest(p={}){ return { ok:true, note:'handled elsewhere or ignored' }; }
 
 // ---------- Runner API ----------
 const registry = Object.create(null);
@@ -154,14 +228,12 @@ export const Actions = { run, runMany,
   add_quest, complete_quest
 };
 
-// Default export for convenience
 export default Actions;
 
-// Also attach to window for older code paths
 if (typeof window !== 'undefined') {
   window.NYX = window.NYX || {};
   window.NYX.actions = { run, runMany };
   window.NYX.runAction = run;
   window.NYX.runActions = runMany;
-  console.log('[NYX-ACTIONS] v2.1 ESM patch active');
+  console.log('[NYX-ACTIONS] v2.2 ESM patch active');
 }
