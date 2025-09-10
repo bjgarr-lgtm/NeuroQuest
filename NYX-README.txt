@@ -39,3 +39,21 @@ Notes
 LLM hookup:
 - Deploy the included Cloudflare Worker in /nyx_worker (wrangler publish)
 - In your app, set window.NYX_LLM_ENDPOINT = 'https://<your-worker>.workers.dev'; or run `localStorage.setItem('nyx_llm_endpoint','https://...')`
+
+---
+NYX Command Control (actions)
+- New files: js/bot/nyx-actions.js, js/bot/nyx-planner.js
+- NYX can now create/complete quests, add journal entries, log hydration, start breathe ring, add shopping items, and add budget items.
+- Natural language is mapped to actions with LLM (if endpoint set) or simple regex fallback.
+- Undo: `/undo` reverts the last change. List actions: `/actions`. Manual run: `/run {"steps":[{"action":"quest.create","params":{"title":"laundry"}}]}`
+
+Events emitted (modules can listen and update their UIs):
+- nq:quest-create  (detail: quest)
+- nq:quest-complete(detail: {id,title,tier})
+- nq:journal-saved
+- nq:hydrate
+- nq:breathe
+- nq:shopping-add  (detail: {item,qty,unit})
+- nq:budget-add    (detail: {item,amount,category})
+- nq:action        (detail: audit entry)
+- nq:state:reloaded (after state save/undo)

@@ -2,6 +2,8 @@
 console.log('[NYX] build syntaxfix2 loaded');
 import { load, save } from '../util/storage.js';
 import { nyxAskLLM } from './nyx-llm.js';
+import { Actions } from './nyx-actions.js';
+import { planActionsFromText } from './nyx-planner.js';
 
 const VOICE_NAME = 'Google US English';
 
@@ -127,11 +129,24 @@ class Nyx {
       });
     }
     if(lc.startsWith('/help') || lc.includes('help')){
-      const msg = 'try /stats /tips /quests. ask me to add a micro-quest like “drink water” or “3min stretch”.';
-      this.pushBot(msg); return msg;
-    }
+        const msg = 'commands: /stats /tips /quests /llm on|off /llm test /run <json> /undo /actions';
+        this.pushBot(msg); return msg;
+      }
+      if(lc.startsWith('/actions')){ const m = 'available: '+Actions.list().join(', '); this.pushBot(m); return m; }
+      if(lc.startsWith('/undo')){ const ok = await Actions.undoLast(); const m = ok?'undid last change.':'nothing to undo.'; this.pushBot(m); return m; }
+      if(lc.startsWith('/run ')){
+        try{ const plan = JSON.parse(q.slice(5)); const res = await Actions.runMany(plan.steps||[]); const m='ok • '+res.length+' step(s)'; this.pushBot(m); return m; }
+        catch(e){ const m='bad json: '+e; this.pushBot(m); return m; }
+      }
 
     // LLM fallback (or local supportive)
+    const planTry = await planActionsFromText(q);
+    if(planTry.steps && planTry.steps.length){
+      if(planTry.confirm){ this.pushBot('i can run '+planTry.steps.length+' change(s). say "/run {\"steps\":[...]}" to confirm, or type /undo after.'); return 'pending'; }
+      const res = await Actions.runMany(planTry.steps);
+      const m = 'done • '+res.length+' change(s)'; this.pushBot(m); return m;
+    }
+
     const sys = [
       'You are NYX, a supportive ADHD-friendly guide inside the NeuroQuest app.',
       'Tone: warm, brief, non-judgmental, practical; prefer bullet points and a single tiny next step.',
