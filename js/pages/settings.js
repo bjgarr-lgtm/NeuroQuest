@@ -93,13 +93,37 @@ export default function renderSettings(root){
     try{
       localStorage.setItem('nq_music', url||'');
       const audio = document.getElementById('music');
+      const btn = document.getElementById('musicBtn');
       if(audio && url){
         audio.src = url; audio.loop = true; audio.volume = 0.6;
-        const p = audio.play?.(); if(p && p.catch) p.catch(()=>{});
+        // If header button exists, make sure its state is consistent
+        if(btn && !btn.classList.contains('on')) btn.classList.add('on');
       }
-      const btn=document.getElementById('musicBtn'); if(btn){ btn.classList.add('on'); }
+      // broadcast to app in case it listens
+      try{ document.dispatchEvent(new CustomEvent('nq:music', {detail:{url,name}})); }catch(_){}
       const np=document.getElementById('nowPlaying'); if(np){ np.textContent = name ? ('Now Playing: '+name) : ''; }
     }catch(_){}
+  }
+  function toggleHeaderMusicPlay(){
+    const audio = document.getElementById('music');
+    const btn = document.getElementById('musicBtn');
+    if(!audio) return;
+    const src = audio.getAttribute('src') || audio.src;
+    if(!src){
+      // no source yet — try pick from library or localStorage
+      const list = safeList();
+      const first = list[0];
+      const stored = localStorage.getItem('nq_music');
+      const url = stored || (first && first.url) || '';
+      if(url){ setCurrentTrack(url, first?.name || 'Track'); }
+    }
+    const playing = !audio.paused;
+    if(playing){ audio.pause(); btn && btn.classList.remove('on'); }
+    else{
+      const play = audio.play?.(); 
+      if(play && play.catch) play.catch(()=>{});
+      btn && btn.classList.add('on');
+    }
   }
 
   // initial apply
@@ -140,6 +164,7 @@ export default function renderSettings(root){
         <div id="nowPlaying" class="hint"></div>
         <div class="row" style="gap:8px">
           <button id="uploadSong" class="secondary">Upload Song</button>
+          <button id="headerToggle" class="secondary">Play/Pause (Header)</button>
           <button id="clearSongs" class="danger" title="Clear all songs">Clear</button>
         </div>
         <div id="songList" class="list"></div>
@@ -213,6 +238,7 @@ export default function renderSettings(root){
     input.click();
   };
   document.getElementById('clearSongs').onclick=()=>{ localStorage.removeItem('nq_music_list'); renderSongs(); toast('Library cleared'); };
+  document.getElementById('headerToggle').onclick=()=>{ toggleHeaderMusicPlay(); };
 
   // Save / Reset
   document.getElementById('saveBtn').onclick=()=>{ save(s); toast('Settings saved'); };
