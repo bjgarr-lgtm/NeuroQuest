@@ -141,7 +141,7 @@ export default function renderHome(root){
 
   // Minimal party mini render
   const row=document.getElementById('partyRow');
-  (s.party||[]).forEach(p=>{
+  (Array.isArray(s.party) ? s.party : []).forEach(p => {
     const img=document.createElement('img'); img.src=p; img.style.width='88px'; img.style.borderRadius='12px';
     row.appendChild(img);
   });
