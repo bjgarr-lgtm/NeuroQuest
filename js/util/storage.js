@@ -5,7 +5,7 @@ export const DEF = {
   party:{ hero:null, companions:[] },
   wardrobe:{ items:[], equipped:[] }, // adult accessories (images as data URLs)
   pet:{ owned:[], acc:[] },
-  quests:{ main:[], side:[], bonus:[], boss:{name:'Bathroom', progress:0}, raid:{week:2, title:'Deep Clean'} },
+  \1 1\2 },
   meals:{}, shop:[], budget:{ tx:[], goal:100, income:0, expense:0 },
   journal:{ prompt:'', entries:[], moods:[] },
   tokens:[], ach:{},
