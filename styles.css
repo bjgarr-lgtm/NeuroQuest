@@ -208,3 +208,17 @@ body.route-character .sb-acc-layer{ display:block !important; pointer-events:aut
 
 /* prevent double accessories on dashboard party banner */
 .party-banner .sb-acc-layer{display:none!important}
+
+
+/* --- HOTFIX: anchor accessory editor layer to portrait image --- */
+.char-portrait{ position: relative !important; }
+.char-portrait img{ display:block; width:100%; height:auto; }
+.char-portrait .sb-acc-layer{ position:absolute; inset:0; z-index:3; pointer-events:auto; }
+
+/* also support legacy wrapper */
+.portrait-wrap{ position: relative !important; }
+.portrait-wrap img{ display:block; }
+.portrait-wrap .sb-acc-layer{ position:absolute; inset:0; z-index:3; pointer-events:auto; }
+
+/* selection visibility inside bounds */
+.sb-acc-ov.selected{ outline:2px dashed #7cf; outline-offset:2px }
