@@ -116,7 +116,7 @@ export default function renderQuests(root){
     s.quests.boss.progress=Math.min(100,(s.quests.boss.progress||0)+10);
     save(s); draw(); crownDrop(); scaleRecentCrowns(4);
     if(s.quests.boss.progress>=100){
-      for(let i=0;i<5;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*120);
+      for(let i=0;i<5;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*450);
       for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
       s.quests.boss={name:suggest(bossIdeas), progress:0}; save(s); draw();
     }
@@ -129,9 +129,9 @@ export default function renderQuests(root){
   document.getElementById('raidTick').onclick=()=>{
     s.quests.raid.progress=Math.min(100,(s.quests.raid.progress||0)+10);
     save(s); draw();
-    for(let i=0;i<3;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*90);
+    for(let i=0;i<3;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*450);
     if(s.quests.raid.progress>=100){
-      for(let i=0;i<10;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*90);
+      for(let i=0;i<10;i++) setTimeout(()=>{ crownDrop(); scaleRecentCrowns(4); }, i*450);
       for(let k=0;k<4;k++) setTimeout(()=>confetti(), k*200);
       s.quests.raid={week:1, title:suggest(raidIdeas), progress:0}; save(s); draw();
     }
