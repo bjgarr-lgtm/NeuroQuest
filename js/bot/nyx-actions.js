@@ -1,12 +1,6 @@
-
-// js/bot/nyx-actions.js — v2.3 "ultra-compatible"
-// Goal: make *any* reasonable action name work, never throw, and not block your existing quest code.
-
-/* Exports:
-   - named: { Actions, run, runMany }
-   - default: Actions
-   - window.NYX.runAction / runActions (for older paths)
-*/
+// js/bot/nyx-actions.js — v2.4 "standardized results"
+// Always returns { ok, changes, message, ... } so UIs that print "undefined change(s)" stop doing that.
+// Still ultra-compatible and delegates quests to host first.
 
 const K_LISTS = 'SBX_LISTS';
 const K_BUDG  = 'SBX_BUDG';
@@ -23,10 +17,8 @@ const str = (x, def='')=> (typeof x === 'string' && x.trim().length ? x.trim() :
 
 function normalizeType(t){
   if (!t) return '';
-  // unify: lower, remove non-alnum, but keep dot as scope separator
   const raw = String(t);
   const scoped = raw.toLowerCase().replace(/\s+/g,'');
-  // map common variants:
   const map = {
     'additem': 'add_shopping_item',
     'addshoppingitem': 'add_shopping_item',
@@ -91,35 +83,49 @@ async function tryDelegate(name, params){
   return { ok:false, delegated:false };
 }
 
+// ----- result normalizer
+function meta(out, {op='op', added=0, removed=0, updated=0, delegated=false}={}){
+  const changes = (typeof out?.changes === 'number')
+    ? out.changes
+    : (added + removed + updated) || (out?.ok ? 1 : 0);
+  const message = out?.message || (delegated
+    ? `done via app • ${changes} change(s)`
+    : `done • ${changes} change(s)`);
+  return { ...out, changes, message };
+}
+
 // ---------- LISTS ----------
 function ensureLists(){ const L = jget(K_LISTS, {}); if (!Array.isArray(L.shopping)) L.shopping = []; return L; }
 
 async function add_shopping_item(p={}){
   const item = str(p.item ?? p.text ?? p.name ?? p.value, '');
-  if (!item) return { ok:false, error:'missing item text' };
+  if (!item) return meta({ ok:false, error:'missing item text' }, {added:0});
   const L = ensureLists();
   const it = { id: uid(), text: item, done: !!p.done };
   L.shopping.push(it); jset(K_LISTS, L);
-  return { ok:true, item: it, lists: L };
+  return meta({ ok:true, item: it, lists: L }, {op:'add_shopping_item', added:1});
 }
 async function remove_shopping_item(p={}){
   const id = str(p.id ?? p.itemId ?? p.key, '');
-  if (!id) return { ok:false, error:'missing id' };
+  if (!id) return meta({ ok:false, error:'missing id' });
   const L = ensureLists(); const before = L.shopping.length;
   L.shopping = L.shopping.filter(x=>x.id !== id); jset(K_LISTS, L);
-  return { ok:true, removed: before - L.shopping.length, lists:L };
+  const removed = before - L.shopping.length;
+  return meta({ ok:true, removed, lists:L }, {op:'remove_shopping_item', removed});
 }
 async function toggle_shopping_item(p={}){
   const id = str(p.id ?? p.itemId ?? p.key, '');
-  if (!id) return { ok:false, error:'missing id' };
+  if (!id) return meta({ ok:false, error:'missing id' });
   const L = ensureLists(); const it = L.shopping.find(x=>x.id===id);
-  if (!it) return { ok:false, error:'not found' };
+  if (!it) return meta({ ok:false, error:'not found' });
   it.done = p.done != null ? !!p.done : !it.done; jset(K_LISTS, L);
-  return { ok:true, item: it, lists:L };
+  return meta({ ok:true, item: it, lists:L }, {op:'toggle_shopping_item', updated:1});
 }
 async function clear_checked_shopping(){
-  const L = ensureLists(); L.shopping = L.shopping.filter(x=>!x.done); jset(K_LISTS, L);
-  return { ok:true, lists:L };
+  const L = ensureLists(); const before=L.shopping.length;
+  L.shopping = L.shopping.filter(x=>!x.done); jset(K_LISTS, L);
+  const removed = before - L.shopping.length;
+  return meta({ ok:true, lists:L, removed }, {op:'clear_checked_shopping', removed});
 }
 
 // ---------- BUDGET ----------
@@ -128,60 +134,59 @@ function recomputeTotals(B){ const t={}; for (const x of B.txns){ const c=x.cat|
 
 async function add_budget_txn(p={}){
   const amt = num(p.amount ?? p.amt ?? p.value, NaN);
-  if (!Number.isFinite(amt)) return { ok:false, error:'missing amount' };
+  if (!Number.isFinite(amt)) return meta({ ok:false, error:'missing amount' });
   const cat = str((p.category ?? p.cat ?? 'uncategorized'), 'uncategorized').toLowerCase();
   const note = str(p.note ?? p.memo ?? p.desc ?? p.text, '');
   const t = { id: uid(), t: Date.now(), amt, cat, note };
   const B = ensureBudget(); B.txns.push(t); recomputeTotals(B); jset(K_BUDG, B);
-  return { ok:true, txn:t, budget:B };
+  return meta({ ok:true, txn:t, budget:B }, {op:'add_budget_txn', added:1});
 }
 async function remove_budget_txn(p={}){
   const id = str(p.id ?? p.txnId ?? p.key, '');
-  if (!id) return { ok:false, error:'missing id' };
+  if (!id) return meta({ ok:false, error:'missing id' });
   const B = ensureBudget(); const before=B.txns.length; B.txns=B.txns.filter(x=>x.id!==id);
   recomputeTotals(B); jset(K_BUDG, B);
-  return { ok:true, removed: before-B.txns.length, budget:B };
+  const removed = before - B.txns.length;
+  return meta({ ok:true, removed, budget:B }, {op:'remove_budget_txn', removed});
 }
 async function set_budget_category(p={}){
   const cat = str(p.category ?? p.cat, '');
   const lim = num(p.limit ?? p.budget ?? p.value, NaN);
-  if (!cat) return { ok:false, error:'missing category' };
-  if (!Number.isFinite(lim)) return { ok:false, error:'missing limit' };
+  if (!cat) return meta({ ok:false, error:'missing category' });
+  if (!Number.isFinite(lim)) return meta({ ok:false, error:'missing limit' });
   const B = ensureBudget(); B.cats[cat.toLowerCase()] = lim; recomputeTotals(B); jset(K_BUDG, B);
-  return { ok:true, budget:B };
+  return meta({ ok:true, budget:B }, {op:'set_budget_category', updated:1});
 }
 
 // ---------- QUESTS ----------
 function ensureQuests(){ const Q = jget(K_QSTS, {}); if (!Array.isArray(Q.items)) Q.items = []; return Q; }
 
 async function add_quest(p={}){
-  // try host
   const del = await tryDelegate('add_quest', p);
-  if (del.delegated) return del.result ?? { ok:true, delegated:true };
-  // fallback
+  if (del.delegated) return meta(del.result ?? { ok:true }, {op:'add_quest', added:1, delegated:true});
   const text = str(p.text ?? p.title ?? p.name ?? p.quest, '');
-  if (!text) return { ok:false, error:'missing quest text' };
+  if (!text) return meta({ ok:false, error:'missing quest text' });
   const Q = ensureQuests(); const q={ id: uid(), text, done: !!p.done, created: Date.now() };
   Q.items.push(q); jset(K_QSTS, Q);
-  return { ok:true, quest:q, quests:Q, delegated:false };
+  return meta({ ok:true, quest:q, quests:Q }, {op:'add_quest', added:1});
 }
 async function complete_quest(p={}){
   const del = await tryDelegate('complete_quest', p);
-  if (del.delegated) return del.result ?? { ok:true, delegated:true };
+  if (del.delegated) return meta(del.result ?? { ok:true }, {op:'complete_quest', updated:1, delegated:true});
   const id = str(p.id ?? p.questId ?? p.key, '');
-  if (!id) return { ok:false, error:'missing id' };
+  if (!id) return meta({ ok:false, error:'missing id' });
   const Q = ensureQuests(); const it = Q.items.find(x=>x.id===id);
-  if (!it) return { ok:false, error:'not found' };
+  if (!it) return meta({ ok:false, error:'not found' });
   it.done = true; jset(K_QSTS, Q);
-  return { ok:true, quest:it, quests:Q, delegated:false };
+  return meta({ ok:true, quest:it, quests:Q }, {op:'complete_quest', updated:1});
 }
 
 async function get_state(){
   const B = ensureBudget(); recomputeTotals(B);
-  return { ok:true, lists: ensureLists(), budget:B, quests: ensureQuests() };
+  return meta({ ok:true, lists: ensureLists(), budget:B, quests: ensureQuests() }, {op:'get_state', added:0, removed:0, updated:0});
 }
 
-// ---------- Registry + aliasing ----------
+// ---------- Registry ----------
 const impl = {
   add_shopping_item, remove_shopping_item, toggle_shopping_item, clear_checked_shopping,
   add_budget_txn, remove_budget_txn, set_budget_category,
@@ -191,7 +196,6 @@ const impl = {
 function resolve(type){
   const normalized = normalizeType(type);
   if (impl[normalized]) return impl[normalized];
-  // allow direct canonical names too
   if (impl[type]) return impl[type];
   return null;
 }
@@ -199,39 +203,41 @@ function resolve(type){
 export async function run({type, params}={}){
   try{
     const fn = resolve(type);
-    if (!fn) return { ok:false, error:`unknown action: ${type}` };
+    if (!fn) return meta({ ok:false, error:`unknown action: ${type}` }, {added:0, removed:0, updated:0});
     const out = await fn(params||{});
-    return out && out.ok !== false ? out : (out || { ok:false, error:'unknown failure' });
+    return (out && typeof out.changes === 'number') ? out : meta(out||{ ok:false }, {});
   }catch(e){
     warn('run error', e);
-    return { ok:false, error:String(e && e.message || e) };
+    return meta({ ok:false, error:String(e && e.message || e) }, {added:0, removed:0, updated:0});
   }
 }
 
 export async function runMany(arr){
   const steps = Array.isArray(arr) ? arr : [arr];
   const results = [];
+  let total = 0;
   for (const step of steps){
-    results.push(await run(step));
+    const r = await run(step);
+    results.push(r);
+    total += (typeof r.changes === 'number' ? r.changes : 0);
   }
-  return { ok:true, results };
+  return meta({ ok:true, results }, {op:'runMany', updated: total });
 }
 
-// Build exported Actions object
+// Exports
 export const Actions = {
   run, runMany,
   add_shopping_item, remove_shopping_item, toggle_shopping_item, clear_checked_shopping,
   add_budget_txn, remove_budget_txn, set_budget_category,
   add_quest, complete_quest, get_state
 };
-
 export default Actions;
 
-// Window attachment for legacy paths
+// Window attachment
 if (typeof window !== 'undefined'){
   window.NYX = window.NYX || {};
   window.NYX.actions = { run, runMany };
   window.NYX.runAction = run;
   window.NYX.runActions = runMany;
-  log('v2.3 ultra-compatible loaded');
+  log('v2.4 standardized results loaded');
 }
