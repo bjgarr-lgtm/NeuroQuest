@@ -1,0 +1,94 @@
+
+/* === 8‑bit Vines Theme (drop-in) ===
+   Add this file after your main styles.css
+   Toggle by adding/removing .vines-enabled on <body> (decor.vines.js handles it).
+*/
+:root {
+  --vine-border-size: 12px;
+  --vine-corner: url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 shape-rendering=%22crispEdges%22%3E%0A  %3Crect width=%2224%22 height=%2224%22 fill=%22#00000000%22/%3E%0A  %3C!-- corner branch --%3E%0A  %3Crect x=%222%22 y=%2218%22 width=%2220%22 height=%222%22 fill=%22#6b4d2e%22/%3E%0A  %3Crect x=%222%22 y=%2216%22 width=%222%22 height=%224%22 fill=%22#4b341e%22/%3E%0A  %3C!-- drooping vine --%3E%0A  %3Crect x=%226%22 y=%222%22 width=%222%22 height=%2214%22 fill=%22#2e6b2f%22/%3E%0A  %3Crect x=%228%22 y=%2210%22 width=%222%22 height=%226%22 fill=%22#3f8f40%22/%3E%0A  %3Crect x=%2210%22 y=%226%22 width=%222%22 height=%2210%22 fill=%22#2e6b2f%22/%3E%0A  %3C!-- moss clumps --%3E%0A  %3Crect x=%2214%22 y=%2214%22 width=%223%22 height=%222%22 fill=%22#79b84a%22/%3E%0A  %3Crect x=%225%22 y=%224%22 width=%222%22 height=%222%22 fill=%22#5fa33a%22/%3E%0A%3C/svg%3E");
+  --vine-edge: url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 shape-rendering=%22crispEdges%22%3E%0A  %3Crect width=%2212%22 height=%2212%22 fill=%22#00000000%22/%3E%0A  %3C!-- bark --%3E%0A  %3Crect x=%221%22 y=%226%22 width=%2210%22 height=%222%22 fill=%22#6b4d2e%22/%3E%0A  %3Crect x=%220%22 y=%227%22 width=%222%22 height=%221%22 fill=%22#4b341e%22/%3E%0A  %3C!-- vine --%3E%0A  %3Crect x=%221%22 y=%222%22 width=%222%22 height=%221%22 fill=%22#2e6b2f%22/%3E%0A  %3Crect x=%222%22 y=%223%22 width=%222%22 height=%221%22 fill=%22#3f8f40%22/%3E%0A  %3Crect x=%223%22 y=%224%22 width=%222%22 height=%221%22 fill=%22#2e6b2f%22/%3E%0A  %3Crect x=%224%22 y=%225%22 width=%222%22 height=%221%22 fill=%22#3f8f40%22/%3E%0A  %3Crect x=%225%22 y=%226%22 width=%222%22 height=%221%22 fill=%22#2e6b2f%22/%3E%0A  %3C!-- moss specks --%3E%0A  %3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22#79b84a%22/%3E%0A  %3Crect x=%2210%22 y=%221%22 width=%221%22 height=%221%22 fill=%22#5fa33a%22/%3E%0A%3C/svg%3E");
+  --moss-noise: url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%228%22 height=%228%22 shape-rendering=%22crispEdges%22%3E%0A  %3Crect width=%228%22 height=%228%22 fill=%22#00000000%22/%3E%0A  %3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22#284b2a%22/%3E%0A  %3Crect x=%223%22 y=%221%22 width=%221%22 height=%221%22 fill=%22#3d6a3f%22/%3E%0A  %3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22#2c5c2e%22/%3E%0A  %3Crect x=%222%22 y=%225%22 width=%221%22 height=%221%22 fill=%22#3f8f40%22/%3E%0A  %3Crect x=%226%22 y=%226%22 width=%221%22 height=%221%22 fill=%22#79b84a%22/%3E%0A%3C/svg%3E");
+}
+
+body.vines-enabled {
+  /* subtle moss noise + gradients for depth */
+  background-image:
+    radial-gradient(#0c120e 10%, transparent 12%),
+    radial-gradient(#0a0f0c 10%, transparent 12%),
+    var(--moss-noise);
+  background-size: 40px 40px, 60px 60px, 8px 8px;
+  background-position: 0 0, 20px 20px, 0 0;
+  image-rendering: pixelated;
+}
+
+/* Global page edge frame */
+body.vines-enabled::before,
+body.vines-enabled::after {
+  content: "";
+  position: fixed;
+  left: 0; right: 0;
+  height: var(--vine-border-size);
+  z-index: 10;
+  pointer-events: none;
+  background: var(--vine-edge) repeat-x;
+  background-size: var(--vine-border-size) var(--vine-border-size);
+}
+body.vines-enabled::before{ top:0; }
+body.vines-enabled::after{ bottom:0; }
+
+body.vines-enabled::marker{ content:''; } /* Safari quirk */
+
+body.vines-enabled .vine-side {
+  position: fixed;
+  top: 0; bottom: 0;
+  width: var(--vine-border-size);
+  z-index: 10;
+  pointer-events: none;
+  background: var(--vine-edge) repeat-y;
+  background-size: var(--vine-border-size) var(--vine-border-size);
+  image-rendering: pixelated;
+}
+body.vines-enabled .vine-side.left { left: 0; }
+body.vines-enabled .vine-side.right { right: 0; }
+
+/* Corners */
+body.vines-enabled .vine-corner {
+  position: fixed;
+  width: 24px; height: 24px;
+  z-index: 11; pointer-events: none;
+  background-image: var(--vine-corner);
+  background-size: 24px 24px;
+  image-rendering: pixelated;
+}
+body.vines-enabled .vine-corner.tl { left: 0; top: 0; transform: none; }
+body.vines-enabled .vine-corner.tr { right: 0; top: 0; transform: scaleX(-1); }
+body.vines-enabled .vine-corner.bl { left: 0; bottom: 0; transform: scaleY(-1); }
+body.vines-enabled .vine-corner.br { right: 0; bottom: 0; transform: scale(-1, -1); }
+
+/* Panels get small inner vines */
+body.vines-enabled .panel {
+  position: relative;
+  border-image: var(--vine-edge) 12 fill stretch;
+  border-width: 0;
+  border-top: var(--vine-border-size) solid transparent;
+  border-bottom: var(--vine-border-size) solid transparent;
+  border-left: var(--vine-border-size) solid transparent;
+  border-right: var(--vine-border-size) solid transparent;
+  image-rendering: pixelated;
+}
+body.vines-enabled .panel::after {
+  content: "";
+  position: absolute;
+  top: -12px; left: -12px;
+  width: 24px; height: 24px;
+  background-image: var(--vine-corner);
+  background-size: 24px 24px;
+  image-rendering: pixelated;
+  opacity: .9;
+}
+
+/* Header title name badge smaller as requested */
+#hudUser { font-size: .7em !important; opacity: .85; margin-left: 8px; }
+
+/* Respect your existing spacing by adding safe padding so vines don't overlap content */
+main, .content, .wrap { padding: 8px; }

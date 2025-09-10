@@ -11,6 +11,8 @@ import renderToddler from './pages/toddler.js';
 import renderRewards from './pages/rewards.js';
 import renderSettings from './pages/settings.js';
 import renderShop from './pages/shop.js';
+import { enableVines } from './js/ui/decor.vines.js';
+enableVines();
 
 const routes=[
   {id:'home', label:'Dashboard', view:renderHome},
@@ -168,5 +170,6 @@ window.NQ_track = tracker;
       });
     }
   }
+  
 })();
 
