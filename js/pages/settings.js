@@ -50,16 +50,28 @@ export default function renderSettings(root){
     document.documentElement.style.setProperty('--pix', fam);
     if(document.body) document.body.style.fontFamily = fam;
   }
+  function ensureNameBadge(){
+    const header = document.querySelector('header');
+    if(!header) return null;
+    let badge = document.getElementById('hudUser');
+    if(!badge){
+      badge = document.createElement('span');
+      badge.id='hudUser';
+      badge.style.cssText='margin-left:8px;font-size:.7em;opacity:.8';
+      const titleEl = document.getElementById('title') || header.querySelector('h1');
+      if(titleEl && titleEl.parentElement){
+        titleEl.parentElement.insertBefore(badge, titleEl.nextSibling);
+      }else{
+        header.appendChild(badge);
+      }
+    }
+    return badge;
+  }
   function updateDisplayName(){
     const nm = (s.user?.name || 'You');
-    // window title
     try{ document.title = 'NeuroQuest — ' + nm; }catch(_){}
-    // header H1 if present
-    const titleEl = document.getElementById('title') || document.querySelector('header h1');
-    if(titleEl) titleEl.textContent = 'NeuroQuest — ' + nm;
-    // optional HUD slot
-    const hud = document.getElementById('hudUser');
-    if(hud) hud.textContent = nm;
+    const badge = ensureNameBadge();
+    if(badge) badge.textContent = '— ' + nm;
   }
   function toast(msg){
     let t=document.getElementById('nq-toast');
@@ -77,22 +89,16 @@ export default function renderSettings(root){
   function saveList(arr){
     localStorage.setItem('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
   }
-  function setCurrentTrack(url){
+  function setCurrentTrack(url, name){
     try{
-      // set the key older code expects
       localStorage.setItem('nq_music', url||'');
-      // if an <audio id="music"> exists, update and (re)play
       const audio = document.getElementById('music');
       if(audio && url){
-        audio.src = url;
-        audio.loop = true;
-        audio.volume = 0.6;
-        const play = audio.play?.();
-        if(play && play.catch){ play.catch(()=>{}); }
+        audio.src = url; audio.loop = true; audio.volume = 0.6;
+        const p = audio.play?.(); if(p && p.catch) p.catch(()=>{});
       }
-      // toggle a music button if one exists to refresh UI state
-      const btn=document.getElementById('musicBtn');
-      if(btn){ btn.classList.add('on'); }
+      const btn=document.getElementById('musicBtn'); if(btn){ btn.classList.add('on'); }
+      const np=document.getElementById('nowPlaying'); if(np){ np.textContent = name ? ('Now Playing: '+name) : ''; }
     }catch(_){}
   }
 
@@ -101,7 +107,7 @@ export default function renderSettings(root){
   applyFont(s.settings.font||'Press Start 2P');
   updateDisplayName();
 
-  // ensure hidden file input exists for uploads
+  // ensure hidden file input exists
   if(!document.getElementById('musicFile')){
     const fi=document.createElement('input');
     fi.type='file'; fi.id='musicFile'; fi.accept='audio/*'; fi.style.display='none';
@@ -127,11 +133,12 @@ export default function renderSettings(root){
       <div class="panel">
         <h3>Display Name</h3>
         <input id="nameSel" placeholder="Your name" value="${s.user?.name||'You'}"/>
-        <div class="hint">Shown in window title (and header if available)</div>
+        <div class="hint">Shown next to title (smaller) & in window title.</div>
       </div>
       <div class="panel">
         <h3>Music Library</h3>
-        <div class="row">
+        <div id="nowPlaying" class="hint"></div>
+        <div class="row" style="gap:8px">
           <button id="uploadSong" class="secondary">Upload Song</button>
           <button id="clearSongs" class="danger" title="Clear all songs">Clear</button>
         </div>
@@ -169,14 +176,19 @@ export default function renderSettings(root){
     }
     list.forEach((it, i)=>{
       const row=document.createElement('div'); row.className='row';
+      row.style.justifyContent='space-between';
+      const left=document.createElement('div'); left.style.display='flex'; left.style.gap='10px'; left.style.alignItems='center';
       const name=document.createElement('span'); name.textContent=it.name||('Track '+(i+1));
+      left.appendChild(name);
+      const right=document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
       const play=document.createElement('button'); play.className='secondary'; play.textContent='Play';
-      play.onclick=()=>{ setCurrentTrack(it.url); toast('Now playing: '+(it.name||'Track')); };
-      const up=document.createElement('button'); up.className='secondary'; up.textContent='Top';
-      up.onclick=()=>{ const arr=safeList(); const cur=arr.splice(i,1)[0]; arr.unshift(cur); saveList(arr); renderSongs(); };
+      play.onclick=()=>{ setCurrentTrack(it.url, it.name); };
+      const top=document.createElement('button'); top.className='secondary'; top.textContent='Top';
+      top.onclick=()=>{ const arr=safeList(); const cur=arr.splice(i,1)[0]; arr.unshift(cur); saveList(arr); renderSongs(); };
       const del=document.createElement('button'); del.className='danger'; del.textContent='Delete';
       del.onclick=()=>{ const arr=safeList(); arr.splice(i,1); saveList(arr); renderSongs(); };
-      row.append(name, play, up, del); el.appendChild(row);
+      right.append(play, top, del);
+      row.append(left, right); el.appendChild(row);
     });
   }
   renderSongs();
@@ -192,8 +204,9 @@ export default function renderSettings(root){
         arr.unshift({name:f.name, url:r.result});
         saveList(arr);
         renderSongs();
-        setCurrentTrack(r.result);
+        setCurrentTrack(r.result, f.name);
         toast('Added to library');
+        document.getElementById('songList').scrollIntoView({behavior:'smooth', block:'center'});
       };
       r.readAsDataURL(f);
     };
