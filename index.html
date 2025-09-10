@@ -1,6 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+window.NQ_track = window.NQ_track || function(ev,p){try{if(window.NQ?.track) window.NQ.track(ev,p||{});}catch(e){}};
+window.tracker = window.NQ_track;
+</script>
+
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>NeuroQuest — v2.6 single-file align hotfix</title>
@@ -344,17 +349,6 @@
     setTimeout(onRoute, 200);
   })();
 </script>
-<script>
-  // safe global tracker regardless of load order
-  window.NQ_track = window.NQ_track || function (ev, payload) {
-    try { if (window.NQ?.track) window.NQ.track(ev, payload || {}); } catch(e) {}
-  };
-  // legacy alias so old code like tracker(...) doesn't explode
-  window.tracker = window.NQ_track;
-</script>
 <script type="module" src="js/bot/nyx.js"></script>
-<script>
-  window.NYX_LLM_ENDPOINT = "https://nyx-llm-proxy.bjgarr.workers.dev";
-</script>
 </body>
 </html>

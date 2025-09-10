@@ -105,11 +105,22 @@ class Nyx {
       this.pushBot(msg); return msg;
     }
     if(lc.startsWith('/llm test')){
-      const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '(unset)';
+      const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '';
+      if(!ep){ const m='no endpoint set. run: localStorage.setItem("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
       this.pushBot('pinging llm…');
-      fetch((ep||'') + '/health').then(r=>r.json()).then(j=>{
-        this.pushBot('llm ok • ' + (j.model||'model') + ' • endpoint set');
-      }).catch(e=>{
+      fetch(ep, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ messages:[{role:'user', content:'ping'}] })
+      })
+      .then(r=>r.json())
+      .then(j=>{
+        if(j && j.text) this.pushBot('llm ok • reply: '+j.text.slice(0,60)+'…');
+        else this.pushBot('llm replied but no text field: '+JSON.stringify(j).slice(0,80));
+      })
+      .catch(e=>{ this.pushBot('llm error: '+e); });
+      return 'testing';
+    }).catch(e=>{
         this.pushBot('llm error: ' + e);
       });
       return 'testing';
