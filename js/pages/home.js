@@ -152,4 +152,3 @@ export default function renderHome(root){
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
   const xpEl=document.getElementById('hudXp'); const lvl=document.getElementById('hudLevel');
   const xpInLevel=(s.xp||0)%100; xpEl.style.width=xpInLevel+'%'; lvl.textContent='Lv '+(s.level||1);
-}
