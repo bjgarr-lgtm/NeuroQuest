@@ -74,11 +74,3 @@ document.addEventListener('click', (e)=>{ const el=e.target.closest('button'); i
 document.addEventListener('nq:levelup', ()=>{ try{ import('./ui/fx.js').then(m=>{ m.confetti(); setTimeout(m.confetti,150); setTimeout(m.confetti,300); }); }catch(_){}});
 
 window.NQ_track = tracker;
-
-
-// NYX tracker shim (avoids ReferenceError if NYX loads later)
-function tracker(ev, payload){
-  try{ if(window.NQ && typeof window.NQ.track==='function'){ window.NQ.track(ev, payload||{}); } }
-  catch(e){ console.warn('[NQ_track]', e); }
-}
-window.NQ_track = tracker;
