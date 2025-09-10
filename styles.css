@@ -208,3 +208,5 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .home-breath{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start;overflow:visible}
 .panel.breathe{max-width:360px;min-height:auto;padding:12px}
 .breathe .ring svg{overflow:visible}
+
+.panel.breathe,.breathe .ring,.breathe .ring svg{overflow:visible}

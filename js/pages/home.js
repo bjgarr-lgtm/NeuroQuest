@@ -117,7 +117,23 @@ export default function renderHome(root){
       const offset = from + (to-from)*el;
       arc.setAttribute('stroke-dashoffset', String(offset));
       raf = requestAnimationFrame(loop);
-      if(el>=1){ cancelAnimationFrame(raf); step++; tick(); }
+      if(el>=1){
+        cancelAnimationFrame(raf);
+        step++;
+        // completed a full cycle?
+        if(step % seq.length === 0){
+          rounds = (rounds||0) + 1;
+          if(rounds >= 3){
+            running=false;
+            phase.textContent='Nice work!';
+            try{ logAction('breath_session'); }catch(e){}
+            try{ addGold(1); }catch(e){}
+            try{ confetti(); }catch(e){}
+            return;
+          }
+        }
+        if(running) tick();
+      }
     }
     // scale the core smoothly
     const core = ring.querySelector('.core');
@@ -130,7 +146,7 @@ export default function renderHome(root){
 
   function tick(){ animatePhase(); }
 
-  ring.onclick=()=>{ if(running){ running=false; cancelAnimationFrame(raf); clearTimeout(timer); phase.textContent='Paused'; return; } running=true; step=0; tick(); };
+  ring.onclick=()=>{ if(running){ running=false; cancelAnimationFrame(raf); phase.textContent='Paused'; return; } running=true; rounds=0; step=0; tick(); }; running=true; step=0; tick(); };
 
   // HUD update
   document.getElementById('hudGold').textContent='🪙 '+(s.gold||0);
