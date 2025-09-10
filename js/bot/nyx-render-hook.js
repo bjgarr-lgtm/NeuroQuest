@@ -1,10 +1,22 @@
-// nyx-render-hook.js — auto re-render app on actions
+// js/bot/nyx-render-hook.js — optional router awareness (ES module)
 (function(){
-  try{
-    const rerender = ()=>{ try{ render(); }catch(e){ console.warn('[render hook] render() failed', e); } };
-    ['nq:state:reloaded','nq:action','nq:quest-create','nq:quest-complete','nq:journal-saved','nq:shopping-add','nq:budget-add','nq:hydrate','nq:breathe']
-      .forEach(ev=> document.addEventListener(ev, rerender));
-    window.addEventListener('storage', (e)=>{ if(e && e.key && e.key.includes('neuroquest')) rerender(); });
-    console.log('[render hook] attached');
-  }catch(e){ console.warn('[render hook] attach failed', e); }
+  // Keep FAB alive across route changes; re-assert mount point after views update.
+  let scheduled = null;
+  function reassert(){
+    if (scheduled) cancelAnimationFrame(scheduled);
+    scheduled = requestAnimationFrame(()=>{
+      const root = document.getElementById('nyxRoot');
+      if (!root) {
+        // If something nuked it, rebuild via nyx-wire
+        const evt = new Event('DOMContentLoaded');
+        document.dispatchEvent(evt);
+      }
+      // ensure mountSelector remains
+      window.NYX = window.NYX || {};
+      window.NYX.mountSelector = '#nyxMount';
+    });
+  }
+  window.addEventListener('hashchange', reassert);
+  document.addEventListener('DOMContentLoaded', reassert);
+  setTimeout(reassert, 200);
 })();
