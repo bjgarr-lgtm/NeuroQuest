@@ -118,6 +118,28 @@
       });
     }
 
+
+    // --- Safe anchor: size/position layer to portrait WITHOUT reparenting ---
+    function ensureAccLayerWithin(wrap){
+      let layer = wrap.querySelector('.sb-acc-layer');
+      if(!layer){
+        layer = document.createElement('div');
+        layer.className = 'sb-acc-layer';
+        wrap.appendChild(layer);
+      }
+      return layer;
+    }
+    function anchorLayerToPortrait_NoWrap(wrap, portrait, layer){
+      // keep wrap relative
+      const cs = getComputedStyle(wrap);
+      if (cs.position === 'static') wrap.style.position = 'relative';
+      const left = portrait.offsetLeft;
+      const top  = portrait.offsetTop;
+      const w    = portrait.clientWidth  || portrait.naturalWidth  || portrait.width  || 0;
+      const h    = portrait.clientHeight || portrait.naturalHeight || portrait.height || 0;
+      Object.assign(layer.style, { position:'absolute', left:left+'px', top:top+'px', width:w+'px', height:h+'px' });
+    }
+
 </script>
 
   <!-- 1) YOUR APP (unchanged) -->
@@ -281,7 +303,7 @@
       return sel?.value || 'bambi';
     }
     async function patchCharacter(){
-      const portrait=document.querySelector('#heroBase, #charPortrait, .portrait-wrap img, .char-portrait img, #portrait'); if(!portrait) return;
+      const portrait=document.querySelector('#portrait, #heroBase, #charPortrait, .char-portrait img, .portrait-wrap img'); if(!portrait) return;
       const wrap=ensurePortraitWrap(portrait);
       // ensure layer
       let layer = ensureAccLayer(wrap);
