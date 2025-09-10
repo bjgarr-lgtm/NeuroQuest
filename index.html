@@ -353,6 +353,16 @@ window.tracker = window.NQ_track;
 <script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
 <script type="module" src="js/bot/nyx.js?v=syntaxfix2?v=syntaxfix2"></script>
 <script type="module" src="js/bot/nyx-wire.js"></script>
-<script type="module" src="js/ui/decor.vines.js"></script>
+<script src="js/ui/decor.vines.iife.js?v=1"></script>
+<script>
+  // turn it on after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enableVines);
+  } else {
+    enableVines();
+  }
+</script>
+<button onclick="enableVines()">Enable vines</button>
+<button onclick="disableVines()">Disable vines</button>
 </body>
 </html>
