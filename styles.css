@@ -220,3 +220,8 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .breathe .ring{position:relative;width:220px;height:220px;margin:0 auto;overflow:visible}
 .breathe .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;background:#000000;box-shadow:0 0 40px rgba(137,153,255,.35) inset}
 #phase{text-align:center;margin-top:8px}
+/* Life Hub meal layouts */
+.meal-grid .row{gap:8px}
+.meal-day{display:grid; grid-template-columns:1fr; gap:8px}
+.meal-grid-wrap{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px}
+.meal-col input{width:100%}

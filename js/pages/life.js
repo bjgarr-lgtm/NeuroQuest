@@ -1,6 +1,7 @@
 
 import {load, save} from '../util/storage.js';
 import {logAction} from '../util/game.js';
+import {confetti, crownDrop} from '../ui/fx.js';
 
 function sanitizeGcal(v){
   const def='https://calendar.google.com/calendar/embed?src=en.usa%23holiday%40group.v.calendar.google.com&ctz=America%2FLos_Angeles';
@@ -90,23 +91,61 @@ export default function renderLife(root){
     </section>
   `;
 
-  // Meals (simple weekly grid placeholder)
-  const days=['SUN','MON','TUE','WED','THU','FRI','SAT'];
-  const slots=['breakfast','lunch','dinner'];
-  const mg=document.getElementById('mealGrid');
-  mg.style.display='grid';
-  mg.style.gridTemplateColumns='repeat(7, minmax(120px,1fr))';
-  days.forEach((d,di)=>{
+  // Meals (compact day view with optional weekly grid)
+const days=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const slots=['breakfast','lunch','dinner'];
+const mg=document.getElementById('mealGrid');
+
+// Controls
+const ctrl=document.createElement('div'); ctrl.className='row';
+ctrl.innerHTML = `<select id="mealDay">${days.map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
+<button id="mealMode" class="secondary">Weekly</button>`;
+mg.appendChild(ctrl);
+
+const holder=document.createElement('div'); holder.id='mealHolder'; mg.appendChild(holder);
+
+function renderDay(d){
+  holder.innerHTML='';
+  const col=document.createElement('div'); col.className='meal-day';
+  const head=document.createElement('div'); head.className='card'; head.textContent=d; col.appendChild(head);
+  slots.forEach(slot=>{
+    const key=`${d.toLowerCase()}_${slot}`;
+    const row=document.createElement('div'); row.className='row';
+    const label=document.createElement('span'); label.textContent=slot;
+    const inp=document.createElement('input'); inp.placeholder=slot; inp.value=s.meals[key]||'';
+    inp.onfocus=()=>{ if(!s.meals[key]) inp.value=''; inp.select(); };
+    inp.onchange=()=>{ const before=s.meals[key]||''; s.meals[key]=inp.value.trim(); save(s); if(!before && s.meals[key]){ s.gold=(s.gold||0)+1; save(s); try{ crownDrop(); }catch{} confetti(); } };
+    row.append(label, inp); col.appendChild(row);
+  });
+  holder.appendChild(col);
+}
+
+function renderWeek(){
+  holder.innerHTML='';
+  const wrap=document.createElement('div'); wrap.className='meal-grid-wrap';
+  days.forEach(d=>{
     const col=document.createElement('div'); col.className='meal-col';
     const head=document.createElement('div'); head.className='card'; head.textContent=d; col.appendChild(head);
     slots.forEach(slot=>{
       const key=`${d.toLowerCase()}_${slot}`;
       const inp=document.createElement('input'); inp.placeholder=slot; inp.value=s.meals[key]||'';
-      inp.onchange=()=>{ s.meals[key]=inp.value; save(s); };
+      inp.onfocus=()=>{ if(!s.meals[key]) inp.value=''; inp.select(); };
+      inp.onchange=()=>{ const before=s.meals[key]||''; s.meals[key]=inp.value.trim(); save(s); if(!before && s.meals[key]){ s.gold=(s.gold||0)+1; save(s); try{ crownDrop(); }catch{} confetti(); } };
       col.appendChild(inp);
     });
-    mg.appendChild(col);
+    wrap.appendChild(col);
   });
+  holder.appendChild(wrap);
+}
+
+let mode='day';
+renderDay('SUN');
+document.getElementById('mealDay').onchange=(e)=>{ const d=e.target.value; mode==='day'?renderDay(d):null; };
+document.getElementById('mealMode').onclick=()=>{
+  if(mode==='day'){ mode='week'; document.getElementById('mealMode').textContent='Day'; renderWeek(); }
+  else { mode='day'; document.getElementById('mealMode').textContent='Weekly'; renderDay(document.getElementById('mealDay').value); }
+};
+
 
   // Quick Log
   const qa=document.getElementById('quickAction');
@@ -121,7 +160,7 @@ export default function renderLife(root){
       const row=document.createElement('div'); row.className='row';
       row.innerHTML=`<span>${item}</span>`;
       const del=document.createElement('button'); del.className='secondary'; del.textContent='Done';
-      del.onclick=()=>{ s.shop.splice(i,1); save(s); renderShop(); logAction('kindness',0); };
+      del.onclick=()=>{ s.shop.splice(i,1); s.gold=(s.gold||0)+1; save(s); renderShop(); try{ crownDrop(); }catch{} confetti(); };
       row.appendChild(del); shopList.appendChild(row);
     });
   };
@@ -147,12 +186,12 @@ export default function renderLife(root){
   document.getElementById('addInc').onclick=()=>{
     const amt=parseFloat(document.getElementById('incAmount').value)||0;
     const label=document.getElementById('incLabel').value||'Income';
-    if(amt>0){ s.budget.tx.push({type:'inc', amt, label}); save(s); recalc(); logAction('budget_setup',1); }
+    if(amt>0){ s.budget.tx.push({type:'inc', amt, label}); s.gold=(s.gold||0)+1; save(s); recalc(); try{ crownDrop(); }catch{} confetti(); }
   };
   document.getElementById('addExp').onclick=()=>{
     const amt=parseFloat(document.getElementById('expAmount').value)||0;
     const label=document.getElementById('expLabel').value||'Expense';
-    if(amt>0){ s.budget.tx.push({type:'exp', amt, label}); save(s); recalc(); }
+    if(amt>0){ s.budget.tx.push({type:'exp', amt, label}); s.gold=(s.gold||0)+1; save(s); recalc(); try{ crownDrop(); }catch{} confetti(); }
   };
   recalc();
 
