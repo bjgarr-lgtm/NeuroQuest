@@ -226,47 +226,59 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .meal-grid-wrap{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px}
 .meal-col input{width:100%}
 
-/* ==== RIGHT-SIDE OVERLAY DRAWER (authoritative) ==== */
-:root { --drawer-w: 280px; --header-h: 64px; }
-
-/* Keep header on top */
-.app-header { position: sticky; top: 0; z-index: 100; }
-
-/* Drawer overlays content on the RIGHT and never pushes layout */
-#drawer.drawer{
-  position: fixed !important;
-  top: var(--header-h);
-  right: 0; left: auto; bottom: 0;
-  width: var(--drawer-w);
-  height: calc(100vh - var(--header-h));
-  background: var(--panel, #141429);
-  box-shadow: 0 10px 30px #0008, inset 0 0 0 1px #ffffff12;
-  overflow: auto;
-  transform: translateX(100%);
-  transition: transform .22s ease-out;
-  z-index: 120; /* above content, below NYX */
+/* ===== Drawer RIGHT overlay / docked on desktop ===== */
+:root{
+  --header-h: 64px;
+  --drawer-w: 260px;
 }
-#drawer.open { transform: translateX(0); }
 
-/* Scrim behind the drawer */
-#scrim.scrim{
-  position: fixed !important;
+/* Keep header on top of content */
+.app-header { position: sticky; top: 0; z-index: 70; }
+
+/* Scrim (always above content, below drawer) */
+.scrim{
+  position: fixed;
   inset: 0;
   background: rgba(0,0,0,.45);
-  opacity: 0; pointer-events: none;
-  transition: opacity .18s ease;
-  z-index: 110;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+  z-index: 1998;
 }
-#drawer.open + #scrim { opacity: 1; pointer-events: auto; }
+body.drawer-open .scrim{ opacity: 1; pointer-events: auto; }
 
-/* Main content: never shifted by drawer */
-main.view{
-  margin: 0 !important;
-  padding: 16px;
-  min-height: calc(100vh - var(--header-h));
+/* RIGHT drawer */
+.drawer{
+  position: fixed;
+  top: var(--header-h);
+  right: 0;                 /* dock on the RIGHT */
+  bottom: 0;
+  width: var(--drawer-w);
+  background: var(--panel, #141429);
+  box-shadow: -10px 0 30px #0008, inset 0 0 0 1px #ffffff12;
+  transform: translateX(100%);               /* hidden off-screen to the right */
+  transition: transform .25s ease;
+  z-index: 1999;                              /* above scrim & content */
+  overflow-y: auto;
+  padding: 12px;
+}
+.drawer.open{ transform: translateX(0); }
+
+/* Content area: never pushed by drawer on mobile (overlay behavior) */
+.view{
   position: relative;
+  min-height: calc(100vh - var(--header-h));
+  padding: 16px;
+  margin: 0;                                   /* overlay, no push */
   z-index: 0;
 }
 
-/* NYX stays on top of everything */
-#nyx-panel, #nyx-launcher { z-index: 2000 !important; }
+/* Desktop: keep the drawer docked (visible) and reserve space on the RIGHT */
+@media (min-width: 980px){
+  .scrim{ display:none; }
+  .drawer{ transform: none; }                  /* always visible */
+  .view{ margin-right: var(--drawer-w); }      /* reserve space on the RIGHT */
+}
+
+/* Make sure NYX floats above everything */
+#nyx-panel, #nyx-launcher{ z-index: 2500; }
