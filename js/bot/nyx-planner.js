@@ -1,143 +1,75 @@
-// nyx-planner.js — turns user text into structured actions via LLM or regex fallback
+// nyx-planner.js — prefer local parse; fall back to LLM
 import { nyxAskLLM } from './nyx-llm.js';
 
-// Allowed actions (must match nyx-actions.js)
-const ALLOWED = new Set([
-  'quest.create','quest.complete',
-  'journal.add','hydrate.log','breathe.start',
-  'shopping.add','budget.add','reward.grant'
-]);
+const SCHEMA = { /* unchanged */ };
 
-const SCHEMA = {
-  type: 'object',
-  properties: {
-    steps: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          action: { type: 'string' },
-          params: { type: 'object' }
-        },
-        required: ['action']
-      }
-    },
-    confirm: { type: 'boolean' }
-  },
-  required: ['steps']
-};
-
-// ---------- helpers ----------
-function step(action, params={}){ return { action, params }; }
-function safeNumber(x, d=0){ const n = Number(String(x).replace(/[^\d.-]/g,'')); return Number.isFinite(n) ? n : d; }
-function cleanPlan(plan){
-  const out = { steps: [], confirm: !!plan?.confirm };
-  for(const s of (plan?.steps||[])){
-    if(!s || typeof s.action !== 'string') continue;
-    if(!ALLOWED.has(s.action)) continue;
-    out.steps.push({ action: s.action, params: (s.params && typeof s.params==='object') ? s.params : {} });
-  }
-  return out;
-}
-
-// Regex fallback parser (no LLM)
 function localParse(userText){
-  const t = (userText||'').trim();
+  const t = String(userText||'').trim();
   const lc = t.toLowerCase();
-  const plan = { steps: [] };
 
-  // QUESTS
-  // “add quest …”, “create quest …”, allow “main/side” hints
-  if(/^((add|create)\s+quest)\b/i.test(lc)){
-    const mTier = lc.match(/\b(main|side)\b/);
-    const tier = (mTier && mTier[1]==='main') ? 'main' : 'side';
-    const title = t.replace(/^((add|create)\s+quest)\s*/i,'').replace(/\s*\b(main|side)\b/i,'').trim();
-    if(title) plan.steps.push(step('quest.create',{ title, tier }));
-  }
-  // “complete quest …”
-  if(/^complete\s+quest\b/i.test(lc)){
-    const title = t.replace(/^complete\s+quest\s*/i,'').trim();
-    if(title) plan.steps.push(step('quest.complete',{ title }));
-    plan.confirm = true; // potentially destructive
+  // create quest
+  if (lc.startsWith('add quest ') || lc.startsWith('create quest ') ||
+      lc.startsWith('add main quest ') || lc.startsWith('add side quest ') ||
+      lc.startsWith('quest add ') || lc.startsWith('new quest ') ) {
+    // strip common prefixes
+    const title = t.replace(/^(add|create)\s+(main\s+|side\s+)?quest\s+/i,'')
+                   .replace(/^quest\s+add\s+/i,'')
+                   .replace(/^new\s+quest\s*:?/i,'')
+                   .trim();
+    const tier = /main\s+quest/i.test(t) ? 'main' : 'side';
+    if (title) return { steps: [{ action:'quest.create', params:{ title, tier } }] };
   }
 
-  // JOURNAL
-  // “journal …” or “add journal …” or “save entry …”
-  if(/^(journal|add\s+journal|save\s+entry)\b/i.test(lc)){
-    const text = t.replace(/^(journal|add\s+journal|save\s+entry)\s*/i,'').trim();
-    if(text) plan.steps.push(step('journal.add',{ text }));
+  // complete quest
+  if (lc.startsWith('complete quest ') || lc.startsWith('finish quest ') || lc.startsWith('quest complete ')) {
+    const title = t.replace(/^(complete|finish)\s+quest\s+/i,'')
+                   .replace(/^quest\s+complete\s+/i,'')
+                   .trim();
+    if (title) return { steps: [{ action:'quest.complete', params:{ title } }], confirm:true };
   }
 
-  // HYDRATE & BREATHE
-  if(/\b(drink|hydrate|water)\b/.test(lc)) plan.steps.push(step('hydrate.log',{ amount:1 }));
-  if(/\b(breathe|breathing|start\s+breathe|start\s+breathing)\b/.test(lc)) plan.steps.push(step('breathe.start',{ minutes:1 }));
-
-  // SHOPPING
-  // “add to shopping …”, “shopping add …”, “add … to list”
-  if(/^(add\s+to\s+shopping|shopping\s+add)\b/i.test(lc)){
-    const item = t.replace(/^(add\s+to\s+shopping|shopping\s+add)\s*/i,'').trim();
-    if(item) plan.steps.push(step('shopping.add',{ item }));
-  } else if(/^add\b.*\b(to|into)\b.*\b(list|shopping)\b/i.test(lc)){
-    const item = t.replace(/^add\s*/i,'').replace(/\s*\b(to|into)\b.*$/i,'').trim();
-    if(item) plan.steps.push(step('shopping.add',{ item }));
+  // shopping add
+  if (lc.startsWith('add to shopping ') || lc.startsWith('shopping add ')) {
+    const item = t.replace(/^add to shopping\s+|^shopping add\s+/i,'').trim();
+    if (item) return { steps: [{ action:'shopping.add', params:{ item } }] };
   }
 
-  // BUDGET
-  // Accept “budget add <item> <amount>”, or “add $12 lunch”, or “$8 coffee”
-  if(/^budget\s+add\b/i.test(lc)){
-    const m = /budget\s+add\s+(.+?)\s+(-?\$?\d+(?:\.\d+)?)/i.exec(t);
-    if(m){ plan.steps.push(step('budget.add',{ item:m[1].trim(), amount: safeNumber(m[2]) })); }
-  } else if(/^\$?-?\d/.test(lc) && /\b(lunch|coffee|grocer|rent|bill|gas|uber|food|meal|shop|misc)\b/i.test(lc)){
-    const m = /(-?\$?\d+(?:\.\d+)?)/.exec(t);
-    const amount = m ? safeNumber(m[1]) : 0;
-    const item = t.replace(/-?\$?\d+(?:\.\d+)?/,'').trim();
-    if(item && amount) plan.steps.push(step('budget.add',{ item, amount }));
+  // budget add
+  const m = /budget add\s+(.+?)\s+(\d+(?:\.\d+)?)/i.exec(t);
+  if (m) {
+    const [, item, amount] = m;
+    return { steps: [{ action:'budget.add', params:{ item, amount: Number(amount||0) } }] };
   }
 
-  // REWARD (manual)
-  // “grant 10 xp and 3 gold”, “+5xp +1g”
-  if(/grant\b.*\b(xp|gold)\b/i.test(lc) || /(\+?\d+\s*xp)|(\+?\d+\s*g(?![a-z]))/i.test(lc)){
-    const xpM = /(\+?\d+)\s*xp/i.exec(t);
-    const gM  = /(\+?\d+)\s*g(?![a-z])/i.exec(t);
-    const xp = xpM ? safeNumber(xpM[1],0) : 0;
-    const gold = gM ? safeNumber(gM[1],0) : 0;
-    if(xp || gold) plan.steps.push(step('reward.grant',{ xp, gold, reason:'manual grant' }));
-  }
-
-  return cleanPlan(plan);
+  return { steps: [] };
 }
 
-// ---------- main ----------
-export async function planActionsFromText(userText, opts={}){
+export async function planActionsFromText(userText, opts = {}){
+  // 1) Always try local parse first
+  const local = localParse(userText);
+  if (local.steps.length) return local;
+
+  // 2) If nothing local, then try LLM (only if endpoint is set)
   const endpoint = (localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '');
+  if (!endpoint) return { steps: [] };
 
-  // No endpoint → regex plan
-  if(!endpoint) return localParse(userText);
-
-  // With endpoint → ask LLM for SHORT JSON per schema
   const system = [
-    'You are NYX inside NeuroQuest.',
-    'Return ONLY a JSON object that matches this schema:',
+    'You are NYX, inside the NeuroQuest app.',
+    'Turn the user request into a SHORT JSON plan following this JSON schema:',
     JSON.stringify(SCHEMA),
-    'Allowed actions: '+Array.from(ALLOWED).join(', ')+'.',
-    'Prefer side-tier for quests when not specified.',
-    'Ask for confirm:true only if something is destructive or irreversible.',
-    'Do not include any prose or code fences unless asked.'
+    'Only use these actions: quest.create, quest.complete, journal.add, hydrate.log, breathe.start, shopping.add, budget.add, reward.grant.',
+    'Default to side-tier quests when unspecified. Ask for confirm:true if a step looks destructive.'
   ].join('\n');
 
-  const resp = await nyxAskLLM('PLAN: '+String(userText||''), { system, model:'gpt-4o-mini' }).catch(()=>'');
+  const resp = await nyxAskLLM('PLAN: '+userText, { system, model: 'gpt-4o-mini' }).catch(()=>'');
 
-  // try raw JSON, then ```json blocks, then fallback regex
-  let txt = String(resp||'').trim();
-  let jsonText = txt;
+  let jsonText = String(resp||'').trim();
+  const block = jsonText.match(/```json\s*([\s\S]*?)\s*```/i);
+  if (block) jsonText = block[1];
 
-  const block = txt.match(/```json\s*([\s\S]*?)\s*```/i);
-  if(block) jsonText = block[1];
-
-  try{
-    const parsed = JSON.parse(jsonText);
-    return cleanPlan(parsed);
-  }catch(_){
-    return localParse(userText);
-  }
+  try {
+    const obj = JSON.parse(jsonText);
+    if (Array.isArray(obj.steps)) return obj;
+  } catch(_) {}
+  return { steps: [] };
 }

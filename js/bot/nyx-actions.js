@@ -59,14 +59,20 @@ export const Actions = {
 
 // Quests
 Actions.register('quest.create', async ({ title, tier='side', note='' })=>{
-  if(!title) throw new Error('title required');
+  // fallback: if title missing but note provided, use note as title
+  if ((!title || !String(title).trim()) && note && String(note).trim()) {
+    title = String(note).trim();
+  }
+  if (!title || !String(title).trim()) throw new Error('title required');
+
   const s = state();
-  s.quests ||= {};
-  s.quests.main ||= [];
-  s.quests.side ||= [];
-  const bucket = (tier === 'main') ? 'main' : 'side';
-  const id = 'q_' + Math.random().toString(36).slice(2, 9);
-  const q = { id, title, note, done:false, createdAt: Date.now(), tier: bucket };
+  s.quests = s.quests || {};
+  s.quests.main = s.quests.main || [];
+  s.quests.side = s.quests.side || [];
+
+  const bucket = (tier==='main') ? 'main' : 'side';
+  const id = 'q_'+Math.random().toString(36).slice(2,9);
+  const q = { id, title: String(title).trim(), note, done:false, createdAt: Date.now(), tier: bucket };
   s.quests[bucket].push(q);
   persist(s);
   document.dispatchEvent(new CustomEvent('nq:quest-create', { detail: q }));
