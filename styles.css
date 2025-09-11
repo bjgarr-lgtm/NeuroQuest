@@ -271,3 +271,48 @@ body.drawer-open .scrim{ opacity: 1; pointer-events: auto; }
 /* Make sure NYX panel floats above */
 #nyx-panel{ z-index: 2000; }
 #nyx-launcher{ z-index: 2000; }
+
+/* ---- Drawer overlay + responsive layout (fix) ---- */
+:root { --header-h: 64px; --drawer-w: 260px; }
+
+.app-header { position: sticky; top: 0; z-index: 70; }
+
+.drawer {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  bottom: 0;
+  width: var(--drawer-w);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform .25s ease;
+  z-index: 60;
+}
+
+.drawer.open { transform: translateX(0); }
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+  z-index: 55;
+}
+body.drawer-open .scrim { opacity: 1; pointer-events: auto; }
+
+/* Content area */
+.view {
+  min-height: calc(100vh - var(--header-h));
+  padding: 16px;
+  margin-left: 0;                 /* mobile default: overlay drawer */
+}
+
+/* Desktop: keep drawer pinned open, push content over */
+@media (min-width: 980px) {
+  .drawer { transform: translateX(0); }
+  .scrim { display: none; }
+  .view { margin-left: var(--drawer-w); }
+}
+
