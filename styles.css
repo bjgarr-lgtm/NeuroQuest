@@ -282,3 +282,13 @@ body.drawer-open .scrim{ opacity: 1; pointer-events: auto; }
 
 /* Make sure NYX floats above everything */
 #nyx-panel, #nyx-launcher{ z-index: 2500; }
+
+/* make Godot lowest interactive layer */
+#godot-root { z-index: 10; }
+
+/* keep header and NYX above */
+.app-header { position: sticky; top: 0; z-index: 90; }
+#nyx-panel, #nyx-launcher { z-index: 2000; }
+
+/* hide the old planner view if you don’t need it */
+main.view { display: none; }

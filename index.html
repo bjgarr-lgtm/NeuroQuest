@@ -230,3 +230,56 @@
   <script type="module" src="js/bot/nyx-wire.js"></script>
 </body>
 </html>
+
+<!-- Godot mount (full experience: the game owns the viewport) -->
+<div id="godot-root"></div>
+<script>
+  (function bootGodot(){
+    // CHANGE THESE THREE LINES:
+    const GODOT_HOST = 'https://nq-game-worker.bjgarr.workers.dev/'; // <- your Worker URL
+    const GODOT_BASE = 'nq';                                        // <- file base in R2 (no extension)
+    const LOADER_URL = 'https://nq-game-worker.bjgarr.workers.dev/neuroquest-game/nq.js';   // <- loader script full URL
+                          
+    const root = document.getElementById('godot-root');
+    Object.assign(root.style, {
+      position:'fixed', inset:'0', zIndex: 10,  /* below NYX/HUD, above bg */
+      background:'#0b0b12'
+    });
+
+    // 1) sanity check the loader exists (helps you catch 404s fast)
+    fetch(LOADER_URL, {method:'HEAD'})
+      .then(r => {
+        if(!r.ok) throw new Error('Loader 404 at ' + LOADER_URL);
+        // 2) load the loader
+        const s = document.createElement('script');
+        s.src = LOADER_URL;
+        s.onload = () => {
+          // 3) boot the engine; executable is the same base (no extension)
+          createEngine({
+            canvasContainer: root,
+            executable: GODOT_HOST + '/game/' + GODOT_BASE,
+            focusCanvas: true
+          }).then(() => console.log('[Godot] started'))
+            .catch(err => console.error('[Godot] engine init failed:', err));
+        };
+        s.onerror = () => console.error('[Godot] loader failed to load:', LOADER_URL);
+        document.body.appendChild(s);
+      })
+      .catch(err => console.error('[Godot] preflight error:', err));
+  })();
+</script>
+
+<script>
+  // GAME -> PAGE: listen for events Godot emits
+  window.addEventListener('nq:fromGame', (ev) => {
+    console.log('[fromGame]', ev.detail);
+    // example: reward in NYX
+    if (ev.detail?.type === 'quest:complete') {
+      window.NQ?.track?.('quest:complete', ev.detail);
+    }
+  });
+
+  // PAGE -> GAME: make a global callable the game will set (from WebBridge.gd)
+  // After WebBridge.gd `_ready()`, globalThis.NQ_toGame will be a function.
+  // Example call: globalThis.NQ_toGame?.({ type:'quest:complete', id:'q_123' });
+</script>
