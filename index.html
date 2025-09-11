@@ -1,32 +1,139 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script>
-window.NQ_track = window.NQ_track || function(ev,p){try{if(window.NQ?.track) window.NQ.track(ev,p||{});}catch(e){}};
-window.tracker = window.NQ_track;
-</script>
-
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>NeuroQuest — v2.6 single-file align hotfix</title>
-  <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml"/>
+  <title>NeuroQuest</title>
+
+  <!-- Fonts & app stylesheet (keep your look) -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml"/>
   <link rel="stylesheet" href="styles.css"/>
+
   <style>
-    .sb-align-bar{position:absolute; left:8px; top:8px; display:flex; gap:6px;
-      background:rgba(10,10,20,.7); border:1px solid #4af; border-radius:10px; padding:6px; z-index:999}
-    .sb-align-bar button{padding:6px 10px; border-radius:8px; border:1px solid #79f; background:#122; color:#fff; cursor:pointer}
-    .sb-align-hint{position:absolute; right:8px; top:8px; background:rgba(0,0,0,.55); color:#fff;
-      padding:6px 10px; border-radius:10px; font-size:.8rem; z-index:999; border:1px solid #456}
-    .sb-acc-layer{position:absolute; left:0; top:0; width:100%; height:100%}
-    .sb-acc-ov{position:absolute; transform:translate(-50%,-50%) scale(1) rotate(0deg); cursor:grab; user-select:none}
-    .sb-acc-ov:active{cursor:grabbing}
+    :root{
+      --header-h: 64px;
+      --drawer-w: 280px;
+      --z-game: 10;      --z-hud: 90;    --z-drawer: 600;
+      --z-scrim: 550;    --z-nyx: 900;   --z-fx: 650;
+    }
+
+    html,body{height:100%}
+    body{margin:0;background:#0b0b12}
+
+    /* GODOT owns the viewport */
+    #godot-root{
+      position: fixed; inset: 0;
+      z-index: var(--z-game);
+      background:#0b0b12;
+      pointer-events:auto; /* game is interactive */
+    }
+
+    /* HUD floats above game (keep your header markup/styles.css) */
+    .app-header{ position: sticky; top:0; z-index: var(--z-hud); }
+
+    /* Right-side drawer (overlay, not layout-pushing) */
+    #drawer.drawer{
+      position: fixed;
+      top: var(--header-h);
+      right: 0; bottom: 0;
+      width: var(--drawer-w);
+      transform: translateX(100%);
+      transition: transform .22s ease-out;
+      z-index: var(--z-drawer);
+      background: rgba(10,10,22,.98);
+      border-left: 1px solid #444;
+      padding: 12px;
+      overflow:auto;
+    }
+    #drawer.open{ transform: translateX(0); }
+
+    #scrim.scrim{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s ease;
+      z-index: var(--z-scrim);
+    }
+    #drawer.open + #scrim{ opacity:1; pointer-events:auto; }
+
+    /* Keep NYX on top */
+    #nyx-launcher{ position:fixed; right:16px; bottom:16px; z-index: var(--z-nyx); }
+    #nyx-panel{ position:fixed; right:16px; bottom:76px; z-index: calc(var(--z-nyx)+1); }
+
+    /* Optional: hide legacy planner view area (Godot is full experience) */
+    main.view{ display:none; }
+
+    /* Effects layer (confetti etc.) never steals clicks */
+    .fx-layer{ position:fixed; inset:0; z-index:var(--z-fx); pointer-events:none; }
   </style>
-  <style id="patch-hide-toolbar">.sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}</style>
+
+  <script>
+    // --- Minimal tracker shim (safe even if NYX hasn't loaded yet) ---
+    window.NQ_track = window.NQ_track || function (ev, payload) {
+      try { if (window.NQ && typeof window.NQ.track === 'function') window.NQ.track(ev, payload || {}); } catch(e){}
+    };
+    window.tracker = window.NQ_track;
+
+    // --- JS <-> Godot bridge -----------------------------------------
+    // Outgoing queue until Godot binds its receive fn
+    const __nq_outbox = [];
+    let __nq_sendToGame = null;
+
+    // Call this FROM GODOT once ready, passing a function that receives messages from JS.
+    // In GDScript, use: JavaScriptBridge.get_interface("NQ_bind")(func_ref)
+    window.NQ_bind = function(sendFnFromGodot){
+      __nq_sendToGame = sendFnFromGodot;
+      // flush anything queued pre-bind
+      while(__nq_outbox.length) {
+        try { __nq_sendToGame(__nq_outbox.shift()); } catch(e){ console.warn('[NQ] flush->game failed', e); }
+      }
+      document.dispatchEvent(new CustomEvent('godot:ready'));
+      console.log('[NQ] Godot bound');
+    };
+
+    // JS -> Godot (your app calls this)
+    window.NQ_toGame = function(msg){
+      try{
+        if(__nq_sendToGame){ __nq_sendToGame(msg); }
+        else { __nq_outbox.push(msg); }
+      }catch(e){ console.warn('[NQ] toGame failed', e); }
+    };
+
+    // Godot -> JS (Godot calls window.NQ_fromGame({...}))
+    window.NQ_fromGame = function(msg){
+      try{
+        // bubble a DOM event for any listeners
+        document.dispatchEvent(new CustomEvent('nq:game', { detail: msg }));
+        // optional: map common game events to NYX tracker economy
+        switch(msg?.type){
+          case 'quest:complete':
+            window.NQ_track('quest:complete', { id: msg.id, title: msg.title, tier: msg.tier||'side' });
+            break;
+          case 'journal:entry':
+            window.NQ_track('journal:entry', {});
+            break;
+          case 'hydrate:log':
+            window.NQ_track('hydrate:log', {});
+            break;
+          case 'breathe:ring':
+            window.NQ_track('breathe:ring', {});
+            break;
+          case 'streak:day':
+            window.NQ_track('streak:day', {});
+            break;
+          default:
+            // no-op; your app can listen to 'nq:game' and branch
+        }
+      }catch(e){ console.warn('[NQ] fromGame handler error', e); }
+    };
+  </script>
 </head>
+
 <body class="crt">
+  <!-- Header HUD (keep your existing markup; this version is minimal) -->
   <header class="app-header">
-    <a class="brand" id="brand" href="#home">
+    <a class="brand" id="brand" href="#">
       <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest logo"/>
       <h1>NeuroQuest</h1>
     </a>
@@ -38,7 +145,6 @@ window.tracker = window.NQ_track;
         <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
         <div class="bar"><div id="hudXp"></div></div>
       </div>
-      <!-- audio element for header music toggle -->
       <audio id="music" preload="none"></audio>
       <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
       <input type="file" id="musicFile" accept="audio/*" style="display:none"/>
@@ -46,15 +152,15 @@ window.tracker = window.NQ_track;
     </div>
   </header>
 
+  <!-- Right drawer + scrim (overlay) -->
   <aside id="drawer" class="drawer"><nav id="nav"></nav></aside>
   <div id="scrim" class="scrim"></div>
-  <main id="view" class="view">
-    <!-- Godot mount point (hidden by default) -->
-<div id="godot-root" style="display:none; position:relative; min-height: calc(100vh - var(--header-h,64px));"></div>
 
-<!-- Godot loader (served from your /assets/game/ folder) -->
-<script src="assets/game/game.loader.js"></script>
-</main>
+  <!-- Godot canvas mounts here and owns the screen -->
+  <div id="godot-root"></div>
+
+  <!-- (Optional) legacy main container, hidden; keeping to avoid breaking imports -->
+  <main id="view" class="view"></main>
 
   <footer class="app-footer">
     <span id="streakLabel">Streak: 0 🔥 | Best: 0</span>
@@ -66,404 +172,55 @@ window.tracker = window.NQ_track;
 
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
-  <!-- 0) STORAGE SHIM + header music wire -->
+  <!-- Drawer wiring (right side) -->
   <script>
-  // Wrap localStorage.setItem safely and trim heavy blobs from sb_v26_state
-  (function(){
-    const origSet = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, val){
-      try{
-        if (key === 'sb_v26_state') {
-          try {
-            const obj = JSON.parse(val);
-            if (obj?.wardrobe?.images) delete obj.wardrobe.images;
-            if (obj?.pet?.images) delete obj.pet.images;
-            if (obj?.overlays?.images) delete obj.overlays.images;
-            if (Array.isArray(obj?.journal)) obj.journal = obj.journal.slice(-50);
-            if (Array.isArray(obj?.moods)) obj.moods = obj.moods.slice(-100);
-            val = JSON.stringify(obj);
-          } catch(e) {}
-        }
-        return origSet(key, val);
-      } catch(e){
-        // last-ditch compact save for your main state if too big
-        try{
-          const obj = JSON.parse(val);
-          const tiny = { user: obj.user, xp: obj.xp, gold: obj.gold,
-                         streak: obj.streak, settings: obj.settings,
-                         party: obj.party, overlays: obj.overlays };
-          return origSet(key, JSON.stringify(tiny));
-        }catch(e2){ /* swallow */ }
-      }
-    };
-  })();
+    (function(){
+      const drawer = document.getElementById('drawer');
+      const scrim  = document.getElementById('scrim');
+      const hamb   = document.getElementById('hamb');
+      if (!drawer || !scrim || !hamb) return;
 
-  // Header ♪ button: play/pause current selection, listen for settings page selection
-  (function(){
-    const btn = document.getElementById('musicBtn');
-    const audio = document.getElementById('music');
+      const open  = ()=> drawer.classList.add('open');
+      const close = ()=> drawer.classList.remove('open');
+      const toggle= ()=> drawer.classList.toggle('open');
 
-    function pickInitial(){
-      const stored = localStorage.getItem('nq_music');
-      if (stored) { audio.src = stored; audio.loop = true; audio.volume = 0.6; }
-      else {
-        // fallback to first item in library if present
-        try {
-          const list = JSON.parse(localStorage.getItem('nq_music_list')||'[]');
-          if (list[0]?.url) { audio.src = list[0].url; audio.loop = true; audio.volume = 0.6; }
-        }catch(_){}
-      }
-    }
-
-    btn?.addEventListener('click', ()=>{
-      if (!audio.src) pickInitial();
-      if (audio.paused){
-        audio.play?.().catch(()=>{});
-        btn.classList.add('on');
-      } else {
-        audio.pause?.();
-        btn.classList.remove('on');
-      }
-    });
-
-    // When Settings chooses a new song, sync here
-    document.addEventListener('nq:music', (e)=>{
-      const {url} = e.detail || {};
-      if (url){
-        audio.src = url;
-        // auto-start if header shows "on"
-        if (btn?.classList.contains('on')){
-          audio.play?.().catch(()=>{});
-        }
-      }
-    });
-  })();
-
-  // ===== Portrait wrapper + layer anchoring (robust) =====
-  function ensurePortraitWrap(portrait){
-    let wrap = portrait.closest('.sb-portrait-wrap');
-    if (wrap) return wrap;
-    wrap = document.createElement('div');
-    wrap.className = 'sb-portrait-wrap';
-    const parent = portrait.parentElement;
-    parent.insertBefore(wrap, portrait);
-    wrap.appendChild(portrait);
-    portrait.style.display = 'block';
-    if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
-    return wrap;
-  }
-  function ensureAccLayer(wrap){
-    let layer = wrap.querySelector('.sb-acc-layer');
-    if (!layer){
-      layer = document.createElement('div');
-      layer.className = 'sb-acc-layer';
-      layer.style.position = 'absolute';
-      layer.style.inset = '0';
-      layer.style.pointerEvents = 'auto';
-      layer.style.zIndex = '3';
-      wrap.appendChild(layer);
-    }
-    return layer;
-  }
-  function bindDebugToggle(){
-    const set = (on)=> document.body.classList.toggle('sb-debug', !!on);
-    if (location.hash.includes('debug-align')) set(true);
-    window.addEventListener('keydown', (e)=>{
-      if (e.key.toLowerCase()==='d' && (e.ctrlKey || e.metaKey || !e.shiftKey)){
-        set(!document.body.classList.contains('sb-debug'));
-      }
-    });
-  }
-
-  // --- Safe anchor: size/position layer to portrait WITHOUT reparenting ---
-  function ensureAccLayerWithin(wrap){
-    let layer = wrap.querySelector('.sb-acc-layer');
-    if(!layer){
-      layer = document.createElement('div');
-      layer.className = 'sb-acc-layer';
-      wrap.appendChild(layer);
-    }
-    return layer;
-  }
-  function anchorLayerToPortrait_NoWrap(wrap, portrait, layer){
-    const cs = getComputedStyle(wrap);
-    if (cs.position === 'static') wrap.style.position = 'relative';
-    const left = portrait.offsetLeft;
-    const top  = portrait.offsetTop;
-    const w    = portrait.clientWidth  || portrait.naturalWidth  || portrait.width  || 0;
-    const h    = portrait.clientHeight || portrait.naturalHeight || portrait.height || 0;
-    Object.assign(layer.style, { position:'absolute', left:left+'px', top:top+'px', width:w+'px', height:h+'px' });
-  }
+      hamb.addEventListener('click', toggle);
+      scrim.addEventListener('click', close);
+      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+    })();
   </script>
 
-  <!-- 1) YOUR APP -->
-  <script type="module" src="js/app.js"></script>
-
-  <!-- 2) Inline IDB + overlay + ALIGN TOOL (Character page) -->
+  <!-- Boot the Godot HTML5 export -->
   <script>
-  (function(){
-    const OKEY='sb_v26_overlay_state';
-    const OStore = {
-      get(){ try{ return JSON.parse(localStorage.getItem(OKEY))||{} }catch{ return {} } },
-      set(v){ try{ localStorage.setItem(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
-    };
-
-    const DB='sb_idb_inline_v1', ST='assets';
-    function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1);
-      r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(ST)) db.createObjectStore(ST,{keyPath:'id'}) };
-      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error) }) }
-    async function idbPut(file){ const db=await openDB(); return new Promise((res,rej)=>{ const id=Math.random().toString(36).slice(2);
-      const tx=db.transaction(ST,'readwrite'); tx.objectStore(ST).put({id,blob:file}); tx.oncomplete=()=>res(id); tx.onerror=()=>rej(tx.error) }) }
-    async function idbGetURL(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(ST,'readonly'); const q=tx.objectStore(ST).get(id);
-      q.onsuccess=()=>res(q.result?URL.createObjectURL(q.result.blob):null); q.onerror=()=>rej(q.error) }) }
-
-    class OverlayMgr{
-      constructor(layer){ this.layer=layer; this.S=OStore.get() }
-      _arr(id){ return this.S[id]||(this.S[id]=[]) }
-      save(){ OStore.set(this.S) }
-      async load(id){ this.layer.innerHTML=''; for(const o of this._arr(id)) this._spawn(o) }
-      async add(id,o){ this._arr(id).push(o); this._spawn(o); this.save() }
-      async clear(id){ this.S[id]=[]; this.layer.innerHTML=''; this.save() }
-      _spawn(o){
-        const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=o.url; img.alt='overlay';
-        img.className='sb-acc-ov';
-        img.dataset.x=o.x??0.5; img.dataset.y=o.y??0.5; img.dataset.s=o.s??1; img.dataset.r=o.r??0;
-        this._apply(img); this.layer.appendChild(img)
-      }
-      _apply(el){
-        const x=parseFloat(el.dataset.x), y=parseFloat(el.dataset.y),
-              s=parseFloat(el.dataset.s), r=parseFloat(el.dataset.r);
-        el.style.left=(x*100)+'%'; el.style.top=(y*100)+'%';
-        el.style.transform=`translate(-50%,-50%) scale(${s}) rotate(${r}deg)`
-      }
-      updateLastTransform(id){
-        const arr=this._arr(id); if(!arr.length) return;
-        const last=this.layer.querySelector('.sb-acc-ov:last-of-type'); if(!last) return;
-        arr[arr.length-1] = {
-          id: arr[arr.length-1].id,
-          url: arr[arr.length-1].url,
-          x: parseFloat(last.dataset.x),
-          y: parseFloat(last.dataset.y),
-          s: parseFloat(last.dataset.s),
-          r: parseFloat(last.dataset.r)
-        };
-        this.save();
-      }
-    }
-
-    function injectAlignUI(wrap, mgr, leaderId){
-      wrap.querySelector('.sb-align-bar')?.remove();
-      wrap.querySelector('.sb-align-hint')?.remove();
-
-      const bar=document.createElement('div'); bar.className='sb-align-bar';
-      bar.innerHTML = `
-        <button data-act="align">Enable Align</button>
-        <button data-act="save">Save</button>
-        <button data-act="clear">Clear</button>
-        <button data-act="exit">Exit</button>
-      `;
-      const hint=document.createElement('div'); hint.className='sb-align-hint';
-      hint.textContent='Drag to move · Wheel to scale · Q/E to rotate';
-      wrap.appendChild(bar); wrap.appendChild(hint);
-
-      let active=null, dragging=false, lastPos=null;
-      const layer = wrap.querySelector('.sb-acc-layer');
-
-      function pickLast(){
-        active = wrap.querySelector('.sb-acc-ov:last-of-type');
-        return !!active;
-      }
-      function enableAlign(){
-        if(!pickLast()){ alert('Add an accessory first.'); return; }
-        active.style.pointerEvents='auto';
-        active.addEventListener('mousedown', onDown);
-        wrap.addEventListener('wheel', onWheel, {passive:false});
-        window.addEventListener('keydown', onKey);
-      }
-      function disableAlign(){
-        if(active){
-          active.style.pointerEvents='none';
-          active.removeEventListener('mousedown', onDown);
+    (function bootGodot(){
+      const root = document.getElementById('godot-root');
+      const s = document.createElement('script');
+      s.src = '/game/nq.js'; // ← adjust if your export uses different names
+      s.onload = () => {
+        if (typeof createEngine !== 'function'){
+          console.error('[Godot] loader missing createEngine()');
+          return;
         }
-        wrap.removeEventListener('wheel', onWheel);
-        window.removeEventListener('keydown', onKey);
-        active=null; dragging=false; lastPos=null;
-      }
-      function onDown(ev){
-        ev.preventDefault(); dragging=true;
-        const r=layer.getBoundingClientRect(); lastPos={r,ox:ev.clientX,oy:ev.clientY};
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-      }
-      function onMove(ev){
-        if(!dragging||!active||!lastPos) return;
-        const {r}=lastPos;
-        let x=(ev.clientX - r.left)/r.width, y=(ev.clientY - r.top)/r.height;
-        x=Math.max(0,Math.min(1,x)); y=Math.max(0,Math.min(1,y));
-        active.dataset.x=x; active.dataset.y=y;
-        active.style.left=(x*100)+'%'; active.style.top=(y*100)+'%';
-      }
-      function onUp(){
-        dragging=false; window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-        mgr.updateLastTransform(leaderId);
-      }
-      function onWheel(ev){
-        if(!active) return;
-        ev.preventDefault();
-        const s=parseFloat(active.dataset.s)||1;
-        const delta = (ev.deltaY>0 ? -0.06 : 0.06);
-        const ns = Math.max(.2, Math.min(5, s+delta));
-        active.dataset.s = ns.toFixed(3);
-        applyTRS();
-      }
-      function onKey(ev){
-        if(!active) return;
-        if(ev.key==='q' || ev.key==='Q'){ rotate(-4) }
-        else if(ev.key==='e' || ev.key==='E'){ rotate(4) }
-      }
-      function rotate(d){
-        const r=parseFloat(active.dataset.r)||0;
-        active.dataset.r=(r+d).toFixed(2);
-        applyTRS();
-      }
-      function applyTRS(){
-        const s=parseFloat(active.dataset.s)||1;
-        const r=parseFloat(active.dataset.r)||0;
-        active.style.transform=`translate(-50%,-50%) scale(${s}) rotate(${r}deg)`;
-      }
+        createEngine({
+          canvasContainer: root,
+          executable: '/game/nq', // ← base path (nq.wasm, nq.pck)
+          focusCanvas: true,
+        }).then(()=>console.log('[Godot] started'))
+          .catch(err=>console.error('[Godot] boot error', err));
+      };
+      s.onerror = ()=> console.error('[Godot] failed to load loader script', s.src);
+      document.body.appendChild(s);
+    })();
 
-      bar.addEventListener('click', (e)=>{
-        const act = e.target.getAttribute('data-act');
-        if(!act) return;
-        if(act==='align'){ enableAlign(); }
-        if(act==='save'){ mgr.updateLastTransform(leaderId); alert('Saved accessory transform.'); }
-        if(act==='clear'){ disableAlign(); mgr.clear(leaderId); }
-        if(act==='exit'){ disableAlign(); bar.remove(); hint.remove(); }
-      });
-    }
-
-    function leaderId(){
-      const sel=document.querySelector('#leader');
-      return sel?.value || 'bambi';
-    }
-    async function patchCharacter(){
-      const portrait=document.querySelector('#portrait, #heroBase, #charPortrait, .char-portrait img, .portrait-wrap img'); if(!portrait) return;
-      const wrap=ensurePortraitWrap(portrait);
-      let layer = ensureAccLayer(wrap);
-
-      const mgr=new OverlayMgr(layer);
-      await mgr.load(leaderId());
-
-      const addBtn=document.querySelector('#addAcc');
-      const fileIn=document.querySelector('#accFile');
-      const clrBtn=document.querySelector('#clearAcc');
-      if(addBtn && fileIn && !addBtn._wired){
-        addBtn._wired=true;
-        addBtn.addEventListener('click', async ()=>{
-          const f=fileIn.files && fileIn.files[0]; if(!f){ alert('Choose an image first'); return; }
-          try{
-            const id=await idbPut(f); const url=await idbGetURL(id);
-            if(!url){ alert('Accessory load failed'); return; }
-            await mgr.add(leaderId(), { id, url, x:0.5, y:0.5, s:1, r:0 });
-            injectAlignUI(wrap, mgr, leaderId());
-            alert('Accessory added. Use the Align toolbar (top-left of portrait).');
-          }catch(err){ console.error(err); alert('Accessory add failed: '+err); }
-        });
-      }
-      if(clrBtn && !clrBtn._wired){
-        clrBtn._wired=true;
-        clrBtn.addEventListener('click', async ()=>{ await mgr.clear(leaderId()); alert('Cleared overlays.'); });
-      }
-
-      if (layer.querySelector('.sb-acc-ov')) injectAlignUI(wrap, mgr, leaderId());
-    }
-
-    function onRoute(){ setTimeout(patchCharacter, 60) }
-    window.addEventListener('hashchange', onRoute);
-    document.addEventListener('DOMContentLoaded', onRoute);
-    setTimeout(onRoute, 200);
-    bindDebugToggle();
-  })();
+    // Example: send a smoke-test to the game once it's ready.
+    document.addEventListener('godot:ready', ()=>{
+      // window.NQ_toGame({ type:'hello', from:'web' });
+    });
   </script>
 
+  <!-- NYX endpoint + bot (floats above game) -->
   <script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
   <script type="module" src="js/bot/nyx.js?v=syntaxfix2"></script>
   <script type="module" src="js/bot/nyx-wire.js"></script>
-  <script>
-(function(){
-  const drawer = document.getElementById('drawer');
-  const scrim  = document.getElementById('scrim');
-  const hamb   = document.getElementById('hamb');
-  if (!drawer || !scrim || !hamb) return;
-
-  function open(){ drawer.classList.add('open'); }
-  function close(){ drawer.classList.remove('open'); }
-  function toggle(){ drawer.classList.toggle('open'); }
-
-  hamb.addEventListener('click', toggle);
-  scrim.addEventListener('click', close);
-  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
-})();
-</script>
-<style id="z-fix">
-  :root{
-    --z-hud: 400;        /* header HUD */
-    --z-scrim: 500;      /* dark backdrop when drawer open */
-    --z-drawer: 600;     /* left nav drawer */
-    --z-fx: 650;         /* confetti/canvas effects */
-    --z-nyx: 900;        /* NYX launcher & panel */
-    --z-align: 950;      /* accessory align toolbar */
-  }
-
-  /* Make sure content never floats above nav/NYX */
-  .view, .view * { z-index: auto; }
-  .panel, .card { position: relative; z-index: 1; }
-
-  /* Drawer should float, not push layout */
-  .drawer{
-    position: fixed;
-    top: var(--header-h, 64px);
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    z-index: var(--z-drawer);
-  }
-  .scrim{
-    position: fixed; inset: 0;
-    z-index: var(--z-scrim);
-  }
-
-  /* FX layer should never eat clicks */
-  .fx-layer{
-    position: fixed; inset: 0;
-    z-index: var(--z-fx);
-    pointer-events: none;
-  }
-
-  /* Header HUD stays above content */
-  .app-header{ position: sticky; top: 0; z-index: var(--z-hud); }
-
-  /* NYX always on top */
-  #nyx-launcher{
-    position: fixed; right: 16px; bottom: 16px;
-    z-index: var(--z-nyx);
-  }
-  #nyx-panel{
-    position: fixed; right: 16px; bottom: 76px;
-    max-height: calc(100dvh - 120px);
-    z-index: calc(var(--z-nyx) + 1);
-  }
-
-  /* Align toolbar for Character page (your inline tool uses 999; keep it above NYX if needed) */
-  .sb-align-bar, .sb-align-hint{ z-index: var(--z-align)!important; }
-
-  /* Safety: prevent accidental new stacking contexts on parents */
-  .view, .app, body{
-    transform: none !important;
-    filter: none !important;
-    will-change: auto !important;
-  }
-</style>
 </body>
 </html>
