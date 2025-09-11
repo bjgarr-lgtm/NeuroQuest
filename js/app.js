@@ -148,6 +148,11 @@ console.log('[APP] ready');
 
   hamb?.addEventListener('click', toggle);
   scrim?.addEventListener('click', close);
+  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') close(); });
+
+  drawer.style.left = 'auto';
+  drawer.style.right = '0';
+  drawer.style.transform = drawer.classList.contains('open') ? 'translateX(0)' : 'translateX(100%)';
 
   // Close drawer when navigating
   window.addEventListener('hashchange', close);
