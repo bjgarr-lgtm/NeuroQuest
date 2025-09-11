@@ -104,21 +104,29 @@ class Nyx {
   }
 async speak(text){
   try{
-    if (!('speechSynthesis' in window)) return;
-    // iOS/Chrome sometimes need an interaction first; calling from button clicks helps.
-    await waitForVoices();
-
-    const u = new SpeechSynthesisUtterance(String(text||''));
-    const pref = localStorage.getItem(VOICE_KEY);
-    const v = pickVoiceByName(pref);
-    if (v) u.voice = v;
-
-    // You can tweak rate/pitch/volume if desired:
-    // u.rate = 1; u.pitch = 1; u.volume = 1;
-
-    window.speechSynthesis.speak(u);
-  }catch(_){}
-}
+     if(!('speechSynthesis' in window)) return;
+     const u = new SpeechSynthesisUtterance(String(text||''));
+     const choose = () => {
+       const voices = window.speechSynthesis.getVoices() || [];
+       const pref = (localStorage.getItem('nyx_voice')||'').toLowerCase();
+       let pick = null;
+       if(pref){
+         pick = voices.find(v=>v.name.toLowerCase()===pref)
+             || voices.find(v=>v.name.toLowerCase().includes(pref));
+       }
+       if(!pick){
+         pick = voices.find(v=>/english/i.test(v.name)||/en-/i.test(v.lang)) || voices[0];
+       }
+       if(pick) u.voice = pick;
+       window.speechSynthesis.speak(u);
+    };
+     const have = window.speechSynthesis.getVoices();
+    if(have && have.length){ choose(); }
+     else {
+       window.speechSynthesis.onvoiceschanged = () => { try{ choose(); }catch(_){} };
+     }
+    }catch(_){}
+  }
 
 // ---------- chat helpers ----------
   pushBot(text){
@@ -170,12 +178,12 @@ async speak(text){
   this.pushBot('voices: '+names); return names;
 }
 if(lc.startsWith('/voice set ')){
-  const n=q.slice(12).trim();
-  localStorage.setItem(VOICE_KEY, n);  // <-- FIXED
-  const m='voice set to '+n;
-  this.pushBot(m); this.speak(m); return m;
-}
-
+   const n = q.slice(11).trim(); // correct off-by-one
+   try{ localStorage.setItem('nyx_voice', n); }catch(_){}
+   const m = 'voice set to '+n;
+   this.pushBot(m); this.speak(m);
+   return m;
+ }
     if(lc.startsWith('/llm test')){
       const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '';
       if(!ep){ const m='no endpoint set. run this in console:\nlocalStorage.setItem("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
@@ -286,13 +294,7 @@ if(lc.startsWith('/voice set ')){
     document.addEventListener('nq:levelup',      ()=>{ this.pushBot('level up! +10 gold bonus. keep rolling.'); this.speak('level up'); });
 
     // attribute-based auto-claim
-    document.body.addEventListener('click', (e)=>{
-      const el = e.target.closest('[data-quest-complete],[data-journal-save],[data-hydrate]');
-      if(!el) return;
-      if(el.hasAttribute('data-quest-complete')) this.track('quest:complete', { title: el.getAttribute('data-quest-complete') });
-      if(el.hasAttribute('data-journal-save'))   this.track('journal:entry', {});
-      if(el.hasAttribute('data-hydrate'))        this.track('hydrate:log', {});
-    });
+    document.getElementById('nyx-panel')?.addEventListener('click', (e)=>{ /* ... */ });
 
     // checkbox auto-claim
     const mo = new MutationObserver((muts)=>{

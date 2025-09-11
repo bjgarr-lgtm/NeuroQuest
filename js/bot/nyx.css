@@ -14,3 +14,7 @@
 .nyx-bot{background:#111a2e;border:1px solid #284c7b}
 .nyx-user{background:#1c2a2f;border:1px solid #2a4; text-align:right}
 .nyx-chip{display:inline-block;margin:4px 4px 0 0;padding:4px 6px;border:1px solid #345;border-radius:999px;cursor:pointer;font-size:11px}
+/* keep NYX out of the way unless opened */
+#nyx-launcher { z-index: 990; pointer-events:auto; }
+#nyx-panel    { z-index: 991; }         /* only when open */
+.app-header, .drawer, .view, .scrim { position: relative; z-index: 1000; }

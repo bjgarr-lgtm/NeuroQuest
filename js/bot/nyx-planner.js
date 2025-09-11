@@ -62,14 +62,25 @@ export async function planActionsFromText(userText, opts = {}){
   ].join('\n');
 
   const resp = await nyxAskLLM('PLAN: '+userText, { system, model: 'gpt-4o-mini' }).catch(()=>'');
-
-  let jsonText = String(resp||'').trim();
-  const block = jsonText.match(/```json\s*([\s\S]*?)\s*```/i);
-  if (block) jsonText = block[1];
+  let text = String(resp||'').trim();
+  let jsonText = text;
 
   try {
     const obj = JSON.parse(jsonText);
-    if (Array.isArray(obj.steps)) return obj;
+    if(Array.isArray(obj.steps)){
+      // post-process: fill missing quest titles/tier from the utterance
+      for(const step of obj.steps){
+        if(step.action==='quest.create'){
+          step.params = step.params || {};
+          if(!step.params.title){
+            const mm = /(?:add|create)\s+quest\s+(.+)/i.exec(userText||'');
+            if(mm) step.params.title = mm[1].trim();
+          }
+          if(!step.params.tier) step.params.tier = 'side';
+        }
+      }
+      return obj;
+    }
   } catch(_) {}
   return { steps: [] };
 }
