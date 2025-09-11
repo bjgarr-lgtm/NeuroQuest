@@ -226,143 +226,59 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .meal-grid-wrap{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px}
 .meal-col input{width:100%}
 
-/* Drawer as off-canvas panel */
-.drawer{
-  position: fixed;
-  left: 0; top: 0; bottom: 0;
-  width: 280px;
-  background: var(--panel, #141429);
-  box-shadow: 0 10px 30px #0008, inset 0 0 0 1px #ffffff12;
-  transform: translateX(-110%);
-  transition: transform .22s ease-out;
-  z-index: 1000;
-  overflow:auto;
-  padding: 12px;
-}
-.drawer.open{ transform: translateX(0); }
-
-/* Scrim behind drawer */
-.scrim{
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.45);
-  opacity: 0; pointer-events: none;
-  transition: opacity .18s ease;
-  z-index: 999;
-}
-body.drawer-open .scrim{ opacity: 1; pointer-events: auto; }
-
-/* Main content should not be pushed by the drawer on mobile */
-.view{ position: relative; z-index: 0; }
-
-/* On wide screens, keep drawer docked and reserve space */
-@media (min-width: 1024px){
-  .drawer{
-    transform: none;             /* always visible on desktop */
-  }
-  .scrim{ display:none; }
-  .view{
-    margin-left: 300px;          /* leave room for docked drawer */
-  }
-  .app-header{
-    position: sticky; top: 0; z-index: 10;
-  }
+/* ===== Drawer RIGHT overlay / docked on desktop ===== */
+:root{
+  --header-h: 64px;
+  --drawer-w: 260px;
 }
 
-/* Make sure NYX panel floats above */
-#nyx-panel{ z-index: 2000; }
-#nyx-launcher{ z-index: 2000; }
-
-/* ---- Drawer overlay + responsive layout (fix) ---- */
-:root { --header-h: 64px; --drawer-w: 260px; }
-
+/* Keep header on top of content */
 .app-header { position: sticky; top: 0; z-index: 70; }
 
-.drawer {
-  position: fixed;
-  top: var(--header-h);
-  left: 0;
-  bottom: 0;
-  width: var(--drawer-w);
-  overflow-y: auto;
-  transform: translateX(-100%);
-  transition: transform .25s ease;
-  z-index: 60;
-}
-
-.drawer.open { transform: translateX(0); }
-
-.scrim {
+/* Scrim (always above content, below drawer) */
+.scrim{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.45);
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s ease;
-  z-index: 55;
+  z-index: 1998;
 }
-body.drawer-open .scrim { opacity: 1; pointer-events: auto; }
+body.drawer-open .scrim{ opacity: 1; pointer-events: auto; }
 
-/* Content area */
-.view {
+/* RIGHT drawer */
+.drawer{
+  position: fixed;
+  top: var(--header-h);
+  right: 0;                 /* dock on the RIGHT */
+  bottom: 0;
+  width: var(--drawer-w);
+  background: var(--panel, #141429);
+  box-shadow: -10px 0 30px #0008, inset 0 0 0 1px #ffffff12;
+  transform: translateX(100%);               /* hidden off-screen to the right */
+  transition: transform .25s ease;
+  z-index: 1999;                              /* above scrim & content */
+  overflow-y: auto;
+  padding: 12px;
+}
+.drawer.open{ transform: translateX(0); }
+
+/* Content area: never pushed by drawer on mobile (overlay behavior) */
+.view{
+  position: relative;
   min-height: calc(100vh - var(--header-h));
   padding: 16px;
-  margin-left: 0;                 /* mobile default: overlay drawer */
+  margin: 0;                                   /* overlay, no push */
+  z-index: 0;
 }
 
-/* Desktop: keep drawer pinned open, push content over */
-@media (min-width: 980px) {
-  .drawer { transform: translateX(0); }
-  .scrim { display: none; }
-  .view { margin-left: var(--drawer-w); }
-}
-/* ===== NQ layout hotfix (overlay drawer, no pushdown) ===== */
-:root {
-  --drawer-w: 260px;
-  --header-h: 64px; /* adjust if your header is taller/shorter */
+/* Desktop: keep the drawer docked (visible) and reserve space on the RIGHT */
+@media (min-width: 980px){
+  .scrim{ display:none; }
+  .drawer{ transform: none; }                  /* always visible */
+  .view{ margin-right: var(--drawer-w); }      /* reserve space on the RIGHT */
 }
 
-/* Keep header in flow; sticky is fine */
-.app-header { position: sticky; top: 0; z-index: 50; }
-
-/* Drawer must not affect layout */
-#drawer.drawer {
-  position: fixed !important;
-  inset: 0 auto 0 0;            /* top:0; left:0; height:100vh */
-  width: var(--drawer-w);
-  height: 100vh;
-  transform: translateX(-100%);
-  transition: transform .18s ease-out;
-  z-index: 60;
-}
-#drawer.open { transform: translateX(0); }
-
-/* Scrim to catch clicks */
-#scrim.scrim {
-  position: fixed !important;
-  inset: 0;
-  background: rgba(0,0,0,.35);
-  backdrop-filter: blur(2px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .12s ease-out;
-  z-index: 55;
-}
-#drawer.open + #scrim { opacity: 1; pointer-events: auto; }
-
-/* Main view sits under header, not pushed by drawer */
-main.view {
-  display: block;
-  margin: 0 !important;
-  padding: 24px clamp(12px,2vw,24px);
-  min-height: calc(100vh - var(--header-h));
-}
-
-/* Prevent any stray full-viewport spacer above the view */
-body > .spacer, .hero, .banner { max-height: 0 !important; overflow: visible; }
-
-/* If your left nav also exists as a static column, collapse it on small screens */
-@media (max-width: 1024px) {
-  .left-nav, .side-nav { display: none !important; }
-}
-
-
+/* Make sure NYX floats above everything */
+#nyx-panel, #nyx-launcher{ z-index: 2500; }
