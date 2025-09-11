@@ -1,19 +1,29 @@
-// ui/drawer.js
-export function initDrawer() {
+export function initDrawer(routes){
+  const hamb = document.getElementById('hamb');
   const drawer = document.getElementById('drawer');
-  const scrim  = document.getElementById('scrim');
-  const btn    = document.getElementById('hamb');
+  const scrim = document.getElementById('scrim');
+  const nav = document.getElementById('nav');
 
-  const open = () => { drawer.classList.add('open'); document.body.classList.add('drawer-open'); };
-  const close = () => { drawer.classList.remove('open'); document.body.classList.remove('drawer-open'); };
+  function item(route,label){
+    const b=document.createElement('button');
+    b.textContent=label; b.dataset.route=route;
+    b.onclick=()=>{ location.hash = '#'+route; close(); };
+    return b;
+  }
 
-  btn?.addEventListener('click', () => {
-    const isOpen = drawer.classList.contains('open');
-    isOpen ? close() : open();
-  });
+  nav.innerHTML='';
+  routes.forEach(r=> nav.appendChild(item(r.id, r.label)));
 
-  scrim?.addEventListener('click', close);
+  function open(){ drawer.classList.add('open'); scrim.classList.add('show'); }
+  function close(){ drawer.classList.remove('open'); scrim.classList.remove('show'); }
+  hamb.onclick=()=> drawer.classList.contains('open') ? close() : open();
+  scrim.onclick=close;
 
-  // Close on route change for mobile
-  window.addEventListener('hashchange', close);
+  // set active on hashchange
+  function setActive(){
+    [...nav.children].forEach(btn=>btn.classList.toggle('active', '#'+btn.dataset.route===location.hash));
+  }
+  window.addEventListener('hashchange', setActive);
+  setActive();
+  
 }
