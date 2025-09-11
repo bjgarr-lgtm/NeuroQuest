@@ -400,5 +400,64 @@ window.tracker = window.NQ_track;
   window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
 })();
 </script>
+<style id="z-fix">
+  :root{
+    --z-hud: 400;        /* header HUD */
+    --z-scrim: 500;      /* dark backdrop when drawer open */
+    --z-drawer: 600;     /* left nav drawer */
+    --z-fx: 650;         /* confetti/canvas effects */
+    --z-nyx: 900;        /* NYX launcher & panel */
+    --z-align: 950;      /* accessory align toolbar */
+  }
+
+  /* Make sure content never floats above nav/NYX */
+  .view, .view * { z-index: auto; }
+  .panel, .card { position: relative; z-index: 1; }
+
+  /* Drawer should float, not push layout */
+  .drawer{
+    position: fixed;
+    top: var(--header-h, 64px);
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: var(--z-drawer);
+  }
+  .scrim{
+    position: fixed; inset: 0;
+    z-index: var(--z-scrim);
+  }
+
+  /* FX layer should never eat clicks */
+  .fx-layer{
+    position: fixed; inset: 0;
+    z-index: var(--z-fx);
+    pointer-events: none;
+  }
+
+  /* Header HUD stays above content */
+  .app-header{ position: sticky; top: 0; z-index: var(--z-hud); }
+
+  /* NYX always on top */
+  #nyx-launcher{
+    position: fixed; right: 16px; bottom: 16px;
+    z-index: var(--z-nyx);
+  }
+  #nyx-panel{
+    position: fixed; right: 16px; bottom: 76px;
+    max-height: calc(100dvh - 120px);
+    z-index: calc(var(--z-nyx) + 1);
+  }
+
+  /* Align toolbar for Character page (your inline tool uses 999; keep it above NYX if needed) */
+  .sb-align-bar, .sb-align-hint{ z-index: var(--z-align)!important; }
+
+  /* Safety: prevent accidental new stacking contexts on parents */
+  .view, .app, body{
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+</style>
 </body>
 </html>
