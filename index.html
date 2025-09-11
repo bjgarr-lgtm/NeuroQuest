@@ -62,8 +62,8 @@ window.tracker = window.NQ_track;
   <!-- 0) STORAGE SHIM (prevents quota crashes) -->
   <script>
   (function(){
-    const origSet = NQ.commit(s);.bind(localStorage);
-    NQ.commit(s); = function(key, val){
+    const origSet = NQ.commit(s);bind(localStorage);
+    NQ.commit(s);{
       if (key === 'sb_v26_state') {
         try {
           const obj = JSON.parse(val);

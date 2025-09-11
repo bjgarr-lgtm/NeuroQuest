@@ -5,6 +5,7 @@ import { renderHUD } from './ui/hud.js';
 // import { renderJournal } from './pages/journal.js';
 // import { renderLife } from './pages/life.js';
 
+
 function renderAll(s){
   try { renderHUD(s); } catch(_) {}
 }
