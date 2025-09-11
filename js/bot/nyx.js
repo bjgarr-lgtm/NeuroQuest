@@ -5,6 +5,36 @@ import { nyxAskLLM } from './nyx-llm.js';
 import { Actions } from './nyx-actions.js';
 import { planActionsFromText } from './nyx-planner.js';
 
+const VOICE_KEY = 'nyx_voice';
+
+function waitForVoices(timeoutMs = 3000){
+  return new Promise((resolve) => {
+    const ready = () => {
+      const v = window.speechSynthesis?.getVoices?.() || [];
+      if (v.length) { cleanup(); resolve(v); }
+    };
+    const cleanup = () => {
+      clearTimeout(t);
+      window.speechSynthesis?.removeEventListener?.('voiceschanged', ready);
+    };
+    const t = setTimeout(() => { cleanup(); resolve(window.speechSynthesis?.getVoices?.()||[]); }, timeoutMs);
+    window.speechSynthesis?.addEventListener?.('voiceschanged', ready);
+    // Try immediately too
+    ready();
+  });
+}
+
+function pickVoiceByName(name){
+  const all = window.speechSynthesis?.getVoices?.() || [];
+  if (!all.length) return null;
+  if (name) {
+    const exact = all.find(v => v.name === name);
+    if (exact) return exact;
+  }
+  // fallback: english-ish, then first
+  return all.find(v => /english/i.test(v.name)) || all[0] || null;
+}
+
 class Nyx {
   constructor(){
     this.name = 'NYX';
@@ -72,21 +102,25 @@ class Nyx {
       setTimeout(assign, 800);
     }catch(_){}
   }
-  speak(text){
-    try{
-      if(!('speechSynthesis' in window)) return;
-      const u = new SpeechSynthesisUtterance(String(text||''));
-      const pref = localStorage.getItem('nyx_voice') || '';
-      const voices = window.speechSynthesis.getVoices() || [];
-      const pick = voices.find(v=>v.name===pref)
-               || voices.find(v=>/english/i.test(v.name))
-               || voices[0];
-      if(pick) u.voice = pick;
-      window.speechSynthesis.speak(u);
-    }catch(_){}
-  }
+async speak(text){
+  try{
+    if (!('speechSynthesis' in window)) return;
+    // iOS/Chrome sometimes need an interaction first; calling from button clicks helps.
+    await waitForVoices();
 
-  // ---------- chat helpers ----------
+    const u = new SpeechSynthesisUtterance(String(text||''));
+    const pref = localStorage.getItem(VOICE_KEY);
+    const v = pickVoiceByName(pref);
+    if (v) u.voice = v;
+
+    // You can tweak rate/pitch/volume if desired:
+    // u.rate = 1; u.pitch = 1; u.volume = 1;
+
+    window.speechSynthesis.speak(u);
+  }catch(_){}
+}
+
+// ---------- chat helpers ----------
   pushBot(text){
     const box = document.getElementById('nyx-body'); if(!box) return;
     const div = document.createElement('div'); div.className='nyx-msg nyx-bot'; div.textContent=String(text||'');
@@ -131,15 +165,16 @@ class Nyx {
     if(lc.startsWith('/llm off')){ this._llmOff = true; const m='llm disabled; using local hints only.'; this.pushBot(m); return m; }
     if(lc.startsWith('/llm on')){ this._llmOff = false; const m='llm enabled.'; this.pushBot(m); return m; }
 
-    if(lc.startsWith('/voice list')){
-      const names=(speechSynthesis.getVoices()||[]).map(v=>v.name).join(' • ')||'(no voices)';
-      this.pushBot('voices: '+names); return names;
-    }
-    if(lc.startsWith('/voice set ')){
-      const n=q.slice(12).trim();
-      try{ localStorage.setItem('nyx_voice', n); }catch(_){}
-      const m='voice set to '+n; this.pushBot(m); this.speak(m); return m;
-    }
+  if(lc.startsWith('/voice list')){
+  const names=(speechSynthesis.getVoices()||[]).map(v=>v.name).join(' • ')||'(no voices)';
+  this.pushBot('voices: '+names); return names;
+}
+if(lc.startsWith('/voice set ')){
+  const n=q.slice(12).trim();
+  localStorage.setItem(VOICE_KEY, n);  // <-- FIXED
+  const m='voice set to '+n;
+  this.pushBot(m); this.speak(m); return m;
+}
 
     if(lc.startsWith('/llm test')){
       const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '';
