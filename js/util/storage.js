@@ -1,39 +1,75 @@
-export const DEF = {
-  user:{name:'You'},
-  xp:0, level:1, gold:0, streak:0, best:0,
-  toddler:false, toddlerCoins:0,
-  party:{ hero:null, companions:[] },
-  wardrobe:{ items:[], equipped:[] }, // adult accessories (images as data URLs)
-  pet:{ owned:[], acc:[] },
-  quests:{ main:[], side:[], bonus:[], boss:{name:'Bathroom', progress:0}, raid:{week:1, title:'Deep Clean'} },
-  meals:{}, shop:[], budget:{ tx:[], goal:100, income:0, expense:0 },
-  journal:{ prompt:'', entries:[], moods:[] },
-  tokens:[], ach:{},
-  gcal:'https://calendar.google.com/calendar/embed?src=en.usa%23...holiday%40group.v.calendar.google.com&ctz=America%2FLos_Angeles'
-};
+// storage.js — drop-in replacement wired to NQ
+// Usage stays the same: import { load, save, onChange } from '../util/storage.js'
 
-const K='sb_v26_state';
+const KEY = 'nq_state';
+
+function normalize(s={}){
+  return {
+    version: s.version ?? 1,
+    gold: s.gold ?? 0,
+    xp: s.xp ?? 0,
+    level: s.level ?? 1,
+    quests: {
+      main: s.quests?.main ?? [],
+      side: s.quests?.side ?? [],
+      bonus: s.quests?.bonus ?? [],
+      boss: s.quests?.boss ?? { name:'', progress:0 },
+      raid: s.quests?.raid ?? { week:1, title:'', progress:0 }
+    },
+    journal: {
+      entries: s.journal?.entries ?? [],
+      moods: s.journal?.moods ?? []
+    },
+    life: {
+      meals: s.life?.meals ?? { byDay:{} },
+      grocery: s.life?.grocery ?? [],
+      budget: s.life?.budget ?? []
+    },
+    settings: s.settings ?? { theme:'forest', font:'main', displayName:'Adventurer', music:{ library:[], currentUrl:'' } },
+    ach: s.ach ?? {},
+    tokens: s.tokens ?? []
+  };
+}
 
 export function load(){
   try{
-    const raw = localStorage.getItem(K);
-    return raw ? JSON.parse(raw) : structuredClone(DEF);
+    if (window.NQ && typeof window.NQ.get === 'function'){
+      return normalize(window.NQ.get());
+    }
+    return normalize(JSON.parse(localStorage.getItem(KEY)||'{}'));
   }catch(e){
-    return structuredClone(DEF);
+    return normalize({});
   }
 }
 
-export function save(s){
-  const prev = load();
-  const prevLvl = Math.floor((prev.xp||0)/100);
-  const newLvl = Math.floor((s.xp||0)/100);
-  localStorage.setItem(K, JSON.stringify(s));
-  if(newLvl>prevLvl){
-    s.level = (s.level||1) + (newLvl - prevLvl);
-    s.gold = (s.gold||0) + 10;
-    localStorage.setItem(K, JSON.stringify(s));
-    try{ document.dispatchEvent(new CustomEvent('nq:levelup')); }catch(_e){}
+export function save(state){
+  const s = normalize(state);
+  try{
+    if (window.NQ && typeof window.NQ.commit === 'function'){
+      return window.NQ.commit(s);
+    }
+    localStorage.setItem(KEY, JSON.stringify(s));
+    dispatchEvent(new CustomEvent('nq:state-changed', { detail: s }));
+    return s;
+  }catch(e){
+    // last resort
+    localStorage.setItem(KEY, JSON.stringify(s));
+    return s;
   }
 }
 
-export function reset(){ localStorage.removeItem(K); }
+// Subscribe to changes anywhere (Godot or other tabs/pages)
+export function onChange(fn){
+  function handler(ev){
+    try{
+      const detail = ev.detail || JSON.parse(localStorage.getItem(KEY)||'{}');
+      fn(normalize(detail));
+    }catch(_){}
+  }
+  window.addEventListener('nq:state-changed', handler);
+  window.addEventListener('storage', (e)=>{
+    if (e.key === KEY) handler({ detail: JSON.parse(e.newValue||'{}') });
+  });
+  // return an unsubscribe
+  return ()=>window.removeEventListener('nq:state-changed', handler);
+}
