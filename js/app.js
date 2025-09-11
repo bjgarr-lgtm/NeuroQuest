@@ -91,15 +91,25 @@ function currentRoute(){
 }
 
 function render(){
-  mount(currentRoute().view);
+  const hash = (location.hash || '#home').slice(1);
+
+  if (hash === 'game') {
+    // hide your regular content
+    const root = document.getElementById('view');
+    if (root) root.innerHTML = '';         // or keep HUD if you prefer overlay
+    mountGodot();                           // boot Godot
+    return;
+  } else {
+    // going back to web pages: hide Godot and render normal views
+    unmountGodot();
+  }
+
+  const r = routes.find(x=>x.id===hash) || routes[0];
+  const root = document.getElementById('view');
+  r.view(root);
   updateHud();
 }
-
 window.addEventListener('hashchange', render);
-window.addEventListener('DOMContentLoaded', () => {
-  if (!location.hash) location.hash = '#home';
-  render();
-});
 
 // ---- Export / Import
 document.getElementById('exportBtn')?.addEventListener('click', () => {
@@ -157,3 +167,65 @@ console.log('[APP] ready');
   // Close drawer when navigating
   window.addEventListener('hashchange', close);
 })();
+
+// ---- Godot boot / teardown ----
+let __godot = { instance: null, booted: false };
+
+async function mountGodot() {
+  const root = document.getElementById('godot-root');
+  if (!root) return;
+
+  // Show the Godot container, hide the web dashboards if you want the game to “own” the view
+  root.style.display = 'block';
+
+  // If already booted once, do nothing (or implement a reload if you want)
+  if (__godot.booted) return;
+
+  // IMPORTANT: paths must match where you put the export
+  const GODOT_BASE = 'assets/game/'; // or 'game/' depending on your choice
+  const config = {
+    // Godot 4 style loader opts:
+    canvas: root,                             // mount inside #godot-root
+    executable: GODOT_BASE + 'index.html',    // **some exports use 'index' as the executable id**
+    // ^ if this doesn’t work, try omitting 'executable' and use the default the loader expects
+    // Godot 3 style uses:
+    // 'data' : GODOT_BASE + 'game.pck',
+    // 'wasm' : GODOT_BASE + 'game.wasm'
+  };
+
+  // Godot 3 vs 4 loaders differ a bit:
+  // If your loader exposes `Engine` (Godot 4):
+  if (window.Engine) {
+    __godot.instance = await Engine.startGame({
+      canvas: root,
+      // Files location:
+      executable: GODOT_BASE + 'index',   // no extension in Godot 4
+      enableThreads: true,
+      onProgress: (c, t) => { /* optional progress */ },
+    });
+    __godot.booted = true;
+    return;
+  }
+
+  // If your loader exposes `Godot` (Godot 3):
+  if (window.Godot) {
+    const godot = window.Godot;
+    __godot.instance = godot({
+      canvas: root,
+      // Provide the exported file paths:
+      'data': GODOT_BASE + 'game.pck',
+      'wasm': GODOT_BASE + 'game.wasm',
+      'onProgress': (c,t)=>{}
+    });
+    __godot.instance.then(()=>{ __godot.booted = true; });
+  }
+}
+
+function unmountGodot() {
+  const root = document.getElementById('godot-root');
+  if (!root) return;
+  root.style.display = 'none';
+  // Optional: If you want to fully destroy and free memory, check your Godot loader API.
+  // Many folks keep it booted for faster return.
+}
+

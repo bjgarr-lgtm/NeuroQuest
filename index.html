@@ -48,7 +48,13 @@ window.tracker = window.NQ_track;
 
   <aside id="drawer" class="drawer"><nav id="nav"></nav></aside>
   <div id="scrim" class="scrim"></div>
-  <main id="view" class="view"></main>
+  <main id="view" class="view">
+    <!-- Godot mount point (hidden by default) -->
+<div id="godot-root" style="display:none; position:relative; min-height: calc(100vh - var(--header-h,64px));"></div>
+
+<!-- Godot loader (served from your /assets/game/ folder) -->
+<script src="assets/game/game.loader.js"></script>
+</main>
 
   <footer class="app-footer">
     <span id="streakLabel">Streak: 0 🔥 | Best: 0</span>
