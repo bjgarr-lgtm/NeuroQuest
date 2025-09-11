@@ -257,7 +257,7 @@
           // 3) boot the engine; executable is the same base (no extension)
           createEngine({
             canvasContainer: root,
-            executable: GODOT_HOST + '/game/' + GODOT_BASE,
+            executable: 'https://nq-game-worker.bjgarr.workers.dev/neuroquest-game/nq.js',
             focusCanvas: true
           }).then(() => console.log('[Godot] started'))
             .catch(err => console.error('[Godot] engine init failed:', err));
