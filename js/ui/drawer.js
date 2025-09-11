@@ -14,9 +14,9 @@ export function initDrawer(routes){
   nav.innerHTML='';
   routes.forEach(r=> nav.appendChild(item(r.id, r.label)));
 
-  function open(){ drawer.classList.add('open'); scrim.classList.add('show'); }
-  function close(){ drawer.classList.remove('open'); scrim.classList.remove('show'); }
-  hamb.onclick=()=> drawer.classList.contains('open') ? close() : open();
+  function open(){ drawer.classList.add('right'); scrim.classList.add('show'); }
+  function close(){ drawer.classList.remove('right'); scrim.classList.remove('show'); }
+  hamb.onclick=()=> drawer.classList.contains('right') ? close() : open();
   scrim.onclick=close;
 
   // set active on hashchange
@@ -26,5 +26,4 @@ export function initDrawer(routes){
   window.addEventListener('hashchange', setActive);
   setActive();
   <button class="primary" onclick="location.hash='game'">▶ Play Vertical Slice</button>
-
 }
