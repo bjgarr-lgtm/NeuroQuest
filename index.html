@@ -62,8 +62,8 @@ window.tracker = window.NQ_track;
   <!-- 0) STORAGE SHIM (prevents quota crashes) -->
   <script>
   (function(){
-    const origSet = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, val){
+    const origSet = NQ.commit(s);.bind(localStorage);
+    NQ.commit(s); = function(key, val){
       if (key === 'sb_v26_state') {
         try {
           const obj = JSON.parse(val);
@@ -158,7 +158,7 @@ window.tracker = window.NQ_track;
     const OKEY='sb_v26_overlay_state';
     const OStore = {
       get(){ try{ return JSON.parse(localStorage.getItem(OKEY))||{} }catch{ return {} } },
-      set(v){ try{ localStorage.setItem(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
+      set(v){ try{ NQ.commit(s);(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
     };
 
     // IndexedDB for accessory images (no localStorage quota issue)

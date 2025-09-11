@@ -7,7 +7,7 @@ const getState = () => {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; }
   catch { return {}; }
 };
-const setState = (s) => localStorage.setItem(LS_KEY, JSON.stringify(s));
+const setState = (s) => NQ.commit(s);(LS_KEY, JSON.stringify(s));
 
 // Utility: clamp
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));

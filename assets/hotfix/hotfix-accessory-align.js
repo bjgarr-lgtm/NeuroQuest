@@ -11,7 +11,7 @@
       try { return JSON.parse(localStorage.getItem(KEY)) || { items: [] }; }
       catch { return { items: [] }; }
     },
-    save(state) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+    save(state) { try { NQ.commit(s);(KEY, JSON.stringify(state)); } catch {} }
   };
 
   // Utility ---------------------------------------------------------------

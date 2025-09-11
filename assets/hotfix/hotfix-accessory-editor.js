@@ -10,7 +10,7 @@
   // --- tiny state helper ----------------------------------------------------
   const store = {
     get() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; } },
-    set(v) { localStorage.setItem(LS_KEY, JSON.stringify(v)); }
+    set(v) { NQ.commit(s);(LS_KEY, JSON.stringify(v)); }
   };
 
   // Inject minimal styles so you don't have to edit styles.css

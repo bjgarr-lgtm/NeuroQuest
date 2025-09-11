@@ -24,7 +24,7 @@ window.NQ = window.NQ || {};
       const ev = new CustomEvent('nq:state-changed', { detail: s });
       window.dispatchEvent(ev);
       // also trigger 'storage' for other tabs / Godot webview listeners
-      window.localStorage.setItem(KEY, JSON.stringify(s));
+      window.NQ.commit(s);(KEY, JSON.stringify(s));
     }catch(_){}
   }
 
@@ -34,7 +34,7 @@ window.NQ = window.NQ || {};
 
   NQ.commit = function(next){
     const s = normalize(next);
-    localStorage.setItem(KEY, JSON.stringify(s));
+    NQ.commit(s);(KEY, JSON.stringify(s));
     broadcast(s);
     return s;
   };

@@ -87,11 +87,11 @@ export default function renderSettings(root){
     }catch(_){ return []; }
   }
   function saveList(arr){
-    localStorage.setItem('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
+    NQ.commit(s);('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
   }
   function setCurrentTrack(url, name){
     try{
-      localStorage.setItem('nq_music', url||'');
+      NQ.commit(s);('nq_music', url||'');
       const audio = document.getElementById('music');
       const btn = document.getElementById('musicBtn');
       if(audio && url){

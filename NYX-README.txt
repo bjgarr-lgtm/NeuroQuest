@@ -38,7 +38,7 @@ Notes
 
 LLM hookup:
 - Deploy the included Cloudflare Worker in /nyx_worker (wrangler publish)
-- In your app, set window.NYX_LLM_ENDPOINT = 'https://<your-worker>.workers.dev'; or run `localStorage.setItem('nyx_llm_endpoint','https://...')`
+- In your app, set window.NYX_LLM_ENDPOINT = 'https://<your-worker>.workers.dev'; or run `NQ.commit(s);('nyx_llm_endpoint','https://...')`
 
 ---
 NYX Command Control (actions)

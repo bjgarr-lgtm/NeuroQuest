@@ -27,7 +27,7 @@ export const Actions = {
     const entry = { t: Date.now(), name, params, res };
     this._audit.push(entry);
     this._undo.push({ before, after });
-    try{ localStorage.setItem('nyx_audit', JSON.stringify(this._audit).slice(0,50000)); }catch(_){}
+    try{ NQ.commit(s);('nyx_audit', JSON.stringify(this._audit).slice(0,50000)); }catch(_){}
     document.dispatchEvent(new CustomEvent('nq:action', { detail: entry }));
     return res;
   },

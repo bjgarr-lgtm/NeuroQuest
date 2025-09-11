@@ -115,10 +115,10 @@ class Nyx {
     if(lc.startsWith('/llm off')){ this._llmOff = true; const m='llm disabled; using local hints only.'; this.pushBot(m); return m; }
     if(lc.startsWith('/llm on')){ this._llmOff = false; const m='llm enabled.'; this.pushBot(m); return m; }
       if(lc.startsWith('/voice list')){ const names=(speechSynthesis.getVoices()||[]).map(v=>v.name).join(' • ')||'(no voices)'; this.pushBot('voices: '+names); return names; }
-      if(lc.startsWith('/voice set ')){ const n=q.slice(12).trim(); localStorage.setItem('nyx_voice', n); const m='voice set to '+n; this.pushBot(m); this.speak(m); return m; }
+      if(lc.startsWith('/voice set ')){ const n=q.slice(12).trim(); NQ.commit(s);('nyx_voice', n); const m='voice set to '+n; this.pushBot(m); this.speak(m); return m; }
     if(lc.startsWith('/llm test')){
       const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '';
-      if(!ep){ const m='no endpoint set. run: localStorage.setItem("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
+      if(!ep){ const m='no endpoint set. run: NQ.commit(s);("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
       this.pushBot('pinging llm…');
       return fetch(ep, {
         method:'POST',

@@ -62,14 +62,14 @@ export function save(nextState){
         json = JSON.stringify(minimal);
       }
     }
-    localStorage.setItem(SB_STATE_KEY, json);
+    NQ.commit(s);(SB_STATE_KEY, json);
   }catch(err){
     try{
       const minimal = {
         user: nextState?.user||null, xp: nextState?.xp||0, gold: nextState?.gold||0, streak: nextState?.streak||0,
         settings: nextState?.settings||{}, party: nextState?.party||{}, overlays: nextState?.overlays||{}
       };
-      localStorage.setItem(SB_STATE_KEY, JSON.stringify(minimal));
+      NQ.commit(s);(SB_STATE_KEY, JSON.stringify(minimal));
       console.warn('SootheBirb: state pruned due to quota; saved minimal progress.');
     }catch(e2){
       console.error('SootheBirb: unable to save state (quota).', e2);
@@ -78,4 +78,4 @@ export function save(nextState){
 }
 
 export function getRaw(key,fallback){ try{ const v=localStorage.getItem(key); return v===null?fallback:v; }catch{ return fallback; } }
-export function setRaw(key,value){ try{ localStorage.setItem(key,value); }catch{ console.warn('SootheBirb: setRaw quota hit, skipping key:', key); } }
+export function setRaw(key,value){ try{ NQ.commit(s);(key,value); }catch{ console.warn('SootheBirb: setRaw quota hit, skipping key:', key); } }

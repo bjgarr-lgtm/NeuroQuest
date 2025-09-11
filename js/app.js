@@ -53,7 +53,7 @@ document.getElementById('exportBtn').onclick=()=>{
 document.getElementById('importBtn').onclick=()=> document.getElementById('importFile').click();
 document.getElementById('importFile').onchange=(e)=>{
   const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); localStorage.setItem('sb_v26_state', JSON.stringify(s)); location.reload(); }catch(_){ alert('Invalid file'); } };
+  const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); NQ.commit(s);('sb_v26_state', JSON.stringify(s)); location.reload(); }catch(_){ alert('Invalid file'); } };
   r.readAsText(f);
 };
 
@@ -63,7 +63,7 @@ console.log('NeuroQuest v2.6 loaded');
 // --- Audio: simple SFX + music playlist (uploads persist in localStorage as object URLs) ---
 let nqAudioCtx; function sfx(freq=880, ms=90){ try{ nqAudioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); const o=nqAudioCtx.createOscillator(); const g=nqAudioCtx.createGain(); o.frequency.value=freq; o.connect(g); g.connect(nqAudioCtx.destination); o.start(); g.gain.setValueAtTime(.12, nqAudioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.0001, nqAudioCtx.currentTime+ms/1000); o.stop(nqAudioCtx.currentTime+ms/1000);}catch(_){} }
 const music = { audio:new Audio(), list: JSON.parse(localStorage.getItem('nq_music_list')||'[]'), idx:0 };
-function saveMusicList(){ localStorage.setItem('nq_music_list', JSON.stringify(music.list)); }
+function saveMusicList(){ NQ.commit(s);('nq_music_list', JSON.stringify(music.list)); }
 function playMusic(){ if(!music.audio.src){ if(music.list[0]) music.audio.src=music.list[0].url; else return; } music.audio.loop=true; music.audio.play(); }
 function toggleMusic(){ if(music.audio.paused) playMusic(); else music.audio.pause(); }
 document.getElementById('musicBtn').onclick=()=>{ toggleMusic(); sfx(520,120); };
@@ -137,7 +137,7 @@ window.NQ_track = tracker;
     document.addEventListener('nq:music', (e)=>{
       const url = e?.detail?.url;
       if (!url) return;
-      localStorage.setItem('nq_music', url);
+      NQ.commit(s);('nq_music', url);
       audio.src = url;
       // keep button UI "on" but don't force-play; let user use header toggle
       btn && btn.classList.add('on');
@@ -151,7 +151,7 @@ window.NQ_track = tracker;
           const url = pickInitial();
           if (url) {
             audio.src = url;
-            localStorage.setItem('nq_music', url);
+            NQ.commit(s);('nq_music', url);
           }
         }
         try {
