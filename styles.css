@@ -315,4 +315,54 @@ body.drawer-open .scrim { opacity: 1; pointer-events: auto; }
   .scrim { display: none; }
   .view { margin-left: var(--drawer-w); }
 }
+/* ===== NQ layout hotfix (overlay drawer, no pushdown) ===== */
+:root {
+  --drawer-w: 260px;
+  --header-h: 64px; /* adjust if your header is taller/shorter */
+}
+
+/* Keep header in flow; sticky is fine */
+.app-header { position: sticky; top: 0; z-index: 50; }
+
+/* Drawer must not affect layout */
+#drawer.drawer {
+  position: fixed !important;
+  inset: 0 auto 0 0;            /* top:0; left:0; height:100vh */
+  width: var(--drawer-w);
+  height: 100vh;
+  transform: translateX(-100%);
+  transition: transform .18s ease-out;
+  z-index: 60;
+}
+#drawer.open { transform: translateX(0); }
+
+/* Scrim to catch clicks */
+#scrim.scrim {
+  position: fixed !important;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease-out;
+  z-index: 55;
+}
+#drawer.open + #scrim { opacity: 1; pointer-events: auto; }
+
+/* Main view sits under header, not pushed by drawer */
+main.view {
+  display: block;
+  margin: 0 !important;
+  padding: 24px clamp(12px,2vw,24px);
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* Prevent any stray full-viewport spacer above the view */
+body > .spacer, .hero, .banner { max-height: 0 !important; overflow: visible; }
+
+/* If your left nav also exists as a static column, collapse it on small screens */
+@media (max-width: 1024px) {
+  .left-nav, .side-nav { display: none !important; }
+}
+
 
