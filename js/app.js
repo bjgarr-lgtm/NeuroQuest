@@ -111,6 +111,10 @@ function render(){
 }
 window.addEventListener('hashchange', render);
 
+<iframe id="godot-frame" src="/game/index.html" style="
+  position:relative; width:100%; height:70vh; border:0; border-radius:12px;">
+</iframe>
+
 // ---- Export / Import
 document.getElementById('exportBtn')?.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(load(), null, 2)], { type:'application/json' });
