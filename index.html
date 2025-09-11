@@ -13,7 +13,6 @@ window.tracker = window.NQ_track;
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
   <style>
-    /* tiny helper styles so the toolbar looks sane even without CSS changes */
     .sb-align-bar{position:absolute; left:8px; top:8px; display:flex; gap:6px;
       background:rgba(10,10,20,.7); border:1px solid #4af; border-radius:10px; padding:6px; z-index:999}
     .sb-align-bar button{padding:6px 10px; border-radius:8px; border:1px solid #79f; background:#122; color:#fff; cursor:pointer}
@@ -23,7 +22,7 @@ window.tracker = window.NQ_track;
     .sb-acc-ov{position:absolute; transform:translate(-50%,-50%) scale(1) rotate(0deg); cursor:grab; user-select:none}
     .sb-acc-ov:active{cursor:grabbing}
   </style>
-<style id="patch-hide-toolbar">.sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}</style>
+  <style id="patch-hide-toolbar">.sb-align-bar,.sb-align-hint,.acc-toolbar{display:none!important}</style>
 </head>
 <body class="crt">
   <header class="app-header">
@@ -39,6 +38,8 @@ window.tracker = window.NQ_track;
         <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
         <div class="bar"><div id="hudXp"></div></div>
       </div>
+      <!-- audio element for header music toggle -->
+      <audio id="music" preload="none"></audio>
       <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
       <input type="file" id="musicFile" accept="audio/*" style="display:none"/>
       <button id="hamb" class="hamb" aria-label="Menu">☰</button>
@@ -59,24 +60,27 @@ window.tracker = window.NQ_track;
 
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
-  <!-- 0) STORAGE SHIM (prevents quota crashes) -->
+  <!-- 0) STORAGE SHIM + header music wire -->
   <script>
+  // Wrap localStorage.setItem safely and trim heavy blobs from sb_v26_state
   (function(){
-    const origSet = NQ.commit(s);bind(localStorage);
-    NQ.commit(s);{
-      if (key === 'sb_v26_state') {
-        try {
-          const obj = JSON.parse(val);
-          if (obj?.wardrobe?.images) delete obj.wardrobe.images;
-          if (obj?.pet?.images) delete obj.pet.images;
-          if (obj?.overlays?.images) delete obj.overlays.images;
-          if (Array.isArray(obj?.journal)) obj.journal = obj.journal.slice(-50);
-          if (Array.isArray(obj?.moods)) obj.moods = obj.moods.slice(-100);
-          val = JSON.stringify(obj);
-        } catch(e) {}
-      }
-      try { return origSet(key, val); }
-      catch(e){
+    const origSet = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, val){
+      try{
+        if (key === 'sb_v26_state') {
+          try {
+            const obj = JSON.parse(val);
+            if (obj?.wardrobe?.images) delete obj.wardrobe.images;
+            if (obj?.pet?.images) delete obj.pet.images;
+            if (obj?.overlays?.images) delete obj.overlays.images;
+            if (Array.isArray(obj?.journal)) obj.journal = obj.journal.slice(-50);
+            if (Array.isArray(obj?.moods)) obj.moods = obj.moods.slice(-100);
+            val = JSON.stringify(obj);
+          } catch(e) {}
+        }
+        return origSet(key, val);
+      } catch(e){
+        // last-ditch compact save for your main state if too big
         try{
           const obj = JSON.parse(val);
           const tiny = { user: obj.user, xp: obj.xp, gold: obj.gold,
@@ -87,81 +91,117 @@ window.tracker = window.NQ_track;
       }
     };
   })();
-  
-    // ===== Portrait wrapper + layer anchoring (robust) =====
-    function ensurePortraitWrap(portrait){
-      let wrap = portrait.closest('.sb-portrait-wrap');
-      if (wrap) return wrap;
-      wrap = document.createElement('div');
-      wrap.className = 'sb-portrait-wrap';
-      const parent = portrait.parentElement;
-      parent.insertBefore(wrap, portrait);
-      wrap.appendChild(portrait);
-      portrait.style.display = 'block';
-      if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
-      return wrap;
-    }
-    function ensureAccLayer(wrap){
-      let layer = wrap.querySelector('.sb-acc-layer');
-      if (!layer){
-        layer = document.createElement('div');
-        layer.className = 'sb-acc-layer';
-        layer.style.position = 'absolute';
-        layer.style.inset = '0';
-        layer.style.pointerEvents = 'auto';
-        layer.style.zIndex = '3';
-        wrap.appendChild(layer);
+
+  // Header ♪ button: play/pause current selection, listen for settings page selection
+  (function(){
+    const btn = document.getElementById('musicBtn');
+    const audio = document.getElementById('music');
+
+    function pickInitial(){
+      const stored = localStorage.getItem('nq_music');
+      if (stored) { audio.src = stored; audio.loop = true; audio.volume = 0.6; }
+      else {
+        // fallback to first item in library if present
+        try {
+          const list = JSON.parse(localStorage.getItem('nq_music_list')||'[]');
+          if (list[0]?.url) { audio.src = list[0].url; audio.loop = true; audio.volume = 0.6; }
+        }catch(_){}
       }
-      return layer;
     }
-    function bindDebugToggle(){
-      const set = (on)=> document.body.classList.toggle('sb-debug', !!on);
-      if (location.hash.includes('debug-align')) set(true);
-      window.addEventListener('keydown', (e)=>{
-        if (e.key.toLowerCase()==='d' && (e.ctrlKey || e.metaKey || !e.shiftKey)){
-          set(!document.body.classList.contains('sb-debug'));
+
+    btn?.addEventListener('click', ()=>{
+      if (!audio.src) pickInitial();
+      if (audio.paused){
+        audio.play?.().catch(()=>{});
+        btn.classList.add('on');
+      } else {
+        audio.pause?.();
+        btn.classList.remove('on');
+      }
+    });
+
+    // When Settings chooses a new song, sync here
+    document.addEventListener('nq:music', (e)=>{
+      const {url} = e.detail || {};
+      if (url){
+        audio.src = url;
+        // auto-start if header shows "on"
+        if (btn?.classList.contains('on')){
+          audio.play?.().catch(()=>{});
         }
-      });
-    }
-
-
-    // --- Safe anchor: size/position layer to portrait WITHOUT reparenting ---
-    function ensureAccLayerWithin(wrap){
-      let layer = wrap.querySelector('.sb-acc-layer');
-      if(!layer){
-        layer = document.createElement('div');
-        layer.className = 'sb-acc-layer';
-        wrap.appendChild(layer);
       }
-      return layer;
-    }
-    function anchorLayerToPortrait_NoWrap(wrap, portrait, layer){
-      // keep wrap relative
-      const cs = getComputedStyle(wrap);
-      if (cs.position === 'static') wrap.style.position = 'relative';
-      const left = portrait.offsetLeft;
-      const top  = portrait.offsetTop;
-      const w    = portrait.clientWidth  || portrait.naturalWidth  || portrait.width  || 0;
-      const h    = portrait.clientHeight || portrait.naturalHeight || portrait.height || 0;
-      Object.assign(layer.style, { position:'absolute', left:left+'px', top:top+'px', width:w+'px', height:h+'px' });
-    }
+    });
+  })();
 
-</script>
+  // ===== Portrait wrapper + layer anchoring (robust) =====
+  function ensurePortraitWrap(portrait){
+    let wrap = portrait.closest('.sb-portrait-wrap');
+    if (wrap) return wrap;
+    wrap = document.createElement('div');
+    wrap.className = 'sb-portrait-wrap';
+    const parent = portrait.parentElement;
+    parent.insertBefore(wrap, portrait);
+    wrap.appendChild(portrait);
+    portrait.style.display = 'block';
+    if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+    return wrap;
+  }
+  function ensureAccLayer(wrap){
+    let layer = wrap.querySelector('.sb-acc-layer');
+    if (!layer){
+      layer = document.createElement('div');
+      layer.className = 'sb-acc-layer';
+      layer.style.position = 'absolute';
+      layer.style.inset = '0';
+      layer.style.pointerEvents = 'auto';
+      layer.style.zIndex = '3';
+      wrap.appendChild(layer);
+    }
+    return layer;
+  }
+  function bindDebugToggle(){
+    const set = (on)=> document.body.classList.toggle('sb-debug', !!on);
+    if (location.hash.includes('debug-align')) set(true);
+    window.addEventListener('keydown', (e)=>{
+      if (e.key.toLowerCase()==='d' && (e.ctrlKey || e.metaKey || !e.shiftKey)){
+        set(!document.body.classList.contains('sb-debug'));
+      }
+    });
+  }
 
-  <!-- 1) YOUR APP (unchanged) -->
+  // --- Safe anchor: size/position layer to portrait WITHOUT reparenting ---
+  function ensureAccLayerWithin(wrap){
+    let layer = wrap.querySelector('.sb-acc-layer');
+    if(!layer){
+      layer = document.createElement('div');
+      layer.className = 'sb-acc-layer';
+      wrap.appendChild(layer);
+    }
+    return layer;
+  }
+  function anchorLayerToPortrait_NoWrap(wrap, portrait, layer){
+    const cs = getComputedStyle(wrap);
+    if (cs.position === 'static') wrap.style.position = 'relative';
+    const left = portrait.offsetLeft;
+    const top  = portrait.offsetTop;
+    const w    = portrait.clientWidth  || portrait.naturalWidth  || portrait.width  || 0;
+    const h    = portrait.clientHeight || portrait.naturalHeight || portrait.height || 0;
+    Object.assign(layer.style, { position:'absolute', left:left+'px', top:top+'px', width:w+'px', height:h+'px' });
+  }
+  </script>
+
+  <!-- 1) YOUR APP -->
   <script type="module" src="js/app.js"></script>
 
-  <!-- 2) Inline IDB + overlay + ALIGN TOOL that’s visible on Character -->
+  <!-- 2) Inline IDB + overlay + ALIGN TOOL (Character page) -->
   <script>
   (function(){
-    // Small, separate state for overlays so we never bloat your main state
     const OKEY='sb_v26_overlay_state';
     const OStore = {
       get(){ try{ return JSON.parse(localStorage.getItem(OKEY))||{} }catch{ return {} } },
-      set(v){ try{ NQ.commit(s);(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
+      set(v){ try{ localStorage.setItem(OKEY, JSON.stringify(v)) }catch(e){ console.warn('overlay save fail', e) } }
     };
 
-    // IndexedDB for accessory images (no localStorage quota issue)
     const DB='sb_idb_inline_v1', ST='assets';
     function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1);
       r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(ST)) db.createObjectStore(ST,{keyPath:'id'}) };
@@ -205,9 +245,7 @@ window.tracker = window.NQ_track;
       }
     }
 
-    // Build a visible align toolbar inside the portrait wrapper
     function injectAlignUI(wrap, mgr, leaderId){
-      // remove existing
       wrap.querySelector('.sb-align-bar')?.remove();
       wrap.querySelector('.sb-align-hint')?.remove();
 
@@ -223,6 +261,7 @@ window.tracker = window.NQ_track;
       wrap.appendChild(bar); wrap.appendChild(hint);
 
       let active=null, dragging=false, lastPos=null;
+      const layer = wrap.querySelector('.sb-acc-layer');
 
       function pickLast(){
         active = wrap.querySelector('.sb-acc-ov:last-of-type');
@@ -230,13 +269,9 @@ window.tracker = window.NQ_track;
       }
       function enableAlign(){
         if(!pickLast()){ alert('Add an accessory first.'); return; }
-        // allow interaction
         active.style.pointerEvents='auto';
-        // move
         active.addEventListener('mousedown', onDown);
-        // scale (hover anywhere on wrapper)
         wrap.addEventListener('wheel', onWheel, {passive:false});
-        // rotate by keys
         window.addEventListener('keydown', onKey);
       }
       function disableAlign(){
@@ -260,8 +295,7 @@ window.tracker = window.NQ_track;
         let x=(ev.clientX - r.left)/r.width, y=(ev.clientY - r.top)/r.height;
         x=Math.max(0,Math.min(1,x)); y=Math.max(0,Math.min(1,y));
         active.dataset.x=x; active.dataset.y=y;
-        const xS=(x*100)+'%'; const yS=(y*100)+'%';
-        active.style.left=xS; active.style.top=yS;
+        active.style.left=(x*100)+'%'; active.style.top=(y*100)+'%';
       }
       function onUp(){
         dragging=false; window.removeEventListener('mousemove', onMove);
@@ -303,7 +337,6 @@ window.tracker = window.NQ_track;
       });
     }
 
-    // Patch Character page after your app renders it
     function leaderId(){
       const sel=document.querySelector('#leader');
       return sel?.value || 'bambi';
@@ -311,13 +344,11 @@ window.tracker = window.NQ_track;
     async function patchCharacter(){
       const portrait=document.querySelector('#portrait, #heroBase, #charPortrait, .char-portrait img, .portrait-wrap img'); if(!portrait) return;
       const wrap=ensurePortraitWrap(portrait);
-      // ensure layer
       let layer = ensureAccLayer(wrap);
 
       const mgr=new OverlayMgr(layer);
       await mgr.load(leaderId());
 
-      // wire buttons if present
       const addBtn=document.querySelector('#addAcc');
       const fileIn=document.querySelector('#accFile');
       const clrBtn=document.querySelector('#clearAcc');
@@ -339,7 +370,6 @@ window.tracker = window.NQ_track;
         clrBtn.addEventListener('click', async ()=>{ await mgr.clear(leaderId()); alert('Cleared overlays.'); });
       }
 
-      // if there’s already an overlay, show the toolbar
       if (layer.querySelector('.sb-acc-ov')) injectAlignUI(wrap, mgr, leaderId());
     }
 
@@ -347,10 +377,12 @@ window.tracker = window.NQ_track;
     window.addEventListener('hashchange', onRoute);
     document.addEventListener('DOMContentLoaded', onRoute);
     setTimeout(onRoute, 200);
+    bindDebugToggle();
   })();
-</script>
-<script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
-<script type="module" src="js/bot/nyx.js?v=syntaxfix2?v=syntaxfix2"></script>
+  </script>
+
+  <script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
+  <script type="module" src="js/bot/nyx.js?v=syntaxfix2"></script>
   <script type="module" src="js/bot/nyx-wire.js"></script>
 </body>
 </html>

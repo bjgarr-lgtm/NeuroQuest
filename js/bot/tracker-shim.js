@@ -1,10 +1,22 @@
-// tracker-shim.js — define tracker() before app.js loads
+// js/bot/nyx-render-hook.js — keep NYX alive across route/view changes
 (function(){
-  try{
-    window.NQ_track = window.NQ_track || function (ev, payload) {
-      try { if (window.NQ && typeof window.NQ.track === 'function') window.NQ.track(ev, payload || {}); } catch (e) {}
-    };
-    window.tracker = window.tracker || window.NQ_track;
-    console.log('[shim] tracker ready');
-  }catch(e){ console.warn('[shim] tracker failed', e); }
+  let scheduled = null;
+
+  function reassert(){
+    if (scheduled) cancelAnimationFrame(scheduled);
+    scheduled = requestAnimationFrame(()=>{
+      // ensure mount root
+      if (!document.getElementById('nyxRoot')) {
+        // if nuked, ask nyx-wire to re-mount
+        document.dispatchEvent(new Event('nyx:mount'));
+      }
+      // always re-pin selector
+      window.NYX = window.NYX || {};
+      window.NYX.mountSelector = '#nyxMount';
+    });
+  }
+
+  window.addEventListener('hashchange', reassert);
+  document.addEventListener('DOMContentLoaded', reassert);
+  setTimeout(reassert, 200);
 })();

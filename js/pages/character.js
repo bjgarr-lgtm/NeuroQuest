@@ -1,13 +1,8 @@
 // js/pages/character.js
-// SootheBirb v2.6 – Character & Companions (accessory editor)
-// Drop-in replacement
+// NeuroQuest – Character & Companions (accessory editor)
+// Drop-in replacement using app storage (load/save)
 
-const LS_KEY = 'sb_v26_state';
-const getState = () => {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; }
-  catch { return {}; }
-};
-const setState = (s) => NQ.commit(s);(LS_KEY, JSON.stringify(s));
+import {load, save} from '../util/storage.js';
 
 // Utility: clamp
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -37,11 +32,18 @@ const el = (tag, cls, html) => {
 };
 
 export default function renderCharacter(viewEl) {
-  const state = getState();
-  state.hero ||= {};
-  state.hero.portrait ||= state.hero.portrait || 'assets/hero-default.png';
-  state.hero.acc ||= []; // {id,data,x,y,scale,rot,z}
-  state.companions ||= []; // data URLs
+  // === state from app ===
+  let s = load();
+  s.character ||= {};
+  s.character.hero ||= {};
+  s.character.hero.portrait ||= s.character.hero.portrait || 'assets/hero-default.png';
+  s.character.hero.acc ||= []; // {id,data,x,y,scale,rot,z}
+  s.character.companions ||= []; // data URLs (strings)
+
+  // ensure party compatibility for Home page
+  s.party ||= s.party?.companions || []; // allow array or object shape
+  if (!Array.isArray(s.party)) s.party = (s.party?.companions || []);
+  save(s);
 
   // ===== Left column: Your Hero =====
   const wrap = el('section', 'cardish character-page');
@@ -85,8 +87,8 @@ export default function renderCharacter(viewEl) {
             <button data-scale="1.1">+ size</button>
             <button data-rot="-10">↶</button>
             <button data-rot="10">↷</button>
-            <button data-z="front">Bring Front</button>
-            <button data-z="back">Send Back</button>
+            <button data-z="front" id="bringFront">Bring Front</button>
+            <button data-z="back" id="sendBack">Send Back</button>
             <button id="saveAcc" class="primary">Save</button>
             <button id="removeAcc" class="danger">Remove</button>
           </div>
@@ -122,12 +124,10 @@ export default function renderCharacter(viewEl) {
   const accStatus = $('#accStatus', wrap);
   const heroFile = $('#heroFile', wrap);
 
-  // Bigger preview (2x-ish) handled via CSS (see section 2)
-  heroBase.src = state.hero.portrait;
+  // load base
+  heroBase.src = s.character.hero.portrait;
 
-  // Keep editor visible even when base loads
   heroBase.onload = () => {
-    // ensure accessories re-render at the current canvas size
     renderAccessories();
   };
 
@@ -135,7 +135,7 @@ export default function renderCharacter(viewEl) {
   let activeId = null; // currently editing
   function renderAccessories() {
     accLayer.innerHTML = '';
-    const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
+    const sorted = [...s.character.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
     for (const a of sorted) {
       const img = el('img', 'acc-img');
       img.src = a.data;
@@ -160,7 +160,7 @@ export default function renderCharacter(viewEl) {
   }
 
   function updateEditorStatus() {
-    const a = state.hero.acc.find(x => x.id === activeId);
+    const a = s.character.hero.acc.find(x => x.id === activeId);
     if (!a) {
       accStatus.textContent = 'No accessory selected.';
       return;
@@ -196,7 +196,7 @@ export default function renderCharacter(viewEl) {
 
   // Wheel: resize; Shift+wheel: rotate
   accLayer.addEventListener('wheel', (e) => {
-    const a = state.hero.acc.find(x => x.id === activeId);
+    const a = s.character.hero.acc.find(x => x.id === activeId);
     if (!a) return;
     e.preventDefault();
     if (e.shiftKey) {
@@ -213,7 +213,7 @@ export default function renderCharacter(viewEl) {
   // Toolbar controls
   accEditor.addEventListener('click', (e) => {
     const t = e.target;
-    const a = state.hero.acc.find(x => x.id === activeId);
+    const a = s.character.hero.acc.find(x => x.id === activeId);
     if (!a) return;
 
     if (t.dataset.nudge) {
@@ -227,16 +227,16 @@ export default function renderCharacter(viewEl) {
       a.rot = (a.rot + Number(t.dataset.rot)) % 360;
     }
     if (t.id === 'bringFront') {
-      a.z = Math.max(...state.hero.acc.map(v=>v.z||0), 0) + 1;
+      a.z = Math.max(...s.character.hero.acc.map(v=>v.z||0), 0) + 1;
     }
     if (t.id === 'sendBack') {
-      a.z = Math.min(...state.hero.acc.map(v=>v.z||0), 0) - 1;
+      a.z = Math.min(...s.character.hero.acc.map(v=>v.z||0), 0) - 1;
     }
     if (t.id === 'removeAcc') {
-      const idx = state.hero.acc.findIndex(v => v.id === activeId);
+      const idx = s.character.hero.acc.findIndex(v => v.id === activeId);
       if (idx >= 0) {
-        state.hero.acc.splice(idx,1);
-        setState(state);
+        s.character.hero.acc.splice(idx,1);
+        save(s);
         activeId = null;
         renderAccessories();
         updateEditorStatus();
@@ -244,7 +244,7 @@ export default function renderCharacter(viewEl) {
       return;
     }
     if (t.id === 'saveAcc') {
-      setState(state);
+      save(s);
     }
     // update transforms live
     const node = activeId && accLayer.querySelector(`.acc-img[data-id="${activeId}"]`);
@@ -270,20 +270,20 @@ export default function renderCharacter(viewEl) {
       id: crypto.randomUUID(),
       data: small,
       x: 0, y: 0,
-      scale: 1, rot: 0, z: (Math.max(0, ...(state.hero.acc.map(v=>v.z||0))) + 1)
+      scale: 1, rot: 0, z: (Math.max(0, ...(s.character.hero.acc.map(v=>v.z||0))) + 1)
     };
-    state.hero.acc.push(a);
-    setState(state);
+    s.character.hero.acc.push(a);
+    save(s);
     renderAccessories();
     setActive(a.id);
     accStatus.textContent = 'Accessory added. Drag to move, wheel to resize, Shift+wheel to rotate.';
   });
 
-  
-  // ===== SAVE: composite hero + accessories and write to party (DOM-synced) =====
+  // ===== SAVE: composite hero + accessories and write to party (for Home) =====
   (function(){
     const saveBtn = $('#saveAcc', wrap);
     if(!saveBtn) return;
+
     function parseTransform(str){
       // expecting: translate(Xpx, Ypx) rotate(Rdeg) scale(S)
       const out = {x:0,y:0,rot:0,scale:1};
@@ -295,18 +295,20 @@ export default function renderCharacter(viewEl) {
       if(mS){ out.scale=parseFloat(mS[1]); }
       return out;
     }
+
     saveBtn.addEventListener('click', async ()=>{
       try{
         // sync from DOM so we capture EXACT on-screen alignment
         accLayer.querySelectorAll('.acc-img').forEach(node=>{
           const id = node.dataset.id;
-          const a = state.hero.acc.find(x=> String(x.id)===String(id));
+          const a = s.character.hero.acc.find(x=> String(x.id)===String(id));
           if(a){
             const tf = node.style.transform || '';
-            const v = parseTransform(tf, node);
+            const v = parseTransform(tf);
             a.x = v.x; a.y = v.y; a.rot = v.rot; a.scale = v.scale;
           }
         });
+        save(s);
 
         // composite
         const rect = portraitWrap.getBoundingClientRect();
@@ -315,26 +317,41 @@ export default function renderCharacter(viewEl) {
         const can = document.createElement('canvas'); can.width = W; can.height = H;
         const ctx = can.getContext('2d');
 
-        const base = new Image(); base.src = heroBase.src; await base.decode();
+        const base = new Image(); base.src = s.character.hero.portrait; await base.decode();
         ctx.drawImage(base, 0, 0, W, H);
 
-        const sorted = [...state.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
+        const sorted = [...s.character.hero.acc].sort((a,b)=> (a.z ?? 0) - (b.z ?? 0));
         for(const a of sorted){
           const img = new Image(); img.src = a.data; await img.decode();
           ctx.save();
           ctx.translate(W/2, H/2);
           ctx.translate(a.x||0, a.y||0);
           ctx.rotate(((a.rot||0) * Math.PI) / 180);
-          const s = a.scale || 1;
-          ctx.scale(s, s);
+          const sc = a.scale || 1;
+          ctx.scale(sc, sc);
           ctx.drawImage(img, -img.width/2, -img.height/2);
           ctx.restore();
         }
 
         const merged = can.toDataURL('image/png', 0.95);
-        const st = getState(); st.party ||= { hero:null, companions:[] }; st.party.hero = { src: merged }; st.party.companions = (state.companions||[]).map(src=>({src})); setState(st);
-        // update HUD mini immediately
-        const mini=document.getElementById('partyMini'); if(mini){ mini.innerHTML=''; const i=document.createElement('img'); i.src=merged; mini.appendChild(i);} 
+
+        // write into party so Home can render it (supports both shapes):
+        const fresh = load(); // re-load in case other tabs changed
+        fresh.party ||= [];
+        if (!Array.isArray(fresh.party)) fresh.party = (fresh.party?.companions || []);
+        // Put hero first, then companions
+        const companions = (s.character.companions || []).slice();
+        fresh.party = [merged, ...companions];
+        fresh.party.companions = [merged, ...companions]; // dual-shape for compatibility
+        save(fresh);
+
+        // update HUD mini immediately (if present)
+        const mini=document.getElementById('partyMini');
+        if(mini){
+          mini.innerHTML='';
+          const i=document.createElement('img'); i.src=merged; i.style.width='88px'; i.style.borderRadius='12px';
+          mini.appendChild(i);
+        }
 
         accStatus.textContent = 'Saved to party!';
         setTimeout(()=> accStatus.textContent = '', 1500);
@@ -346,7 +363,7 @@ export default function renderCharacter(viewEl) {
     });
   })();
 
-// ===== Change hero portrait (keeps editor visible)
+  // ===== Change hero portrait (keeps editor visible)
   heroFile.addEventListener('change', async () => {
     const f = heroFile.files?.[0];
     if (!f) return;
@@ -356,26 +373,37 @@ export default function renderCharacter(viewEl) {
       fr.readAsDataURL(f);
     });
     const small = await downscaleDataURL(String(dataUrl), 1024);
-    state.hero.portrait = small;
-    setState(state);
-    heroBase.src = state.hero.portrait;
+    s.character.hero.portrait = small;
+    save(s);
+    heroBase.src = s.character.hero.portrait;
   });
 
-  
-  // ===== Companions (simple list persisted in LS) =====
+  // ===== Companions (simple list persisted in app state) =====
   const cmpFile = $('#cmpFile', wrap);
   const addCmpBtn = $('#addCmpBtn', wrap);
   const cmpList = $('#cmpList', wrap);
 
   function renderCompanions(){
+    s = load();
+    s.character ||= {}; s.character.companions ||= [];
     if(!cmpList) return;
     cmpList.innerHTML = '';
-    for(const src of state.companions){
+    for(const src of s.character.companions){
       const item = el('div','comp-item');
       item.innerHTML = `<img src="${src}" alt="Companion"><button class="tiny danger">✕</button>`;
       item.querySelector('button').addEventListener('click', ()=>{
-        const i = state.companions.indexOf(src);
-        if(i>-1){ state.companions.splice(i,1); setState(state); renderCompanions(); }
+        const i = s.character.companions.indexOf(src);
+        if(i>-1){
+          s.character.companions.splice(i,1);
+          save(s);
+          // also mirror into party list
+          const cur = load();
+          const heroFirst = cur.party?.[0] && typeof cur.party[0] === 'string' ? [cur.party[0]] : [];
+          cur.party = [...heroFirst, ...s.character.companions];
+          cur.party.companions = [...heroFirst, ...s.character.companions];
+          save(cur);
+          renderCompanions();
+        }
       });
       cmpList.appendChild(item);
     }
@@ -392,9 +420,16 @@ export default function renderCharacter(viewEl) {
       can.width = Math.round(img.width*r); can.height = Math.round(img.height*r);
       const ctx = can.getContext('2d'); ctx.drawImage(img,0,0,can.width,can.height);
       const small = can.toDataURL('image/png', 0.9);
-      state.companions.push(small);
-      const st=getState(); st.party ||= {hero:null, companions:[]}; st.party.companions.push({src:small}); setState(st);
-      setState(state);
+
+      s.character.companions.push(small);
+      save(s);
+      // mirror into party after add (keep hero first if present)
+      const cur = load();
+      const heroFirst = cur.party?.[0] && typeof cur.party[0] === 'string' ? [cur.party[0]] : [];
+      cur.party = [...heroFirst, ...s.character.companions];
+      cur.party.companions = [...heroFirst, ...s.character.companions];
+      save(cur);
+
       cmpFile.value = '';
       renderCompanions();
     });
@@ -402,6 +437,7 @@ export default function renderCharacter(viewEl) {
 
   // Initial render
   renderAccessories();
-  updateEditorStatus();
-  document.getElementById('openShop').onclick=()=>{ location.hash='#shop'; };
+  renderCompanions();
+  const openShop = $('#openShop', wrap);
+  if(openShop){ openShop.onclick=()=>{ location.hash='#shop'; }; }
 }

@@ -57,7 +57,7 @@ export default function renderSettings(root){
     if(!badge){
       badge = document.createElement('span');
       badge.id='hudUser';
-      badge.style.cssText='margin-left:8px;font-size:.7em;opacity:.8';
+      badge.style.cssText='margin-left:8px;font-size:.6em;opacity:.8'; // slightly smaller
       const titleEl = document.getElementById('title') || header.querySelector('h1');
       if(titleEl && titleEl.parentElement){
         titleEl.parentElement.insertBefore(badge, titleEl.nextSibling);
@@ -79,43 +79,67 @@ export default function renderSettings(root){
     t.textContent=msg; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0', 1600);
   }
 
-  // music helpers
+  // ----- MUSIC: persistence + header control -----
+  function ensureAudioElem(){
+    let a=document.getElementById('music');
+    if(!a){
+      a=document.createElement('audio');
+      a.id='music';
+      a.style.display='none';
+      a.loop=true; a.volume=0.6;
+      document.body.appendChild(a);
+    }
+    return a;
+  }
   function safeList(){
     try{
       const raw = JSON.parse(localStorage.getItem('nq_music_list')||'[]');
-      return Array.isArray(raw) ? raw : [];
+      return Array.isArray(raw) ? raw.slice(0,5) : [];
     }catch(_){ return []; }
   }
   function saveList(arr){
-    NQ.commit(s);('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
+    localStorage.setItem('nq_music_list', JSON.stringify(Array.isArray(arr)?arr.slice(0,5):[]));
   }
   function setCurrentTrack(url, name){
+    const audio = ensureAudioElem();
+    const btn = document.getElementById('musicBtn');
     try{
-      NQ.commit(s);('nq_music', url||'');
-      const audio = document.getElementById('music');
-      const btn = document.getElementById('musicBtn');
-      if(audio && url){
-        audio.src = url; audio.loop = true; audio.volume = 0.6;
-        // If header button exists, make sure its state is consistent
-        if(btn && !btn.classList.contains('on')) btn.classList.add('on');
-      }
-      // broadcast to app in case it listens
-      try{ document.dispatchEvent(new CustomEvent('nq:music', {detail:{url,name}})); }catch(_){}
-      const np=document.getElementById('nowPlaying'); if(np){ np.textContent = name ? ('Now Playing: '+name) : ''; }
+      localStorage.setItem('nq_music', url||'');
+      localStorage.setItem('nq_music_name', name||'');
     }catch(_){}
+
+    const np=document.getElementById('nowPlaying');
+    if(np) np.textContent = name ? ('Now Playing: '+name) : '';
+
+    if(url){
+      audio.src = url;
+      // If header is already toggled "on", autostart
+      const shouldPlay = !!(btn && btn.classList.contains('on'));
+      if (shouldPlay){
+        const p = audio.play?.(); if(p && p.catch) p.catch(()=>{});
+      }
+    }else{
+      audio.removeAttribute('src');
+      audio.pause?.();
+      btn && btn.classList.remove('on');
+    }
+
+    // broadcast to any listener (header, other pages)
+    try{ document.dispatchEvent(new CustomEvent('nq:music', {detail:{url,name}})); }catch(_){}
   }
   function toggleHeaderMusicPlay(){
-    const audio = document.getElementById('music');
+    const audio = ensureAudioElem();
     const btn = document.getElementById('musicBtn');
-    if(!audio) return;
     const src = audio.getAttribute('src') || audio.src;
     if(!src){
-      // no source yet — try pick from library or localStorage
+      // no source yet — pick from library or stored
       const list = safeList();
+      const storedUrl = localStorage.getItem('nq_music')||'';
+      const storedName = localStorage.getItem('nq_music_name')||'';
       const first = list[0];
-      const stored = localStorage.getItem('nq_music');
-      const url = stored || (first && first.url) || '';
-      if(url){ setCurrentTrack(url, first?.name || 'Track'); }
+      const url = storedUrl || (first && first.url) || '';
+      const name = storedName || (first && first.name) || 'Track';
+      if(url){ setCurrentTrack(url, name); }
     }
     const playing = !audio.paused;
     if(playing){ audio.pause(); btn && btn.classList.remove('on'); }
@@ -125,11 +149,20 @@ export default function renderSettings(root){
       btn && btn.classList.add('on');
     }
   }
+  // Make sure header button is wired if present
+  (function wireHeaderBtn(){
+    const btn = document.getElementById('musicBtn');
+    if(btn && !btn.dataset.wired){
+      btn.addEventListener('click', (e)=>{ e.preventDefault(); toggleHeaderMusicPlay(); });
+      btn.dataset.wired='1';
+    }
+  })();
 
   // initial apply
   applyTheme(s.settings.theme||'default');
   applyFont(s.settings.font||'Press Start 2P');
   updateDisplayName();
+  ensureAudioElem(); // create hidden audio if missing
 
   // ensure hidden file input exists
   if(!document.getElementById('musicFile')){
@@ -206,13 +239,13 @@ export default function renderSettings(root){
       const name=document.createElement('span'); name.textContent=it.name||('Track '+(i+1));
       left.appendChild(name);
       const right=document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
-      const play=document.createElement('button'); play.className='secondary'; play.textContent='Play';
-      play.onclick=()=>{ setCurrentTrack(it.url, it.name); };
+      const use=document.createElement('button'); use.className='secondary'; use.textContent='Use';
+      use.onclick=()=>{ setCurrentTrack(it.url, it.name); toast('Selected as current track'); };
       const top=document.createElement('button'); top.className='secondary'; top.textContent='Top';
       top.onclick=()=>{ const arr=safeList(); const cur=arr.splice(i,1)[0]; arr.unshift(cur); saveList(arr); renderSongs(); };
       const del=document.createElement('button'); del.className='danger'; del.textContent='Delete';
       del.onclick=()=>{ const arr=safeList(); arr.splice(i,1); saveList(arr); renderSongs(); };
-      right.append(play, top, del);
+      right.append(use, top, del);
       row.append(left, right); el.appendChild(row);
     });
   }

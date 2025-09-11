@@ -1,18 +1,18 @@
-// NYX Assistant — syntaxfix2
+// NYX Assistant — syntaxfix2 (patched)
 console.log('[NYX] build syntaxfix2 loaded');
 import { load, save } from '../util/storage.js';
 import { nyxAskLLM } from './nyx-llm.js';
 import { Actions } from './nyx-actions.js';
 import { planActionsFromText } from './nyx-planner.js';
 
-const VOICE_NAME = 'Google US English';
-
 class Nyx {
   constructor(){
     this.name = 'NYX';
-    this.version = '1.0.2';
-    this.voice = null;
+    this.version = '1.0.3';
+    this.voiceReady = false;
     this.state = load();
+
+    // public hooks
     window.NQ = window.NQ || {};
     window.NQ.track = this.track.bind(this);
     window.NQ.ask = (q)=>this.reply(q);
@@ -22,10 +22,12 @@ class Nyx {
   init(){
     this.mountUI();
     this.wireAutoHooks();
+    this.prepareVoices();
     this.speak("hey, i'm nyx. i'll track your wins and keep the gold flowing.");
     console.log('[NYX] initialized');
   }
 
+  // ---------- UI ----------
   mountUI(){
     // css
     const link = document.createElement('link');
@@ -60,18 +62,31 @@ class Nyx {
     panel.querySelector('#nyx-text')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') this.onSend(); });
   }
 
+  // ---------- speech ----------
+  prepareVoices(){
+    try{
+      const assign = () => { this.voiceReady = true; };
+      window.speechSynthesis?.addEventListener('voiceschanged', assign, {once:true});
+      // kick it so some browsers populate voices
+      window.speechSynthesis?.getVoices();
+      setTimeout(assign, 800);
+    }catch(_){}
+  }
   speak(text){
     try{
       if(!('speechSynthesis' in window)) return;
       const u = new SpeechSynthesisUtterance(String(text||''));
-      const voices = window.speechSynthesis.getVoices();
-      const pref = localStorage.getItem('nyx_voice');
-        let pick = voices.find(v=>v.name===pref) || voices.find(v=>v.name.includes('English')) || voices[0];
+      const pref = localStorage.getItem('nyx_voice') || '';
+      const voices = window.speechSynthesis.getVoices() || [];
+      const pick = voices.find(v=>v.name===pref)
+               || voices.find(v=>/english/i.test(v.name))
+               || voices[0];
       if(pick) u.voice = pick;
       window.speechSynthesis.speak(u);
     }catch(_){}
   }
 
+  // ---------- chat helpers ----------
   pushBot(text){
     const box = document.getElementById('nyx-body'); if(!box) return;
     const div = document.createElement('div'); div.className='nyx-msg nyx-bot'; div.textContent=String(text||'');
@@ -89,6 +104,7 @@ class Nyx {
     this.reply(q);
   }
 
+  // ---------- main reply ----------
   async reply(q){
     const s = this.state = load();
     const lc = (q||'').toLowerCase();
@@ -102,7 +118,7 @@ class Nyx {
       const tips = [
         'tiny quests > huge promises. pick a 5-minute win.',
         'hydrate, move, breathe. i’ll track and reward it.',
-        'open your journal and vent. you\'ll get xp for honesty.'
+        "open your journal and vent. you'll get xp for honesty."
       ];
       const t = tips[Math.floor(Math.random()*tips.length)];
       this.pushBot(t); this.speak(t); return t;
@@ -114,42 +130,61 @@ class Nyx {
     }
     if(lc.startsWith('/llm off')){ this._llmOff = true; const m='llm disabled; using local hints only.'; this.pushBot(m); return m; }
     if(lc.startsWith('/llm on')){ this._llmOff = false; const m='llm enabled.'; this.pushBot(m); return m; }
-      if(lc.startsWith('/voice list')){ const names=(speechSynthesis.getVoices()||[]).map(v=>v.name).join(' • ')||'(no voices)'; this.pushBot('voices: '+names); return names; }
-      if(lc.startsWith('/voice set ')){ const n=q.slice(12).trim(); NQ.commit(s);('nyx_voice', n); const m='voice set to '+n; this.pushBot(m); this.speak(m); return m; }
+
+    if(lc.startsWith('/voice list')){
+      const names=(speechSynthesis.getVoices()||[]).map(v=>v.name).join(' • ')||'(no voices)';
+      this.pushBot('voices: '+names); return names;
+    }
+    if(lc.startsWith('/voice set ')){
+      const n=q.slice(12).trim();
+      try{ localStorage.setItem('nyx_voice', n); }catch(_){}
+      const m='voice set to '+n; this.pushBot(m); this.speak(m); return m;
+    }
+
     if(lc.startsWith('/llm test')){
       const ep = localStorage.getItem('nyx_llm_endpoint') || window.NYX_LLM_ENDPOINT || '';
-      if(!ep){ const m='no endpoint set. run: NQ.commit(s);("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
+      if(!ep){ const m='no endpoint set. run this in console:\nlocalStorage.setItem("nyx_llm_endpoint","https://<worker>.workers.dev")'; this.pushBot(m); return m; }
       this.pushBot('pinging llm…');
       return fetch(ep, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ messages:[{role:'user', content:'ping'}] })
       }).then(r=>r.json()).then(j=>{
-        if(j && j.text){ const m='llm ok • reply: '+String(j.text).slice(0,60)+'…'; this.pushBot(m); return m; }
+        if(j && j.text){ const m=('llm ok • reply: '+String(j.text).slice(0,60)+'…'); this.pushBot(m); return m; }
         const m='llm replied but no text field: '+JSON.stringify(j).slice(0,80); this.pushBot(m); return m;
       }).catch(e=>{
         const m='llm error: '+e; this.pushBot(m); return m;
       });
     }
-    if(lc.startsWith('/help') || lc.includes('help')){
-        const msg = 'commands: /stats /tips /quests /llm on|off /llm test /run <json> /undo /actions';
-        this.pushBot(msg); return msg;
-      }
-      if(lc.startsWith('/actions')){ const m = 'available: '+Actions.list().join(', '); this.pushBot(m); return m; }
-      if(lc.startsWith('/undo')){ const ok = await Actions.undoLast(); const m = ok?'undid last change.':'nothing to undo.'; this.pushBot(m); return m; }
-      if(lc.startsWith('/run ')){
-        try{ const plan = JSON.parse(q.slice(5)); const res = await Actions.runMany(plan.steps||[]); const m='ok • '+res.length+' step(s)'; this.pushBot(m); return m; }
-        catch(e){ const m='bad json: '+e; this.pushBot(m); return m; }
-      }
 
-    // LLM fallback (or local supportive)
+    if(lc.startsWith('/help') || lc === 'help'){
+      const msg = 'commands: /stats /tips /quests /llm on|off /llm test /run <json> /undo /actions /voice list|set';
+      this.pushBot(msg); return msg;
+    }
+    if(lc.startsWith('/actions')){ const m = 'available: '+Actions.list().join(', '); this.pushBot(m); return m; }
+    if(lc.startsWith('/undo')){ const ok = await Actions.undoLast(); const m = ok?'undid last change.':'nothing to undo.'; this.pushBot(m); return m; }
+    if(lc.startsWith('/run ')){
+      try{
+        const plan = JSON.parse(q.slice(5));
+        const res = await Actions.runMany(plan.steps||[]);
+        const m='ok • '+res.length+' step(s)'; this.pushBot(m); return m;
+      }catch(e){
+        const m='bad json: '+e; this.pushBot(m); return m;
+      }
+    }
+
+    // Try to derive an action plan (regex/LLM) before chat
     const planTry = await planActionsFromText(q);
     if(planTry.steps && planTry.steps.length){
-      if(planTry.confirm){ this.pushBot('i can run '+planTry.steps.length+' change(s). say "/run {\"steps\":[...]}" to confirm, or type /undo after.'); return 'pending'; }
+      if(planTry.confirm){
+        this.pushBot('i can run '+planTry.steps.length+' change(s). say `/run {"steps":[...]}` to confirm, or type /undo after.');
+        return 'pending';
+      }
       const res = await Actions.runMany(planTry.steps);
       const m = 'done • '+res.length+' change(s)'; this.pushBot(m); return m;
     }
 
+    // LLM chat
     const sys = [
       'You are NYX, a supportive ADHD-friendly guide inside the NeuroQuest app.',
       'Tone: warm, brief, non-judgmental, practical; prefer bullet points and a single tiny next step.',
@@ -179,17 +214,19 @@ class Nyx {
     });
   }
 
-  // ECONOMY
+  // ---------- economy ----------
   grant(xp=5, gold=1, reason=''){
     const s = this.state = load();
     s.xp = (s.xp||0) + Number(xp||0);
     s.gold = (s.gold||0) + Number(gold||0);
     save(s);
     this.pushBot(`+${Number(xp||0)}xp +${Number(gold||0)}g ${reason?('— '+reason):''}`);
+    if(window.NQ_updateHud) window.NQ_updateHud();
     this.sparkCelebrate();
   }
   sparkCelebrate(){ document.dispatchEvent(new CustomEvent('nq:reward')); }
 
+  // ---------- tracking ----------
   track(event, payload={}){
     const e = String(event||'').toLowerCase();
     const d = payload || {};

@@ -1,99 +1,94 @@
+// /util/game.js
+// Core game helpers (gold / XP) with progress + achievements delegated to /util/rewards.js
 
 import {load, save} from './storage.js';
-import {confetti} from '../ui/fx.js';
+import {confetti, crownDrop} from '../ui/fx.js';
 import {rewardChime, partyHorn} from '../ui/sfx.js';
+import {logProgress} from './rewards.js';   // ← use your rewards logger
 
-export function addGold(n=1,{sparkle=true, sound=true}={}){
-  const s=load();
-  s.gold=(s.gold||0)+n;
+function hudTick(){ try{ window.NQ_updateHud && window.NQ_updateHud(); }catch{} }
+function emit(type, detail){ try{ document.dispatchEvent(new CustomEvent(`nq:${type}`, {detail})); }catch{} }
+
+export function addGold(n=1, {sparkle=true, sound=true} = {}){
+  const s = load();
+  const amt = Number(n)||0;
+  if(!amt) return s.gold||0;
+
+  s.gold = (Number(s.gold)||0) + amt;
   save(s);
+
   if(sound) rewardChime();
-  if(sparkle) confetti();
-  if(window.NQ_updateHud) window.NQ_updateHud();
+  if(sparkle){ try{ crownDrop(); confetti(); }catch{} }
+
+  emit('gold', {gold:s.gold, delta:amt});
+  hudTick();
   return s.gold;
 }
 
 export function addXP(n=5){
-  const s=load();
-  const before = s.xp||0;
-  const beforeLv = s.level||1;
-  const beforeBuckets = Math.floor((before)/100);
-  s.xp = before + n;
-  const afterBuckets = Math.floor((s.xp)/100);
-  if(afterBuckets>beforeBuckets){
-    // level up
-    s.level = (s.level||1) + (afterBuckets-beforeBuckets);
-    s.gold = (s.gold||0)+10; // +10 gold on level-up
+  const s = load();
+  const gain = Number(n)||0;
+  if(!gain) return {xp:s.xp||0, level:s.level||1};
+
+  const beforeXP = Number(s.xp)||0;
+  const beforeLv = Number(s.level)||1;
+
+  s.xp = beforeXP + gain;
+
+  // handle multi-levels
+  const ups = Math.floor(s.xp / 100);
+  if(ups > 0){
+    s.level = beforeLv + ups;
+    s.xp = s.xp % 100;
+    s.gold = (Number(s.gold)||0) + 10*ups;   // 10g / level
     save(s);
-    confetti(); confetti(); confetti(); // bigger feel
-    partyHorn();
-  } else {
+    try{ confetti(); confetti(); confetti(); partyHorn(); }catch{}
+    emit('level', {level:s.level, bonusGold:10*ups});
+  }else{
     save(s);
   }
-  if(window.NQ_updateHud) window.NQ_updateHud();
+
+  emit('xp', {xp:s.xp, added:gain});
+  hudTick();
   return {xp:s.xp, level:s.level||1};
 }
 
-
+/**
+ * Semantic activity log. 
+ * IMPORTANT: Progress + achievements are delegated to rewards.logProgress
+ * so pages won’t double-award.
+ */
 export function logAction(kind, amount=1){
-  // Generic action tracker for auto-claim rewards
-  const s=load();
-  s.progress = s.progress||{};
-  s.progress[kind]=(s.progress[kind]||0)+amount;
-  // examples of auto-claim hooks
-  const Ach = s.ach||(s.ach={});
-  function earn(id, token){ if(!Ach[id]){ Ach[id]=true; s.tokens=(s.tokens||[]); s.tokens.push(token); save(s); confetti(); if(window.NQ_updateHud) window.NQ_updateHud(); } }
-  // map some sample actions to achievements
-  if(kind==='breath_session' && s.progress[kind]>=1){ earn('breathe-3rounds','🌬️'); addGold(1); } // also award coin
-  if(kind==='walk' && s.progress[kind]>=5){ earn('walk-5','👟'); }
-  if(kind==='cook' && s.progress[kind]>=3){ earn('cook-3','🍳'); }
-  if(kind==='hydrate' && s.progress[kind]>=7){ earn('hydrate-7','💧'); }
-  if(kind==='budget_setup' && s.progress[kind]>=1){ earn('budget-setup','💰'); }
-  if(kind==='journal_entry' && s.progress[kind]>=3){ earn('journal-3','📔'); }
-  if(kind==='kindness' && s.progress[kind]>=3){ earn('kindness','🌈'); }
-  if(kind==='sleep' && s.progress[kind]>=5){ earn('sleep-5','😴'); }
-  if(kind==='meditate' && s.progress[kind]>=5){ earn('meditate-5','🧘'); }
-  if(kind==='social' && s.progress[kind]>=2){ earn('social-2','💬'); }
-  if(kind==='laundry' && s.progress[kind]>=1){ earn('laundry-week','🧺'); }
-  if(kind==='dishes' && s.progress[kind]>=4){ earn('dish-streak','🍽️'); }
-  if(kind==='inbox_zero' && s.progress[kind]>=1){ earn('inbox-zero','📬'); }
-  if(kind==='garden' && s.progress[kind]>=3){ earn('garden','🪴'); }
-  if(kind==='book' && s.progress[kind]>=1){ earn('book','📚'); }
-  if(kind==='skill' && s.progress[kind]>=5){ earn('skill','🎯'); }
-  if(kind==='pet_care' && s.progress[kind]>=7){ earn('pet-care','🐾'); }
-  if(kind==='screen_down' && s.progress[kind]>=3){ earn('screen-down','📵'); }
-  if(kind==='hydrate' && s.progress[kind]>=30){ earn('hydrate-30','💦'); }
+  const k = String(kind||'').trim();
+  if(!k) return;
 
+  const s = load();
+  s.log ||= [];
+  s.log.push({kind:k, t:Date.now(), n:Number(amount)||0});
+  if(s.log.length > 500) s.log.splice(0, s.log.length-500);
   save(s);
+
+  // Delegate all progress counting + auto-claim to rewards.js
+  try{ logProgress(k, Number(amount)||1); }catch{}
+
+  emit('action', {kind:k, n:amount});
 }
 
+/**
+ * Kept for API compatibility but now a no-op so we don’t double-infer;
+ * rewards.js already installs the click/change/keydown observers.
+ */
+export function installAutolog(){ /* no-op: rewards.js handles inference */ }
 
-export function installAutolog(){
-  const MAP=[
-    ['hydrate','hydrate'],['water','hydrate'],
-    ['walk','walk'],['run','walk'],
-    ['cook','cook'],['meal','cook'],
-    ['journal','journal_entry'],['save entry','journal_entry'],
-    ['budget','budget_setup'],['income','budget_setup'],
-    ['kind','kindness'],['kindness','kindness'],
-    ['sleep','sleep'],['meditate','meditate'],
-    ['social','social'],['laundry','laundry'],['dishes','dishes'],
-    ['inbox','inbox_zero'],['garden','garden'],['plant','garden'],
-    ['book','book'],['skill','skill'],['pet','pet_care'],
-    ['screen','screen_down']
-  ];
-  document.addEventListener('click', (e)=>{
-    try{
-      const t=e.target.closest('button, a, .btn, .primary, .secondary, .danger, [role="button"]');
-      if(!t) return;
-      const txt=(t.innerText||t.textContent||'').toLowerCase();
-      for(const [k,kind] of MAP){
-        if(txt.includes(k)){ logAction(kind,1); break; }
-      }
-    }catch(_){}
-  }, {capture:true});
-}
-
+/**
+ * Optional heartbeat; harmless if you still call it.
+ */
 export function ensureAutoClaim(){
-  setInterval(()=>{ try{ logAction('__tick',0); }catch(_){ } }, 2500);
+  if(window.__nq_claim_timer) return;
+  window.__nq_claim_timer = setInterval(()=>{ try{ logProgress('__tick', 0); }catch{} }, 3000);
 }
+
+// Expose a minimal console API (handy for debugging)
+try{
+  window.NQ = Object.assign(window.NQ||{}, { addGold, addXP, logAction });
+}catch{}

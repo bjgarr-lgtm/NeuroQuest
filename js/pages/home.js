@@ -1,7 +1,6 @@
-
 import {load, save} from '../util/storage.js';
 import {confetti} from '../ui/fx.js';
-import {addGold, logAction} from '../util/game.js';
+// removed addGold import; we award via NQ if available
 
 export default function renderHome(root){
   const s=load();
@@ -33,10 +32,10 @@ export default function renderHome(root){
     </section>
   `;
 
-  // Rewards rendering (first five available)
+  // ===== Rewards (first five available) =====
   const REWARDS_DEF = [
     {id:'first-quest', name:'Finish your first quest', token:'⭐'},
-    {id:'streak-3', name:'Maintain a 3‑day streak', token:'🔥'},
+    {id:'streak-3', name:'Maintain a 3-day streak', token:'🔥'},
     {id:'level-2', name:'Reach Level 2', token:'🛡️'},
     {id:'deep-clean', name:'Complete a Deep Clean raid', token:'🧽'},
     {id:'journal-3', name:'Journal 3 days this week', token:'📔'},
@@ -46,7 +45,7 @@ export default function renderHome(root){
     {id:'budget-setup', name:'Set up a monthly budget', token:'💰'},
     {id:'sleep-5', name:'Sleep 8h five nights', token:'😴'},
     {id:'meditate-5', name:'Meditate 5 sessions', token:'🧘'},
-    {id:'social-2', name:'Plan 2 social check‑ins', token:'💬'},
+    {id:'social-2', name:'Plan 2 social check-ins', token:'💬'},
     {id:'laundry-week', name:'Finish all laundry this week', token:'🧺'},
     {id:'dish-streak', name:'No sink pile for 4 days', token:'🍽️'},
     {id:'inbox-zero', name:'Hit inbox zero once', token:'📬'},
@@ -56,7 +55,7 @@ export default function renderHome(root){
     {id:'pet-care', name:'Pet care routine 7 days', token:'🐾'},
     {id:'kindness', name:'Do 3 kindness quests', token:'🌈'},
     {id:'coach', name:'Complete a Coach chat week', token:'🗣️'},
-    {id:'screen-down', name:'3 nights screen‑free hour', token:'📵'},
+    {id:'screen-down', name:'3 nights screen-free hour', token:'📵'},
     {id:'hydrate-30', name:'Hydration streak 30 days', token:'💦'},
     {id:'level-5', name:'Reach Level 5', token:'🏆'}
   ];
@@ -84,7 +83,6 @@ export default function renderHome(root){
   const scaleGroup = ringEl.querySelector('#scaleGroup');
   const core = ringEl.querySelector('.core'); core.style.transform='translate(-50%,-50%) scale(1)';
 
-  // Bigger contrast between inhale and exhale
   const seq=[
     {t:4000,txt:'Inhale', coreScale:1.18, ringScale:1.25},
     {t:2000,txt:'Hold',   coreScale:1.18, ringScale:1.25},
@@ -93,6 +91,21 @@ export default function renderHome(root){
   ];
 
   let running=false, step=0, rounds=0, timeoutId=null;
+
+  function awardBreathGold(){
+    // Prefer NQ so HUD updates broadcast; fallback to local state + save
+    try{
+      if (window.NQ && typeof window.NQ.addGold==='function'){
+        window.NQ.addGold(1);
+      }else{
+        const cur = load(); // re-load to be safe
+        cur.gold = (cur.gold||0)+1;
+        save(cur);
+      }
+    }catch(e){}
+    try{ confetti(); }catch(e){}
+    if(window.NQ_updateHud) window.NQ_updateHud();
+  }
 
   function playStep(){
     const p = seq[step];
@@ -120,8 +133,7 @@ export default function renderHome(root){
           running=false;
           phase.textContent='Nice work!';
           try{ window.NQ_track && window.NQ_track('breath_session'); }catch(e){}
-          try{ addGold(1); }catch(e){}
-          try{ confetti(); }catch(e){}
+          awardBreathGold();
           return;
         }
       }
@@ -141,11 +153,13 @@ export default function renderHome(root){
 
   // Minimal party mini render
   const row=document.getElementById('partyRow');
-  const partyImgs = (s.party && Array.isArray(s.party) ? s.party : (s.party?.companions||[]));
-  partyImgs.forEach(p=>{
-    const img=document.createElement('img'); img.src=p; img.style.width='88px'; img.style.borderRadius='12px';
+  const party = Array.isArray(s.party) ? s.party : (s.party?.companions||[]);
+  (party||[]).forEach(p=>{
+    const img=document.createElement('img'); img.src=p; img.loading='lazy';
+    img.style.width='88px'; img.style.height='88px'; img.style.objectFit='cover'; img.style.borderRadius='12px';
     row.appendChild(img);
   });
 
+  // HUD nudge (if present)
   if(window.NQ_updateHud) window.NQ_updateHud();
 }
