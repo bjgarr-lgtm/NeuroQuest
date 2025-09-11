@@ -217,8 +217,14 @@
       // window.NQ_toGame({ type:'hello', from:'web' });
     });
   </script>
+  <script>
+  window.addEventListener('nq:fromGame', (e) => {
+    const msg = e.detail; // {type: 'hud:update', gold: 10}
+    // ...update HUD/NYX/etc
+  });
+</script>
 
-  <!-- NYX endpoint + bot (floats above game) -->
+<!-- NYX endpoint + bot (floats above game) -->
   <script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
   <script type="module" src="js/bot/nyx.js?v=syntaxfix2"></script>
   <script type="module" src="js/bot/nyx-wire.js"></script>
