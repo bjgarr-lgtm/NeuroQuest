@@ -22,9 +22,6 @@ const routes = [
   { id: 'life',      label: 'Life Hub',           view: renderLife },
   { id: 'character', label: 'Party',              view: renderCharacter },
   { id: 'journal',   label: 'Adventure Journal',  view: renderJournal },
-  { id: 'shop',      label: 'Wardrobe / Shop',    view: renderShop },
-  { id: 'rewards',   label: 'Rewards',            view: renderRewards },
-  { id: 'toddler',   label: 'Toddler Hub',        view: renderToddler },
   { id: 'settings',  label: 'Settings',           view: renderSettings },
 ];
 
@@ -139,3 +136,19 @@ try { renderHUD(state); } catch(_) {}
 onChange(next => { state = next; updateHud(); });
 
 console.log('[APP] ready');
+
+(function wireDrawer(){
+  const drawer = document.getElementById('drawer');
+  const scrim  = document.getElementById('scrim');
+  const hamb   = document.getElementById('hamb');
+
+  function open(){ drawer.classList.add('open'); document.body.classList.add('drawer-open'); }
+  function close(){ drawer.classList.remove('open'); document.body.classList.remove('drawer-open'); }
+  function toggle(){ drawer.classList.contains('open') ? close() : open(); }
+
+  hamb?.addEventListener('click', toggle);
+  scrim?.addEventListener('click', close);
+
+  // Close drawer when navigating
+  window.addEventListener('hashchange', close);
+})();

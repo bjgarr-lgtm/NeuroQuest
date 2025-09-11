@@ -225,3 +225,49 @@ body.sb-debug .sb-acc-layer { outline: 2px solid rgba(0,160,255,0.85) !important
 .meal-day{display:grid; grid-template-columns:1fr; gap:8px}
 .meal-grid-wrap{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px}
 .meal-col input{width:100%}
+
+/* Drawer as off-canvas panel */
+.drawer{
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 280px;
+  background: var(--panel, #141429);
+  box-shadow: 0 10px 30px #0008, inset 0 0 0 1px #ffffff12;
+  transform: translateX(-110%);
+  transition: transform .22s ease-out;
+  z-index: 1000;
+  overflow:auto;
+  padding: 12px;
+}
+.drawer.open{ transform: translateX(0); }
+
+/* Scrim behind drawer */
+.scrim{
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease;
+  z-index: 999;
+}
+body.drawer-open .scrim{ opacity: 1; pointer-events: auto; }
+
+/* Main content should not be pushed by the drawer on mobile */
+.view{ position: relative; z-index: 0; }
+
+/* On wide screens, keep drawer docked and reserve space */
+@media (min-width: 1024px){
+  .drawer{
+    transform: none;             /* always visible on desktop */
+  }
+  .scrim{ display:none; }
+  .view{
+    margin-left: 300px;          /* leave room for docked drawer */
+  }
+  .app-header{
+    position: sticky; top: 0; z-index: 10;
+  }
+}
+
+/* Make sure NYX panel floats above */
+#nyx-panel{ z-index: 2000; }
+#nyx-launcher{ z-index: 2000; }
