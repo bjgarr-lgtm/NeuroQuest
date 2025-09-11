@@ -25,5 +25,6 @@ export function initDrawer(routes){
   }
   window.addEventListener('hashchange', setActive);
   setActive();
-  
+  <button class="primary" onclick="location.hash='game'">▶ Play Vertical Slice</button>
+
 }
