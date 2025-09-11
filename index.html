@@ -3,283 +3,172 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>NeuroQuest</title>
+  <title>NeuroQuest • Godot Build</title>
 
-  <!-- Fonts & app stylesheet (keep your look) -->
+  <!-- Fonts / basic styles -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml"/>
-  <link rel="stylesheet" href="styles.css"/>
 
   <style>
     :root{
-      --header-h: 64px;
-      --drawer-w: 280px;
-      --z-game: 10;      --z-hud: 90;    --z-drawer: 600;
-      --z-scrim: 550;    --z-nyx: 900;   --z-fx: 650;
+      --bg:#0b0b12; --panel:#141429; --ink:#cfe6ff;
+      --z-game: 10; --z-hud: 80; --z-drawer: 90; --z-nyx: 120;
+      --header-h: 64px; --drawer-w: 300px;
     }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0; background:var(--bg); color:var(--ink); font-family:'Press Start 2P', system-ui, sans-serif}
 
-    html,body{height:100%}
-    body{margin:0;background:#0b0b12}
+    /* Header HUD (optional) */
+    .app-header{position:sticky; top:0; z-index:var(--z-hud);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 12px; background:linear-gradient(180deg,rgba(0,0,0,.7),rgba(0,0,0,.2));
+      backdrop-filter: blur(6px);
+    }
+    .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink)}
+    .logo{width:48px;height:48px;filter:drop-shadow(0 0 6px #7cf)}
 
-    /* GODOT owns the viewport */
+    /* Godot canvas container */
     #godot-root{
-      position: fixed; inset: 0;
-      z-index: var(--z-game);
-      background:#0b0b12;
-      pointer-events:auto; /* game is interactive */
+      position:fixed; inset:0;
+      z-index:var(--z-game);
+      background:#000;
+      pointer-events:auto;  /* game is interactive */
     }
 
-    /* HUD floats above game (keep your header markup/styles.css) */
-    .app-header{ position: sticky; top:0; z-index: var(--z-hud); }
-
-    /* Right-side drawer (overlay, not layout-pushing) */
-    #drawer.drawer{
-      position: fixed;
-      top: var(--header-h);
-      right: 0; bottom: 0;
-      width: var(--drawer-w);
-      transform: translateX(100%);
-      transition: transform .22s ease-out;
-      z-index: var(--z-drawer);
-      background: rgba(10,10,22,.98);
-      border-left: 1px solid #444;
-      padding: 12px;
-      overflow:auto;
+    /* Right-side drawer (overlay) */
+    #drawer{
+      position:fixed; top:var(--header-h); right:-var(--drawer-w); bottom:0; width:var(--drawer-w);
+      background:rgba(10,10,22,.98); border-left:1px solid #444; padding:12px; z-index:var(--z-drawer);
+      transition: transform .22s ease-out; transform: translateX(0); /* moved via 'right' */
     }
-    #drawer.open{ transform: translateX(0); }
-
-    #scrim.scrim{
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.45);
-      opacity: 0; pointer-events: none;
-      transition: opacity .18s ease;
-      z-index: var(--z-scrim);
+    #drawer.open{ right:0; }
+    #scrim{
+      position:fixed; inset:0; background:rgba(0,0,0,.35);
+      opacity:0; pointer-events:none; transition:opacity .2s; z-index:calc(var(--z-drawer) - 1);
     }
     #drawer.open + #scrim{ opacity:1; pointer-events:auto; }
 
-    /* Keep NYX on top */
-    #nyx-launcher{ position:fixed; right:16px; bottom:16px; z-index: var(--z-nyx); }
-    #nyx-panel{ position:fixed; right:16px; bottom:76px; z-index: calc(var(--z-nyx)+1); }
+    /* NYX floaters always on top (optional) */
+    #nyx-launcher, #nyx-panel{ position:fixed; right:16px; z-index:var(--z-nyx); }
+    #nyx-launcher{ bottom:16px; }
+    #nyx-panel{ bottom:76px; max-height:calc(100dvh - 120px); }
 
-    /* Optional: hide legacy planner view area (Godot is full experience) */
-    main.view{ display:none; }
-
-    /* Effects layer (confetti etc.) never steals clicks */
-    .fx-layer{ position:fixed; inset:0; z-index:var(--z-fx); pointer-events:none; }
+    /* Minimal HUD bits */
+    .hud{display:flex; gap:12px; align-items:center}
+    .hamb{border:1px solid #555; background:#111; color:#9fe; border-radius:10px; padding:6px 10px; cursor:pointer}
   </style>
-
-  <script>
-    // --- Minimal tracker shim (safe even if NYX hasn't loaded yet) ---
-    window.NQ_track = window.NQ_track || function (ev, payload) {
-      try { if (window.NQ && typeof window.NQ.track === 'function') window.NQ.track(ev, payload || {}); } catch(e){}
-    };
-    window.tracker = window.NQ_track;
-
-    // --- JS <-> Godot bridge -----------------------------------------
-    // Outgoing queue until Godot binds its receive fn
-    const __nq_outbox = [];
-    let __nq_sendToGame = null;
-
-    // Call this FROM GODOT once ready, passing a function that receives messages from JS.
-    // In GDScript, use: JavaScriptBridge.get_interface("NQ_bind")(func_ref)
-    window.NQ_bind = function(sendFnFromGodot){
-      __nq_sendToGame = sendFnFromGodot;
-      // flush anything queued pre-bind
-      while(__nq_outbox.length) {
-        try { __nq_sendToGame(__nq_outbox.shift()); } catch(e){ console.warn('[NQ] flush->game failed', e); }
-      }
-      document.dispatchEvent(new CustomEvent('godot:ready'));
-      console.log('[NQ] Godot bound');
-    };
-
-    // JS -> Godot (your app calls this)
-    window.NQ_toGame = function(msg){
-      try{
-        if(__nq_sendToGame){ __nq_sendToGame(msg); }
-        else { __nq_outbox.push(msg); }
-      }catch(e){ console.warn('[NQ] toGame failed', e); }
-    };
-
-    // Godot -> JS (Godot calls window.NQ_fromGame({...}))
-    window.NQ_fromGame = function(msg){
-      try{
-        // bubble a DOM event for any listeners
-        document.dispatchEvent(new CustomEvent('nq:game', { detail: msg }));
-        // optional: map common game events to NYX tracker economy
-        switch(msg?.type){
-          case 'quest:complete':
-            window.NQ_track('quest:complete', { id: msg.id, title: msg.title, tier: msg.tier||'side' });
-            break;
-          case 'journal:entry':
-            window.NQ_track('journal:entry', {});
-            break;
-          case 'hydrate:log':
-            window.NQ_track('hydrate:log', {});
-            break;
-          case 'breathe:ring':
-            window.NQ_track('breathe:ring', {});
-            break;
-          case 'streak:day':
-            window.NQ_track('streak:day', {});
-            break;
-          default:
-            // no-op; your app can listen to 'nq:game' and branch
-        }
-      }catch(e){ console.warn('[NQ] fromGame handler error', e); }
-    };
-  </script>
 </head>
+<body>
 
-<body class="crt">
-  <!-- Header HUD (keep your existing markup; this version is minimal) -->
+  <!-- Tiny HUD (optional) -->
   <header class="app-header">
-    <a class="brand" id="brand" href="#">
-      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest logo"/>
-      <h1>NeuroQuest</h1>
+    <a class="brand" href="#">
+      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest"/>
+      <span>NeuroQuest</span>
     </a>
-    <div class="hud" id="hud">
-      <div id="hudTokens" class="tokens"></div>
-      <div id="partyMini" class="party-mini"></div>
-      <div class="gold" id="hudGold">🪙 0</div>
-      <div class="xp">
-        <span id="hudLevel">Lv 1</span><span class="flame">🔥</span>
-        <div class="bar"><div id="hudXp"></div></div>
-      </div>
-      <audio id="music" preload="none"></audio>
-      <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
-      <input type="file" id="musicFile" accept="audio/*" style="display:none"/>
-      <button id="hamb" class="hamb" aria-label="Menu">☰</button>
+    <div class="hud">
+      <button id="hamb" class="hamb" title="Menu">☰</button>
     </div>
   </header>
 
-  <!-- Right drawer + scrim (overlay) -->
-  <aside id="drawer" class="drawer"><nav id="nav"></nav></aside>
-  <div id="scrim" class="scrim"></div>
-
-  <!-- Godot canvas mounts here and owns the screen -->
+  <!-- Godot mounts here -->
   <div id="godot-root"></div>
 
-  <!-- (Optional) legacy main container, hidden; keeping to avoid breaking imports -->
-  <main id="view" class="view"></main>
+  <!-- Overlay drawer on the RIGHT -->
+  <aside id="drawer"><nav id="nav">
+    <!-- put any web overlays (settings, quit, etc.) here, or leave empty -->
+  </nav></aside>
+  <div id="scrim"></div>
 
-  <footer class="app-footer">
-    <span id="streakLabel">Streak: 0 🔥 | Best: 0</span>
-    <span class="dot">•</span>
-    <button id="exportBtn" class="secondary">Export</button>
-    <input type="file" id="importFile" accept="application/json" style="display:none"/>
-    <button id="importBtn" class="secondary">Import</button>
-  </footer>
-
-  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
-
-  <!-- Drawer wiring (right side) -->
   <script>
-    (function(){
-      const drawer = document.getElementById('drawer');
-      const scrim  = document.getElementById('scrim');
-      const hamb   = document.getElementById('hamb');
-      if (!drawer || !scrim || !hamb) return;
+  // ---------- CONFIG: where your game is hosted ----------
+  // Your Worker serves: https://nq-game-worker.bjgarr.workers.dev/
+  // Files are: nq.js, nq.wasm, nq.pck, etc. at the ROOT.
+  const GODOT_BASE = "https://nq-game-worker.bjgarr.workers.dev";
+  const GODOT_EXECUTABLE = GODOT_BASE + "/nq";  // base name for nq.{js,wasm,pck}
 
-      const open  = ()=> drawer.classList.add('open');
-      const close = ()=> drawer.classList.remove('open');
-      const toggle= ()=> drawer.classList.toggle('open');
+  // ---------- Drawer toggle (right-side) ----------
+  (function(){
+    const drawer = document.getElementById('drawer');
+    const scrim  = document.getElementById('scrim');
+    const hamb   = document.getElementById('hamb');
+    if (!drawer || !scrim || !hamb) return;
+    const open  = () => drawer.classList.add('open');
+    const close = () => drawer.classList.remove('open');
+    const toggle= () => drawer.classList.toggle('open');
+    hamb.addEventListener('click', toggle);
+    scrim.addEventListener('click', close);
+    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+  })();
 
-      hamb.addEventListener('click', toggle);
-      scrim.addEventListener('click', close);
-      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
-    })();
-  </script>
-
-  <!-- Boot the Godot HTML5 export -->
-  <script>
-    (function bootGodot(){
-      const root = document.getElementById('godot-root');
-      const s = document.createElement('script');
-      s.src = '/game/nq.js'; // ← adjust if your export uses different names
-      s.onload = () => {
-        if (typeof createEngine !== 'function'){
-          console.error('[Godot] loader missing createEngine()');
-          return;
-        }
-        createEngine({
-          canvasContainer: root,
-          executable: '/game/nq', // ← base path (nq.wasm, nq.pck)
-          focusCanvas: true,
-        }).then(()=>console.log('[Godot] started'))
-          .catch(err=>console.error('[Godot] boot error', err));
-      };
-      s.onerror = ()=> console.error('[Godot] failed to load loader script', s.src);
-      document.body.appendChild(s);
-    })();
-
-    // Example: send a smoke-test to the game once it's ready.
-    document.addEventListener('godot:ready', ()=>{
-      // window.NQ_toGame({ type:'hello', from:'web' });
+  // ---------- Page ↔ Game bridge ----------
+  // PAGE → GAME: call globalThis.NQ_toGame({...})
+  // GAME → PAGE: listen for 'nq:fromGame' CustomEvent
+  (function bridge(){
+    // Listen to messages sent by Godot
+    window.addEventListener('nq:fromGame', (e)=>{
+      const data = e?.detail;
+      console.log('[fromGame]', data);
+      // Example: hook to your NYX tracker if you want web-side rewards
+      try { window.NQ_track?.(data?.type||'fromGame', data||{}); } catch(_){}
     });
-  </script>
-  <script>
-  window.addEventListener('nq:fromGame', (e) => {
-    const msg = e.detail; // {type: 'hud:update', gold: 10}
-    // ...update HUD/NYX/etc
-  });
-</script>
+    // Simple demo button in console:
+    //   NQ_toGame?.({type:'quest:complete', id:'q_demo'})
+  })();
 
-<!-- NYX endpoint + bot (floats above game) -->
+  // ---------- Boot Godot ----------
+  (function bootGodot(){
+    const root = document.getElementById('godot-root');
+
+    // load nq.js from the Worker
+    const s = document.createElement('script');
+    s.src = GODOT_BASE + '/nq.js';
+    s.async = true;
+    s.onerror = () => console.error('[Godot] failed to load loader script', s.src);
+    s.onload = () => {
+      const cfg = {
+        // Godot 4.3/4.4 loaders accept one of these shapes depending on template
+        executable: GODOT_EXECUTABLE,         // base for nq.wasm / nq.pck
+        canvasContainer: root,                 // create canvas inside
+        focusCanvas: true,
+        // try to keep audio working if your Worker sends COOP/COEP headers
+        // (Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Embedder-Policy: require-corp)
+      };
+
+      // Support both loader flavors
+      if (typeof Engine !== 'undefined') {
+        const engine = new Engine(cfg);
+        engine.startGame().then(()=>{
+          console.log('[Godot] started (Engine)');
+        }).catch(err=>{
+          console.error('[Godot] start error', err);
+        });
+      } else if (typeof createEngine !== 'undefined') {
+        createEngine(cfg).then(()=>{
+          console.log('[Godot] started (createEngine)');
+        }).catch(err=>{
+          console.error('[Godot] start error', err);
+        });
+      } else {
+        console.error('[Godot] Neither Engine nor createEngine found on window.');
+      }
+    };
+    document.body.appendChild(s);
+  })();
+
+  // ---------- Minimal tracker shim so existing calls don’t explode ----------
+  (function(){
+    window.NQ_track = window.NQ_track || function (ev, payload) {
+      try { if (window.NQ && typeof window.NQ.track === 'function') window.NQ.track(ev, payload||{}); } catch (e) {}
+    };
+    window.tracker = window.NQ_track;
+  })();
+  </script>
+
+  <!-- (Optional) NYX — leave these if you still want the assistant overlay -->
   <script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
   <script type="module" src="js/bot/nyx.js?v=syntaxfix2"></script>
   <script type="module" src="js/bot/nyx-wire.js"></script>
+
 </body>
 </html>
-
-<!-- Godot mount (full experience: the game owns the viewport) -->
-<div id="godot-root"></div>
-<script>
-  (function bootGodot(){
-    // CHANGE THESE THREE LINES:
-    const GODOT_HOST = 'https://nq-game-worker.bjgarr.workers.dev/'; // <- your Worker URL
-    const GODOT_BASE = 'nq';                                        // <- file base in R2 (no extension)
-    const LOADER_URL = 'https://nq-game-worker.bjgarr.workers.dev/neuroquest-game/nq.js';   // <- loader script full URL
-                          
-    const root = document.getElementById('godot-root');
-    Object.assign(root.style, {
-      position:'fixed', inset:'0', zIndex: 10,  /* below NYX/HUD, above bg */
-      background:'#0b0b12'
-    });
-
-    // 1) sanity check the loader exists (helps you catch 404s fast)
-    fetch(LOADER_URL, {method:'HEAD'})
-      .then(r => {
-        if(!r.ok) throw new Error('Loader 404 at ' + LOADER_URL);
-        // 2) load the loader
-        const s = document.createElement('script');
-        s.src = LOADER_URL;
-        s.onload = () => {
-          // 3) boot the engine; executable is the same base (no extension)
-          createEngine({
-            canvasContainer: root,
-            executable: 'https://nq-game-worker.bjgarr.workers.dev/neuroquest-game/nq.js',
-            focusCanvas: true
-          }).then(() => console.log('[Godot] started'))
-            .catch(err => console.error('[Godot] engine init failed:', err));
-        };
-        s.onerror = () => console.error('[Godot] loader failed to load:', LOADER_URL);
-        document.body.appendChild(s);
-      })
-      .catch(err => console.error('[Godot] preflight error:', err));
-  })();
-</script>
-
-<script>
-  // GAME -> PAGE: listen for events Godot emits
-  window.addEventListener('nq:fromGame', (ev) => {
-    console.log('[fromGame]', ev.detail);
-    // example: reward in NYX
-    if (ev.detail?.type === 'quest:complete') {
-      window.NQ?.track?.('quest:complete', ev.detail);
-    }
-  });
-
-  // PAGE -> GAME: make a global callable the game will set (from WebBridge.gd)
-  // After WebBridge.gd `_ready()`, globalThis.NQ_toGame will be a function.
-  // Example call: globalThis.NQ_toGame?.({ type:'quest:complete', id:'q_123' });
-</script>
