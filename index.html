@@ -1,171 +1,157 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>NeuroQuest • Godot Build</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Fonts / basic styles -->
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml"/>
+  <!-- Cross-origin isolation (safe to include; needed if your export uses threads). -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+  <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
 
+  <title>NeuroQuest — Godot</title>
+
+  <!-- Minimal CSS: Godot owns the screen. NYX floats above. -->
   <style>
-    :root{
-      --bg:#0b0b12; --panel:#141429; --ink:#cfe6ff;
-      --z-game: 10; --z-hud: 80; --z-drawer: 90; --z-nyx: 120;
-      --header-h: 64px; --drawer-w: 300px;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0; background:var(--bg); color:var(--ink); font-family:'Press Start 2P', system-ui, sans-serif}
+    :root { --header-h: 64px; }
+    html, body { height: 100%; margin: 0; background: #0b0b12; color: #cfe6ff; font-family: 'Press Start 2P', system-ui, sans-serif; }
+    .app-header{position:sticky; top:0; z-index:900; display:flex; align-items:center; justify-content:space-between;
+      padding:8px 12px; background:linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,.2)); backdrop-filter: blur(6px);}
+    .brand{display:flex; align-items:center; gap:10px}
+    .logo{width:42px; height:42px; filter:drop-shadow(0 0 6px #7cf)}
+    #godot-root{position:fixed; inset:0; z-index:100; background:#0b0b12; pointer-events:auto;}
+    /* Hide the old planner UI; Godot is the full experience now */
+    main.view, aside.drawer, .app-footer { display:none !important; }
 
-    /* Header HUD (optional) */
-    .app-header{position:sticky; top:0; z-index:var(--z-hud);
-      display:flex; align-items:center; justify-content:space-between;
-      padding:8px 12px; background:linear-gradient(180deg,rgba(0,0,0,.7),rgba(0,0,0,.2));
-      backdrop-filter: blur(6px);
-    }
-    .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink)}
-    .logo{width:48px;height:48px;filter:drop-shadow(0 0 6px #7cf)}
-
-    /* Godot canvas container */
-    #godot-root{
-      position:fixed; inset:0;
-      z-index:var(--z-game);
-      background:#000;
-      pointer-events:auto;  /* game is interactive */
-    }
-
-    /* Right-side drawer (overlay) */
-    #drawer{
-      position:fixed; top:var(--header-h); right:-var(--drawer-w); bottom:0; width:var(--drawer-w);
-      background:rgba(10,10,22,.98); border-left:1px solid #444; padding:12px; z-index:var(--z-drawer);
-      transition: transform .22s ease-out; transform: translateX(0); /* moved via 'right' */
-    }
-    #drawer.open{ right:0; }
-    #scrim{
-      position:fixed; inset:0; background:rgba(0,0,0,.35);
-      opacity:0; pointer-events:none; transition:opacity .2s; z-index:calc(var(--z-drawer) - 1);
-    }
-    #drawer.open + #scrim{ opacity:1; pointer-events:auto; }
-
-    /* NYX floaters always on top (optional) */
-    #nyx-launcher, #nyx-panel{ position:fixed; right:16px; z-index:var(--z-nyx); }
-    #nyx-launcher{ bottom:16px; }
-    #nyx-panel{ bottom:76px; max-height:calc(100dvh - 120px); }
-
-    /* Minimal HUD bits */
-    .hud{display:flex; gap:12px; align-items:center}
-    .hamb{border:1px solid #555; background:#111; color:#9fe; border-radius:10px; padding:6px 10px; cursor:pointer}
+    /* NYX on top */
+    #nyx-panel, #nyx-launcher { z-index: 2000; position: fixed; right: 16px; }
+    #nyx-launcher { bottom: 16px; }
+    #nyx-panel { bottom: 76px; max-height: calc(100dvh - 120px); }
   </style>
+
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/neuroquest-shield.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- Tiny HUD (optional) -->
+  <!-- Minimal HUD header (optional; keep if you like the top bar) -->
   <header class="app-header">
-    <a class="brand" href="#">
-      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest"/>
-      <span>NeuroQuest</span>
+    <a class="brand" id="brand" href="#home">
+      <img src="assets/neuroquest-shield.svg" class="logo" alt="NeuroQuest logo"/>
+      <h1 style="font-size:16px; margin:0">NeuroQuest</h1>
     </a>
-    <div class="hud">
-      <button id="hamb" class="hamb" title="Menu">☰</button>
+    <div class="hud" id="hud" style="display:flex; align-items:center; gap:12px">
+      <div class="gold" id="hudGold">🪙 0</div>
+      <span id="hudLevel">Lv 1</span>
+      <div style="width:160px; height:8px; border:1px solid #6cf; border-radius:6px; overflow:hidden">
+        <div id="hudXp" style="height:100%; width:0%; background:linear-gradient(90deg,#7cf,#e7a7ff)"></div>
+      </div>
+      <button id="musicBtn" class="hamb" title="Play/Pause music">♪</button>
+      <audio id="music" preload="none"></audio>
     </div>
   </header>
 
-  <!-- Godot mounts here -->
+  <!-- Godot mounts here (full screen) -->
   <div id="godot-root"></div>
 
-  <!-- Overlay drawer on the RIGHT -->
-  <aside id="drawer"><nav id="nav">
-    <!-- put any web overlays (settings, quit, etc.) here, or leave empty -->
-  </nav></aside>
-  <div id="scrim"></div>
+<!-- Godot HTML5 boot -->
+<div id="godot-root"></div>
+<script>
+(async function bootGodot(){
+  const ROOT = document.getElementById('godot-root');
+  Object.assign(ROOT.style, {
+    position:'fixed', inset:'0', background:'#0b0b12',
+    zIndex: 10, pointerEvents:'auto'
+  });
 
-  <script>
-  // ---------- CONFIG: where your game is hosted ----------
-  // Your Worker serves: https://nq-game-worker.bjgarr.workers.dev/
-  // Files are: nq.js, nq.wasm, nq.pck, etc. at the ROOT.
-  const GODOT_BASE = "https://nq-game-worker.bjgarr.workers.dev";
-  const GODOT_EXECUTABLE = GODOT_BASE + "/nq";  // base name for nq.{js,wasm,pck}
+  const BASE = 'https://nq-game-worker.bjgarr.workers.dev/game'; // <-- your Worker origin
+  const files = ['nq.js','nq.wasm','nq.pck'];
 
-  // ---------- Drawer toggle (right-side) ----------
-  (function(){
-    const drawer = document.getElementById('drawer');
-    const scrim  = document.getElementById('scrim');
-    const hamb   = document.getElementById('hamb');
-    if (!drawer || !scrim || !hamb) return;
-    const open  = () => drawer.classList.add('open');
-    const close = () => drawer.classList.remove('open');
-    const toggle= () => drawer.classList.toggle('open');
-    hamb.addEventListener('click', toggle);
-    scrim.addEventListener('click', close);
-    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
-  })();
+  // Preflight check so errors are obvious
+  try{
+    const head = HEAD ? 'HEAD' : 'GET'; // some hosts don’t allow HEAD
+    const reqs = await Promise.allSettled(
+      files.map(f => fetch(`${BASE}/${f}`, {method:'GET', cache:'no-store'}))
+    );
+    const bad = reqs.find(r => r.status !== 'fulfilled' || !r.value.ok);
+    if(bad){
+      console.error('[Godot] preflight failed', reqs);
+      throw new Error('Preflight failed – check Worker path/CORS/filenames.');
+    }
+  }catch(e){
+    console.error('[Godot] preflight error:', e);
+    return;
+  }
 
-  // ---------- Page ↔ Game bridge ----------
-  // PAGE → GAME: call globalThis.NQ_toGame({...})
-  // GAME → PAGE: listen for 'nq:fromGame' CustomEvent
-  (function bridge(){
-    // Listen to messages sent by Godot
-    window.addEventListener('nq:fromGame', (e)=>{
-      const data = e?.detail;
-      console.log('[fromGame]', data);
-      // Example: hook to your NYX tracker if you want web-side rewards
-      try { window.NQ_track?.(data?.type||'fromGame', data||{}); } catch(_){}
+  // Load the Godot loader script
+  const s = document.createElement('script');
+  s.src = `${BASE}/nq.wasm`;
+  s.async = true;
+  s.onerror = () => console.error('[Godot] failed to load loader script', s.src);
+  s.onload = () => {
+    if (typeof createEngine !== 'function') {
+      console.error('[Godot] createEngine() not found. Is this the real Godot nq.wasm?');
+      return;
+    }
+    // Start engine
+    createEngine({
+      canvasContainer: ROOT,
+      executable: `${BASE}/nq`,   // base path (no extension) for .wasm/.pck
+      focusCanvas: true,
+      onProgress: (p)=>console.log('[Godot] load', Math.floor(p*100)+'%')
+    }).then(() => {
+      console.log('[Godot] started');
+      // Bridge: PAGE → GAME calls will be available to WebBridge.gd
+      globalThis.NQ_toGame?.({ type:'ping', from:'web' });
+    }).catch(err => {
+      console.error('[Godot] start error', err);
     });
-    // Simple demo button in console:
-    //   NQ_toGame?.({type:'quest:complete', id:'q_demo'})
-  })();
+  };
+  document.body.appendChild(s);
 
-  // ---------- Boot Godot ----------
-  (function bootGodot(){
-    const root = document.getElementById('godot-root');
+  // Keep NYX above the game
+  const z = document.createElement('style');
+  z.textContent = `
+    #nyx-launcher, #nyx-panel { z-index: 2000; }
+    .app-header { z-index: 90; position: sticky; top: 0; }
+    #godot-root { z-index: 10; }
+  `;
+  document.head.appendChild(z);
+})();
+</script>
 
-    // load nq.js from the Worker
-    const s = document.createElement('script');
-    s.src = GODOT_BASE + '/nq.js';
-    s.async = true;
-    s.onerror = () => console.error('[Godot] failed to load loader script', s.src);
-    s.onload = () => {
-      const cfg = {
-        // Godot 4.3/4.4 loaders accept one of these shapes depending on template
-        executable: GODOT_EXECUTABLE,         // base for nq.wasm / nq.pck
-        canvasContainer: root,                 // create canvas inside
-        focusCanvas: true,
-        // try to keep audio working if your Worker sends COOP/COEP headers
-        // (Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Embedder-Policy: require-corp)
-      };
+<!-- ============ PAGE ↔ GODOT BRIDGE (JS side) ============ -->
+  <script>
+    // PAGE → GAME: call this anywhere in your site to send messages to Godot
+    window.NQ_toGame = (payload) => {
+      try {
+        // Godot sets this to a JS callback at runtime via WebBridge.gd
+        if (typeof window.__NQ_toGame === 'function') {
+          window.__NQ_toGame(payload);
+        } else {
+          // Not wired yet? queue it.
+          (window.__NQ_queue ||= []).push(payload);
+        }
+      } catch(e){ console.warn('NQ_toGame error', e); }
+    };
 
-      // Support both loader flavors
-      if (typeof Engine !== 'undefined') {
-        const engine = new Engine(cfg);
-        engine.startGame().then(()=>{
-          console.log('[Godot] started (Engine)');
-        }).catch(err=>{
-          console.error('[Godot] start error', err);
-        });
-      } else if (typeof createEngine !== 'undefined') {
-        createEngine(cfg).then(()=>{
-          console.log('[Godot] started (createEngine)');
-        }).catch(err=>{
-          console.error('[Godot] start error', err);
-        });
-      } else {
-        console.error('[Godot] Neither Engine nor createEngine found on window.');
+    // GAME → PAGE: Godot will dispatch this CustomEvent (see WebBridge.gd)
+    window.addEventListener('nq:fromGame', (e)=>{
+      const data = e.detail;
+      // Handle game events here:
+      // e.g., quest complete, xp/gold updates, etc.
+      if (data?.type === 'hud:update') {
+        if (typeof data.gold === 'number') document.getElementById('hudGold').textContent = `🪙 ${data.gold}`;
+        if (typeof data.level === 'number') document.getElementById('hudLevel').textContent = `Lv ${data.level}`;
+        if (typeof data.xpPct === 'number') document.getElementById('hudXp').style.width = `${Math.max(0,Math.min(100,data.xpPct))}%`;
       }
-    };
-    document.body.appendChild(s);
-  })();
-
-  // ---------- Minimal tracker shim so existing calls don’t explode ----------
-  (function(){
-    window.NQ_track = window.NQ_track || function (ev, payload) {
-      try { if (window.NQ && typeof window.NQ.track === 'function') window.NQ.track(ev, payload||{}); } catch (e) {}
-    };
-    window.tracker = window.NQ_track;
-  })();
+      // For debugging:
+      // console.log('[fromGame]', data);
+    });
   </script>
 
-  <!-- (Optional) NYX — leave these if you still want the assistant overlay -->
+  <!-- ============ NYX (unchanged) ============ -->
+  <script>window.NQ_track = window.NQ_track || function(ev,p){try{if(window.NQ?.track) window.NQ.track(ev,p||{});}catch(e){}}; window.tracker = window.NQ_track;</script>
   <script>window.NYX_LLM_ENDPOINT="https://nyx-llm-proxy.bjgarr.workers.dev";</script>
   <script type="module" src="js/bot/nyx.js?v=syntaxfix2"></script>
   <script type="module" src="js/bot/nyx-wire.js"></script>

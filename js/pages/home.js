@@ -163,3 +163,4 @@ export default function renderHome(root){
   // HUD nudge (if present)
   if(window.NQ_updateHud) window.NQ_updateHud();
 }
+
